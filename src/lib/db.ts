@@ -3,25 +3,32 @@ import { Kysely, SqliteDialect } from "kysely";
 import fs from "node:fs";
 import path from "node:path";
 
-const DB_PATH = path.resolve("data/fireracuni.db");
+const DEFAULT_DB_PATH = path.resolve("data/fireracuni.db");
 
 let instance: Kysely<Record<string, never>> | null = null;
+let dbPath: string = DEFAULT_DB_PATH;
+
+export function configureDb(path: string): void {
+  dbPath = path;
+}
 
 export function getDb(): Kysely<Record<string, never>> {
   if (!instance) {
-    const dir = path.dirname(DB_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (dbPath !== ":memory:") {
+      const dir = path.dirname(dbPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
     }
-    const dialect = new SqliteDialect({ database: new Database(DB_PATH) });
+    const dialect = new SqliteDialect({ database: new Database(dbPath) });
     instance = new Kysely({ dialect });
   }
   return instance;
 }
 
-export function resetDb(): void {
+export async function resetDb(): Promise<void> {
   if (instance) {
-    instance.destroy();
+    await instance.destroy();
     instance = null;
   }
 }

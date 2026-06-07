@@ -1,16 +1,13 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { getDb, resetDb } from "@/lib/db";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { configureDb, getDb, resetDb } from "@/lib/db";
 import { sql } from "kysely";
-import fs from "node:fs";
-import path from "node:path";
 
-const DB_PATH = path.resolve("data/fireracuni.db");
+beforeEach(() => {
+  configureDb(":memory:");
+});
 
-afterEach(() => {
-  resetDb();
-  if (fs.existsSync(DB_PATH)) {
-    fs.unlinkSync(DB_PATH);
-  }
+afterEach(async () => {
+  await resetDb();
 });
 
 describe("getDb", () => {
@@ -20,13 +17,7 @@ describe("getDb", () => {
     expect(result.rows).toEqual([{ value: 1 }]);
   });
 
-  it("creates the database file on first access", () => {
-    expect(fs.existsSync(DB_PATH)).toBe(false);
-    getDb();
-    expect(fs.existsSync(DB_PATH)).toBe(true);
-  });
-
-  it("returns the same instance on subsequent calls", () => {
+it("returns the same instance on subsequent calls", () => {
     const db1 = getDb();
     const db2 = getDb();
     expect(db1).toBe(db2);

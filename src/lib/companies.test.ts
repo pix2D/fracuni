@@ -1,0 +1,196 @@
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { configureDb, getDb, resetDb } from "@/lib/db";
+import { readdirSync } from "node:fs";
+import { resolve, join } from "node:path";
+
+async function runMigrations() {
+  const db = getDb();
+  const migrationsDir = resolve("migrations");
+  const files = readdirSync(migrationsDir).filter((f) => f.endsWith(".ts")).sort();
+  for (const file of files) {
+    const modulePath = join(migrationsDir, file);
+    const migration = await import(modulePath);
+    await migration.up(db);
+  }
+}
+
+beforeEach(async () => {
+  await resetDb();
+  configureDb(":memory:");
+  await runMigrations();
+});
+
+afterEach(async () => {
+  await resetDb();
+});
+
+import {
+  createCompany,
+  getCompany,
+  listCompanies,
+  updateCompany,
+  deleteCompany,
+  createLocation,
+  updateLocation,
+  deleteLocation,
+  createPaymentMethod,
+  deletePaymentMethod,
+} from "@/lib/companies";
+
+const COMPANY_INPUT = {
+  name: "Firefly One d.o.o.",
+  address: "Ilica 1, 10000 Zagreb",
+  phone: "+385 1 234 5678",
+  oib: "12345678901",
+  taglineHr: "Vaš pouzdani partner",
+  taglineEn: "Your trusted partner",
+  iban: "HR1234567890123456789",
+  swift: "ZABAHR2X",
+  legalTextDomestic: "Oslobođeno PDV-a...",
+  legalTextForeignHr: "Prijenos porezne obveze...",
+  legalTextForeignEn: "Reverse charge applies...",
+  emailFromAddress: "info@firefly.hr",
+  emailFromName: "Firefly One",
+  emailSubjectTemplate: "Račun {broj}",
+  emailBodyTemplate: "Poštovani, u prilogu šaljemo račun.",
+  defaultPaymentTermsDays: 15,
+  issuerName: "Marko Marković",
+} as const;
+
+describe("companies", () => {
+  it("creates a company and retrieves it by id", async () => {
+    const created = await createCompany(COMPANY_INPUT);
+
+    expect(created.id).toBeTypeOf("number");
+    expect(created.name).toBe("Firefly One d.o.o.");
+
+    const fetched = await getCompany(created.id);
+    expect(fetched).not.toBeNull();
+    expect(fetched!.name).toBe("Firefly One d.o.o.");
+    expect(fetched!.address).toBe("Ilica 1, 10000 Zagreb");
+    expect(fetched!.oib).toBe("12345678901");
+    expect(fetched!.iban).toBe("HR1234567890123456789");
+    expect(fetched!.swift).toBe("ZABAHR2X");
+    expect(fetched!.emailSubjectTemplate).toBe("Račun {broj}");
+    expect(fetched!.defaultPaymentTermsDays).toBe(15);
+    expect(fetched!.issuerName).toBe("Marko Marković");
+  });
+
+  it("lists companies ordered by name", async () => {
+    await createCompany({ ...COMPANY_INPUT, name: "Zebra d.o.o." });
+    await createCompany({ ...COMPANY_INPUT, name: "Alpha d.o.o." });
+
+    const list = await listCompanies();
+    expect(list).toHaveLength(2);
+    expect(list[0]!.name).toBe("Alpha d.o.o.");
+    expect(list[1]!.name).toBe("Zebra d.o.o.");
+  });
+
+  it("updates a company", async () => {
+    const created = await createCompany(COMPANY_INPUT);
+    const updated = await updateCompany(created.id, { name: "New Name d.o.o.", defaultPaymentTermsDays: 30 });
+
+    expect(updated.name).toBe("New Name d.o.o.");
+    expect(updated.defaultPaymentTermsDays).toBe(30);
+    expect(updated.address).toBe("Ilica 1, 10000 Zagreb");
+  });
+
+  it("deletes a company with no document references", async () => {
+    const created = await createCompany(COMPANY_INPUT);
+    await deleteCompany(created.id);
+
+    const fetched = await getCompany(created.id);
+    expect(fetched).toBeNull();
+  });
+});
+
+describe("locations", () => {
+  it("first location auto-becomes default", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const loc = await createLocation(company.id, { number: 1, nameHr: "Zagreb" });
+
+    expect(loc.isDefault).toBe(true);
+    expect(loc.companyId).toBe(company.id);
+  });
+
+  it("setting a new default unsets the old one", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    await createLocation(company.id, { number: 1, nameHr: "Zagreb" });
+    const loc2 = await createLocation(company.id, { number: 2, nameHr: "Split", isDefault: true });
+
+    expect(loc2.isDefault).toBe(true);
+
+    const fetched = await getCompany(company.id);
+    const defaultLocs = fetched!.locations.filter((l) => l.isDefault);
+    expect(defaultLocs).toHaveLength(1);
+    expect(defaultLocs[0]!.id).toBe(loc2.id);
+  });
+
+  it("cannot delete the only location", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const loc = await createLocation(company.id, { number: 1, nameHr: "Zagreb" });
+
+    await expect(deleteLocation(loc.id)).rejects.toThrow("Cannot delete the only location");
+  });
+
+  it("deleting the default promotes another location", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const loc1 = await createLocation(company.id, { number: 1, nameHr: "Zagreb" });
+    await createLocation(company.id, { number: 2, nameHr: "Split" });
+
+    await deleteLocation(loc1.id);
+
+    const fetched = await getCompany(company.id);
+    expect(fetched!.locations).toHaveLength(1);
+    expect(fetched!.locations[0]!.isDefault).toBe(true);
+  });
+
+  it("updates a location", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const loc = await createLocation(company.id, { number: 1, nameHr: "Zagreb", nameEn: "Zagreb" });
+
+    const updated = await updateLocation(loc.id, { nameHr: "Novi Zagreb", nameEn: "New Zagreb" });
+    expect(updated.nameHr).toBe("Novi Zagreb");
+    expect(updated.nameEn).toBe("New Zagreb");
+  });
+});
+
+describe("payment methods", () => {
+  it("first payment method auto-becomes default", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const pm = await createPaymentMethod(company.id, { number: 1, nameHr: "Virman" });
+
+    expect(pm.isDefault).toBe(true);
+    expect(pm.companyId).toBe(company.id);
+  });
+
+  it("setting a new default unsets the old one", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    await createPaymentMethod(company.id, { number: 1, nameHr: "Virman" });
+    const pm2 = await createPaymentMethod(company.id, { number: 2, nameHr: "Transakcijski", isDefault: true });
+
+    const fetched = await getCompany(company.id);
+    const defaults = fetched!.paymentMethods.filter((p) => p.isDefault);
+    expect(defaults).toHaveLength(1);
+    expect(defaults[0]!.id).toBe(pm2.id);
+  });
+
+  it("cannot delete the only payment method", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const pm = await createPaymentMethod(company.id, { number: 1, nameHr: "Virman" });
+
+    await expect(deletePaymentMethod(pm.id)).rejects.toThrow("Cannot delete the only payment method");
+  });
+
+  it("deleting the default promotes another payment method", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const pm1 = await createPaymentMethod(company.id, { number: 1, nameHr: "Virman" });
+    await createPaymentMethod(company.id, { number: 2, nameHr: "Gotovina" });
+
+    await deletePaymentMethod(pm1.id);
+
+    const fetched = await getCompany(company.id);
+    expect(fetched!.paymentMethods).toHaveLength(1);
+    expect(fetched!.paymentMethods[0]!.isDefault).toBe(true);
+  });
+});

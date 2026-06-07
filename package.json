@@ -7,10 +7,12 @@
   },
   "packageManager": "pnpm@11.5.1",
   "scripts": {
-    "dev": "astro dev",
+    "dev": "kysely migrate:latest && astro dev",
     "build": "astro build",
+    "start": "kysely migrate:latest && node dist/server/entry.mjs",
     "preview": "astro preview",
     "astro": "astro",
+    "db:migrate": "kysely migrate:latest",
     "test": "vitest run",
     "verify": "astro check && vitest run"
   },
