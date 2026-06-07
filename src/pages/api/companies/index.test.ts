@@ -1,35 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { FileMigrationProvider, Migrator } from "kysely/migration";
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import { configureDb, getDb, resetDb } from "@/lib/db";
+import { describe, expect, it } from "vitest";
 import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
 import type { CompanyInput } from "@/lib/companies";
 import { GET as getCompanies } from "@/pages/api/companies/index";
+import { apiContext } from "@/test/api";
+import { useMigratedDb } from "@/test/db";
 
-async function runMigrations() {
-  const db = getDb();
-  const migrator = new Migrator({
-    db,
-    provider: new FileMigrationProvider({
-      fs,
-      path,
-      migrationFolder: path.resolve("migrations"),
-    }),
-  });
-  const { error } = await migrator.migrateToLatest();
-  if (error) throw error;
-}
-
-beforeEach(async () => {
-  await resetDb();
-  configureDb(":memory:");
-  await runMigrations();
-});
-
-afterEach(async () => {
-  await resetDb();
-});
+useMigratedDb();
 
 const COMPANY_INPUT: CompanyInput = {
   name: "Firefly One d.o.o.",
@@ -57,7 +33,7 @@ describe("GET /api/companies", () => {
     await createLocation(company.id, { number: 1, nameHr: "Zagreb" });
     await createPaymentMethod(company.id, { number: 1, nameHr: "Virman" });
 
-    const response = await getCompanies({} as unknown as Parameters<typeof getCompanies>[0]);
+    const response = await getCompanies(apiContext());
 
     expect(response.status).toBe(200);
     const body = await response.json();

@@ -170,22 +170,24 @@ export async function updateCompany(
   id: number,
   input: Partial<CompanyInput>,
 ): Promise<Company> {
+  let result: Selectable<Companies> | undefined;
+
   try {
-    const result = await getDb()
+    result = await getDb()
       .updateTable("companies")
       .set({ ...input, updatedAt: sql`datetime('now')` })
       .where("id", "=", id)
       .returningAll()
       .executeTakeFirst();
-
-    if (!result) throw notFound("Company not found");
-    return toCompany(result);
   } catch (error: unknown) {
     if (isSqliteError(error, "SQLITE_CONSTRAINT_UNIQUE")) {
       throw conflict("A company with this OIB already exists");
     }
     throw error;
   }
+
+  if (!result) throw notFound("Company not found");
+  return toCompany(result);
 }
 
 export async function deleteCompany(id: number): Promise<void> {

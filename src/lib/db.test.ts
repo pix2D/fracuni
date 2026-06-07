@@ -17,7 +17,13 @@ describe("getDb", () => {
     expect(result.rows).toEqual([{ value: 1 }]);
   });
 
-it("returns the same instance on subsequent calls", () => {
+  it("enables SQLite foreign key enforcement for each connection", async () => {
+    const db = getDb();
+    const result = await sql<{ foreignKeys: 1 }>`PRAGMA foreign_keys`.execute(db);
+    expect(result.rows).toEqual([{ foreignKeys: 1 }]);
+  });
+
+  it("returns the same instance on subsequent calls", () => {
     const db1 = getDb();
     const db2 = getDb();
     expect(db1).toBe(db2);

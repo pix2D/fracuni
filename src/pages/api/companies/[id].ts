@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { getCompany, updateCompany, deleteCompany } from "@/lib/companies";
 import { z } from "zod/v4";
-import { appErrorResponse, errorResponse, jsonResponse, parseIdParam, parseJsonRequest } from "@/lib/api";
+import { handleApiError, errorResponse, jsonResponse, parseIdParam, parseJsonRequest } from "@/lib/api";
 
 const UpdateCompanySchema = z.object({
   name: z.string().min(1).optional(),
@@ -25,43 +25,35 @@ const UpdateCompanySchema = z.object({
 });
 
 export const GET: APIRoute = async ({ params }) => {
-  const id = parseIdParam(params.id, "company");
-  if (id instanceof Response) return id;
-
-  const company = await getCompany(id);
-  if (!company) {
-    return errorResponse("Not found", 404);
+  try {
+    const id = parseIdParam(params.id, "company");
+    const company = await getCompany(id);
+    if (!company) {
+      return errorResponse("Not found", 404);
+    }
+    return jsonResponse(company);
+  } catch (error: unknown) {
+    return handleApiError(error);
   }
-  return jsonResponse(company);
 };
 
 export const PUT: APIRoute = async ({ params, request }) => {
-  const id = parseIdParam(params.id, "company");
-  if (id instanceof Response) return id;
-
-  const body = await parseJsonRequest(request, UpdateCompanySchema);
-  if (body instanceof Response) return body;
-
   try {
+    const id = parseIdParam(params.id, "company");
+    const body = await parseJsonRequest(request, UpdateCompanySchema);
     const company = await updateCompany(id, body);
     return jsonResponse(company);
   } catch (error: unknown) {
-    const response = appErrorResponse(error);
-    if (response) return response;
-    throw error;
+    return handleApiError(error);
   }
 };
 
 export const DELETE: APIRoute = async ({ params }) => {
-  const id = parseIdParam(params.id, "company");
-  if (id instanceof Response) return id;
-
   try {
+    const id = parseIdParam(params.id, "company");
     await deleteCompany(id);
     return new Response(null, { status: 204 });
   } catch (error: unknown) {
-    const response = appErrorResponse(error);
-    if (response) return response;
-    throw error;
+    return handleApiError(error);
   }
 };

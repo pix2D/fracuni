@@ -1,35 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { FileMigrationProvider, Migrator } from "kysely/migration";
+import { afterEach, describe, expect, it } from "vitest";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { configureDb, getDb, resetDb } from "@/lib/db";
-import { createCompany, updateCompany } from "@/lib/companies";
+import { createCompany, getCompany, updateCompany } from "@/lib/companies";
 import type { CompanyInput } from "@/lib/companies";
-import { GET as getLogo } from "@/pages/api/companies/[id]/logo";
+import { GET as getLogo, POST as uploadLogo } from "@/pages/api/companies/[id]/logo";
+import { apiContext } from "@/test/api";
+import { useMigratedDb } from "@/test/db";
 
-async function runMigrations() {
-  const db = getDb();
-  const migrator = new Migrator({
-    db,
-    provider: new FileMigrationProvider({
-      fs,
-      path,
-      migrationFolder: path.resolve("migrations"),
-    }),
-  });
-  const { error } = await migrator.migrateToLatest();
-  if (error) throw error;
-}
-
-beforeEach(async () => {
-  await resetDb();
-  configureDb(":memory:");
-  await runMigrations();
-});
+useMigratedDb();
 
 afterEach(async () => {
   await fs.rm(path.resolve("data/logos"), { recursive: true, force: true });
-  await resetDb();
 });
 
 const COMPANY_INPUT: CompanyInput = {
@@ -59,9 +40,9 @@ describe("GET /api/companies/:id/logo", () => {
     await fs.writeFile(path.resolve("data/logos/1.png"), Buffer.from([1, 2, 3]));
     await updateCompany(company.id, { logoPath: "logos/1.png" });
 
-    const response = await getLogo({
+    const response = await getLogo(apiContext({
       params: { id: String(company.id) },
-    } as unknown as Parameters<typeof getLogo>[0]);
+    }));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("image/png");
@@ -72,13 +53,53 @@ describe("GET /api/companies/:id/logo", () => {
     const company = await createCompany(COMPANY_INPUT);
     await updateCompany(company.id, { logoPath: "../outside.png" });
 
-    const response = await getLogo({
+    const response = await getLogo(apiContext({
       params: { id: String(company.id) },
-    } as unknown as Parameters<typeof getLogo>[0]);
+    }));
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toMatchObject({
       error: "Logo not found",
+    });
+  });
+});
+
+describe("POST /api/companies/:id/logo", () => {
+  it("derives the stored logo extension from a whitelisted MIME type", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const formData = new FormData();
+    formData.set("logo", new File([new Uint8Array([1, 2, 3])], "logo.html", { type: "image/png" }));
+
+    const response = await uploadLogo(apiContext({
+      params: { id: String(company.id) },
+      request: new Request("http://test.local/api/companies/1/logo", {
+        method: "POST",
+        body: formData,
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ logoPath: `logos/${company.id}.png` });
+    await expect(fs.readFile(path.resolve(`data/logos/${company.id}.png`))).resolves.toEqual(Buffer.from([1, 2, 3]));
+    await expect(getCompany(company.id)).resolves.toMatchObject({ logoPath: `logos/${company.id}.png` });
+  });
+
+  it("rejects image MIME types outside the logo whitelist", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const formData = new FormData();
+    formData.set("logo", new File(["<svg />"], "logo.svg", { type: "image/svg+xml" }));
+
+    const response = await uploadLogo(apiContext({
+      params: { id: String(company.id) },
+      request: new Request("http://test.local/api/companies/1/logo", {
+        method: "POST",
+        body: formData,
+      }),
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "File must be a PNG, JPEG, or WebP image",
     });
   });
 });

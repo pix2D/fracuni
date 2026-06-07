@@ -1,8 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { configureDb, getDb, resetDb } from "@/lib/db";
-import { Migrator, FileMigrationProvider } from "kysely/migration";
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { describe, it, expect } from "vitest";
 import {
   createCompany,
   getCompany,
@@ -16,30 +12,9 @@ import {
   deletePaymentMethod,
 } from "@/lib/companies";
 import type { CompanyInput } from "@/lib/companies";
+import { useMigratedDb } from "@/test/db";
 
-async function runMigrations() {
-  const db = getDb();
-  const migrator = new Migrator({
-    db,
-    provider: new FileMigrationProvider({
-      fs,
-      path,
-      migrationFolder: path.resolve("migrations"),
-    }),
-  });
-  const { error } = await migrator.migrateToLatest();
-  if (error) throw error;
-}
-
-beforeEach(async () => {
-  await resetDb();
-  configureDb(":memory:");
-  await runMigrations();
-});
-
-afterEach(async () => {
-  await resetDb();
-});
+useMigratedDb();
 
 const COMPANY_INPUT: CompanyInput = {
   name: "Firefly One d.o.o.",

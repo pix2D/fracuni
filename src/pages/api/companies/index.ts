@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { createCompany, listCompaniesWithRelations } from "@/lib/companies";
 import { z } from "zod/v4";
-import { appErrorResponse, jsonResponse, parseJsonRequest } from "@/lib/api";
+import { handleApiError, jsonResponse, parseJsonRequest } from "@/lib/api";
 
 const CreateCompanySchema = z.object({
   name: z.string().min(1),
@@ -30,15 +30,11 @@ export const GET: APIRoute = async () => {
 };
 
 export const POST: APIRoute = async ({ request }) => {
-  const body = await parseJsonRequest(request, CreateCompanySchema);
-  if (body instanceof Response) return body;
-
   try {
+    const body = await parseJsonRequest(request, CreateCompanySchema);
     const company = await createCompany(body);
     return jsonResponse(company, { status: 201 });
   } catch (error: unknown) {
-    const response = appErrorResponse(error);
-    if (response) return response;
-    throw error;
+    return handleApiError(error);
   }
 };

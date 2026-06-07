@@ -24,7 +24,9 @@ export function getDb(): Kysely<DB> {
         fs.mkdirSync(dir, { recursive: true });
       }
     }
-    const dialect = new SqliteDialect({ database: new Database(dbPath) });
+    const database = new Database(dbPath);
+    database.pragma("foreign_keys = ON");
+    const dialect = new SqliteDialect({ database });
     global.__db = new Kysely<DB>({ dialect, plugins: [new CamelCasePlugin()] });
   }
   return global.__db;

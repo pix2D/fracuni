@@ -256,7 +256,7 @@ function LogoUpload({ companyId, currentPath, onUploaded }: { companyId: number;
       {currentPath && (
         <img src={`/api/companies/${companyId}/logo`} alt="Logo" className="h-10 w-10 rounded object-contain" />
       )}
-      <Input type="file" accept="image/*" onChange={handleFile} disabled={uploading} />
+      <Input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFile} disabled={uploading} />
     </div>
   );
 }
