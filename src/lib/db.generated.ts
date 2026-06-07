@@ -55,6 +55,14 @@ export interface Companies {
   updatedAt: Generated<string>;
 }
 
+export interface HolidaysCache {
+  date: string;
+  fetchedAt: Generated<string>;
+  id: Generated<number | null>;
+  name: string;
+  year: number;
+}
+
 export interface Locations {
   companyId: number;
   createdAt: Generated<string>;
@@ -91,6 +99,7 @@ export interface DB {
   clients: Clients;
   clientTaxIds: ClientTaxIds;
   companies: Companies;
+  holidaysCache: HolidaysCache;
   locations: Locations;
   paymentMethods: PaymentMethods;
   settings: Settings;
