@@ -1,5 +1,16 @@
 strictDepBuilds: false
 
+supportedArchitectures:
+  os:
+    - darwin
+    - linux
+  cpu:
+    - arm64
+    - x64
+
+storeDir: ../.pnpm-store
+packageImportMethod: hardlink
+
 allowBuilds:
   better-sqlite3: true
   esbuild: false
