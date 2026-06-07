@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(workmux status:*)",
+      "Bash(workmux capture:*)",
+      "Bash(workmux wait:*)",
+      "Bash(workmux list:*)",
+      "Bash(workmux ls:*)",
+      "Bash(workmux path:*)",
+      "Bash(workmux docs:*)",
+      "Bash(tmux list-windows:*)",
+      "Bash(tmux list-panes:*)",
+      "Bash(tmux list-sessions:*)",
+      "Bash(tmux capture-pane:*)",
+      "Bash(tmux display-message:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git worktree list:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git blame:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "mcp__pullmd__read_url"
+    ]
+  },
+  "sandbox": {
+    "filesystem": {
+      "allowWrite": [
+        ".",
+        "../fracuni__worktrees"
+      ],
+      "allowRead": [
+        ".",
+        "../fracuni__worktrees"
+      ]
+    }
+  }
+}

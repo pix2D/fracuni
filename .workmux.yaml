@@ -1,0 +1,9 @@
+panes:
+  - command: claude
+    focus: true
+
+files:
+  symlink:
+    # NOT node_modules — a shared node_modules breaks under the sandbox
+    - .pnpm-store
+    - .scratch

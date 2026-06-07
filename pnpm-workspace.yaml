@@ -1,0 +1,6 @@
+strictDepBuilds: false
+
+allowBuilds:
+  better-sqlite3: true
+  msw: false
+  puppeteer: true
