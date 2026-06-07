@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
-import { createCompany, listCompanies } from "@/lib/companies";
+import { createCompany, listCompaniesWithRelations } from "@/lib/companies";
 import { z } from "zod/v4";
+import { appErrorResponse, jsonResponse, parseJsonRequest } from "@/lib/api";
 
 const CreateCompanySchema = z.object({
   name: z.string().min(1),
@@ -24,44 +25,20 @@ const CreateCompanySchema = z.object({
 });
 
 export const GET: APIRoute = async () => {
-  const companies = await listCompanies();
-  return new Response(JSON.stringify(companies), {
-    headers: { "Content-Type": "application/json" },
-  });
+  const companies = await listCompaniesWithRelations();
+  return jsonResponse(companies);
 };
 
 export const POST: APIRoute = async ({ request }) => {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const result = CreateCompanySchema.safeParse(body);
-  if (!result.success) {
-    return new Response(JSON.stringify({ error: "Validation failed", issues: result.error.issues }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const body = await parseJsonRequest(request, CreateCompanySchema);
+  if (body instanceof Response) return body;
 
   try {
-    const company = await createCompany(result.data);
-    return new Response(JSON.stringify(company), {
-      status: 201,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (e: unknown) {
-    if (e instanceof Error && e.message.includes("UNIQUE constraint failed")) {
-      return new Response(JSON.stringify({ error: "A company with this OIB already exists" }), {
-        status: 409,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    throw e;
+    const company = await createCompany(body);
+    return jsonResponse(company, { status: 201 });
+  } catch (error: unknown) {
+    const response = appErrorResponse(error);
+    if (response) return response;
+    throw error;
   }
 };

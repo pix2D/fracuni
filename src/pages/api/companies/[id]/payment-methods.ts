@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { createPaymentMethod } from "@/lib/companies";
 import { z } from "zod/v4";
+import { appErrorResponse, jsonResponse, parseIdParam, parseJsonRequest } from "@/lib/api";
 
 const CreatePaymentMethodSchema = z.object({
   number: z.number().int().positive(),
@@ -10,51 +11,18 @@ const CreatePaymentMethodSchema = z.object({
 });
 
 export const POST: APIRoute = async ({ params, request }) => {
-  const companyId = Number(params.id);
-  if (!Number.isInteger(companyId) || companyId <= 0) {
-    return new Response(JSON.stringify({ error: "Invalid company ID" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const companyId = parseIdParam(params.id, "company");
+  if (companyId instanceof Response) return companyId;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const result = CreatePaymentMethodSchema.safeParse(body);
-  if (!result.success) {
-    return new Response(JSON.stringify({ error: "Validation failed", issues: result.error.issues }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const body = await parseJsonRequest(request, CreatePaymentMethodSchema);
+  if (body instanceof Response) return body;
 
   try {
-    const pm = await createPaymentMethod(companyId, result.data);
-    return new Response(JSON.stringify(pm), {
-      status: 201,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (e: unknown) {
-    if (e instanceof Error && e.message.includes("UNIQUE constraint failed")) {
-      return new Response(JSON.stringify({ error: "A payment method with this number already exists for this company" }), {
-        status: 409,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    if (e instanceof Error && e.message.includes("FOREIGN KEY constraint failed")) {
-      return new Response(JSON.stringify({ error: "Company not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    throw e;
+    const pm = await createPaymentMethod(companyId, body);
+    return jsonResponse(pm, { status: 201 });
+  } catch (error: unknown) {
+    const response = appErrorResponse(error);
+    if (response) return response;
+    throw error;
   }
 };

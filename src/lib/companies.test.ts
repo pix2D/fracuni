@@ -90,6 +90,16 @@ describe("companies", () => {
     expect(list[1]!.name).toBe("Zebra d.o.o.");
   });
 
+  it("throws a typed conflict error for duplicate Company OIB", async () => {
+    await createCompany(COMPANY_INPUT);
+
+    await expect(createCompany(COMPANY_INPUT)).rejects.toMatchObject({
+      code: "conflict",
+      message: "A company with this OIB already exists",
+      status: 409,
+    });
+  });
+
   it("updates a company", async () => {
     const created = await createCompany(COMPANY_INPUT);
     const updated = await updateCompany(created.id, { name: "New Name d.o.o.", defaultPaymentTermsDays: 30 });

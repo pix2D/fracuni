@@ -254,7 +254,7 @@ function LogoUpload({ companyId, currentPath, onUploaded }: { companyId: number;
   return (
     <div className="flex items-center gap-4">
       {currentPath && (
-        <img src={`/data/${currentPath}`} alt="Logo" className="h-10 w-10 rounded object-contain" />
+        <img src={`/api/companies/${companyId}/logo`} alt="Logo" className="h-10 w-10 rounded object-contain" />
       )}
       <Input type="file" accept="image/*" onChange={handleFile} disabled={uploading} />
     </div>

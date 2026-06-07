@@ -26,14 +26,7 @@ export function CompaniesPage() {
 
   const fetchCompanies = useCallback(async () => {
     const res = await fetch("/api/companies");
-    const list = await res.json();
-    const detailed = await Promise.all(
-      list.map(async (c: { id: number }) => {
-        const r = await fetch(`/api/companies/${c.id}`);
-        return r.json();
-      })
-    );
-    setCompanies(detailed);
+    setCompanies(await res.json());
   }, []);
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { getCompany, updateCompany, deleteCompany } from "@/lib/companies";
 import { z } from "zod/v4";
+import { appErrorResponse, errorResponse, jsonResponse, parseIdParam, parseJsonRequest } from "@/lib/api";
 
 const UpdateCompanySchema = z.object({
   name: z.string().min(1).optional(),
@@ -23,103 +24,44 @@ const UpdateCompanySchema = z.object({
   issuerName: z.string().min(1).optional(),
 });
 
-function parseId(raw: string | undefined): number | null {
-  const n = Number(raw);
-  if (!Number.isInteger(n) || n <= 0) return null;
-  return n;
-}
-
 export const GET: APIRoute = async ({ params }) => {
-  const id = parseId(params.id);
-  if (id === null) {
-    return new Response(JSON.stringify({ error: "Invalid company ID" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const id = parseIdParam(params.id, "company");
+  if (id instanceof Response) return id;
 
   const company = await getCompany(id);
   if (!company) {
-    return new Response(JSON.stringify({ error: "Not found" }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-    });
+    return errorResponse("Not found", 404);
   }
-  return new Response(JSON.stringify(company), {
-    headers: { "Content-Type": "application/json" },
-  });
+  return jsonResponse(company);
 };
 
 export const PUT: APIRoute = async ({ params, request }) => {
-  const id = parseId(params.id);
-  if (id === null) {
-    return new Response(JSON.stringify({ error: "Invalid company ID" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const id = parseIdParam(params.id, "company");
+  if (id instanceof Response) return id;
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const result = UpdateCompanySchema.safeParse(body);
-  if (!result.success) {
-    return new Response(JSON.stringify({ error: "Validation failed", issues: result.error.issues }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const body = await parseJsonRequest(request, UpdateCompanySchema);
+  if (body instanceof Response) return body;
 
   try {
-    const company = await updateCompany(id, result.data);
-    return new Response(JSON.stringify(company), {
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (e: unknown) {
-    if (e instanceof Error) {
-      if (e.message === "Company not found") {
-        return new Response(JSON.stringify({ error: "Not found" }), {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-      if (e.message.includes("UNIQUE constraint failed")) {
-        return new Response(JSON.stringify({ error: "A company with this OIB already exists" }), {
-          status: 409,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-    }
-    throw e;
+    const company = await updateCompany(id, body);
+    return jsonResponse(company);
+  } catch (error: unknown) {
+    const response = appErrorResponse(error);
+    if (response) return response;
+    throw error;
   }
 };
 
 export const DELETE: APIRoute = async ({ params }) => {
-  const id = parseId(params.id);
-  if (id === null) {
-    return new Response(JSON.stringify({ error: "Invalid company ID" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const id = parseIdParam(params.id, "company");
+  if (id instanceof Response) return id;
 
   try {
     await deleteCompany(id);
     return new Response(null, { status: 204 });
-  } catch (e: unknown) {
-    if (e instanceof Error && e.message.includes("Cannot delete")) {
-      return new Response(JSON.stringify({ error: e.message }), {
-        status: 409,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    throw e;
+  } catch (error: unknown) {
+    const response = appErrorResponse(error);
+    if (response) return response;
+    throw error;
   }
 };
