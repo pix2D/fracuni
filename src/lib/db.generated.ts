@@ -85,6 +85,14 @@ export interface PaymentMethods {
   updatedAt: Generated<string>;
 }
 
+export interface ServiceCatalog {
+  createdAt: Generated<string>;
+  descriptionEn: string | null;
+  descriptionHr: string;
+  id: Generated<number | null>;
+  updatedAt: Generated<string>;
+}
+
 export interface Settings {
   defaultOfferValidityDays: Generated<number>;
   defaultPaymentTermsDays: Generated<number>;
@@ -102,5 +110,6 @@ export interface DB {
   holidaysCache: HolidaysCache;
   locations: Locations;
   paymentMethods: PaymentMethods;
+  serviceCatalog: ServiceCatalog;
   settings: Settings;
 }
