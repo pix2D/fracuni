@@ -77,10 +77,21 @@ export interface PaymentMethods {
   updatedAt: Generated<string>;
 }
 
+export interface Settings {
+  defaultOfferValidityDays: Generated<number>;
+  defaultPaymentTermsDays: Generated<number>;
+  defaultVatRate: Generated<number>;
+  id: Generated<number | null>;
+  postmarkApiKey: string | null;
+  supportedCurrencies: Generated<string>;
+  updatedAt: Generated<string>;
+}
+
 export interface DB {
   clients: Clients;
   clientTaxIds: ClientTaxIds;
   companies: Companies;
   locations: Locations;
   paymentMethods: PaymentMethods;
+  settings: Settings;
 }
