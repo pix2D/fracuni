@@ -2,9 +2,9 @@
 import "@/styles/global.css";
 import { CompanySelector } from "@/components/CompanySelector";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
-import { getCompanies } from "@/lib/company";
+import { listCompanies } from "@/lib/companies";
 
-const companies = await getCompanies();
+const companies = await listCompanies();
 const companyId = Astro.cookies.get("companyId")?.value;
 
 const navLinks = [

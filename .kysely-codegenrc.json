@@ -1,0 +1,6 @@
+{
+  "dialect": "sqlite",
+  "camelCase": true,
+  "url": "data/fireracuni.db",
+  "outFile": "src/lib/db.generated.ts"
+}

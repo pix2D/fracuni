@@ -1,365 +1,389 @@
 import { getDb } from "@/lib/db";
+import type { Insertable, Selectable } from "kysely";
 import { sql } from "kysely";
+import type { Companies, Locations, PaymentMethods } from "@/lib/db.generated";
 
-export interface CompanyInput {
-  name: string;
-  address: string;
-  phone: string;
-  oib: string;
-  logoPath?: string;
-  taglineHr?: string;
-  taglineEn?: string;
-  iban: string;
-  swift: string;
-  legalTextDomestic?: string;
-  legalTextForeignHr?: string;
-  legalTextForeignEn?: string;
-  emailFromAddress: string;
-  emailFromName: string;
-  emailSubjectTemplate?: string;
-  emailBodyTemplate?: string;
-  defaultPaymentTermsDays: number;
-  issuerName: string;
-}
+// SQLite introspection reports autoincrement PKs as nullable; they never are after insert/select.
+type NonNullId<T extends { id: unknown }> = Omit<T, "id"> & { id: number };
 
-export interface Company extends CompanyInput {
-  id: number;
-}
+// SQLite has no boolean — isDefault is stored as 0/1 integer. Convert at the boundary.
+type BooleanDefault<T extends { isDefault: unknown }> = Omit<T, "isDefault"> & { isDefault: boolean };
 
-export interface LocationInput {
+export type Company = NonNullId<Selectable<Companies>>;
+export type CompanyInput = Omit<Insertable<Companies>, "id" | "createdAt" | "updatedAt">;
+
+export type Location = BooleanDefault<NonNullId<Selectable<Locations>>>;
+export type LocationInput = {
   number: number;
   nameHr: string;
-  nameEn?: string;
+  nameEn?: string | null;
   isDefault?: boolean;
-}
+};
 
-export interface Location extends LocationInput {
-  id: number;
-  companyId: number;
-  isDefault: boolean;
-}
-
-export interface PaymentMethodInput {
+export type PaymentMethod = BooleanDefault<NonNullId<Selectable<PaymentMethods>>>;
+export type PaymentMethodInput = {
   number: number;
   nameHr: string;
-  nameEn?: string;
+  nameEn?: string | null;
   isDefault?: boolean;
-}
-
-export interface PaymentMethod extends PaymentMethodInput {
-  id: number;
-  companyId: number;
-  isDefault: boolean;
-}
+};
 
 export interface CompanyWithRelations extends Company {
   locations: Location[];
   paymentMethods: PaymentMethod[];
 }
 
-function rowToCompany(row: Record<string, unknown>): Company {
-  return {
-    id: row.id as number,
-    name: row.name as string,
-    address: row.address as string,
-    phone: row.phone as string,
-    oib: row.oib as string,
-    logoPath: row.logo_path as string | undefined,
-    taglineHr: row.tagline_hr as string | undefined,
-    taglineEn: row.tagline_en as string | undefined,
-    iban: row.iban as string,
-    swift: row.swift as string,
-    legalTextDomestic: row.legal_text_domestic as string,
-    legalTextForeignHr: row.legal_text_foreign_hr as string,
-    legalTextForeignEn: row.legal_text_foreign_en as string,
-    emailFromAddress: row.email_from_address as string,
-    emailFromName: row.email_from_name as string,
-    emailSubjectTemplate: row.email_subject_template as string,
-    emailBodyTemplate: row.email_body_template as string,
-    defaultPaymentTermsDays: row.default_payment_terms_days as number,
-    issuerName: row.issuer_name as string,
-  };
+function toCompany(row: Selectable<Companies>): Company {
+  return { ...row, id: row.id! };
 }
 
-function rowToLocation(row: Record<string, unknown>): Location {
-  return {
-    id: row.id as number,
-    companyId: row.company_id as number,
-    number: row.number as number,
-    nameHr: row.name_hr as string,
-    nameEn: row.name_en as string,
-    isDefault: row.is_default === 1,
-  };
+function toLocation(row: Selectable<Locations>): Location {
+  return { ...row, id: row.id!, isDefault: row.isDefault === 1 };
 }
 
-function rowToPaymentMethod(row: Record<string, unknown>): PaymentMethod {
-  return {
-    id: row.id as number,
-    companyId: row.company_id as number,
-    number: row.number as number,
-    nameHr: row.name_hr as string,
-    nameEn: row.name_en as string,
-    isDefault: row.is_default === 1,
-  };
+function toPaymentMethod(row: Selectable<PaymentMethods>): PaymentMethod {
+  return { ...row, id: row.id!, isDefault: row.isDefault === 1 };
 }
 
 export async function createCompany(input: CompanyInput): Promise<Company> {
   const db = getDb();
-  const result = await sql`
-    INSERT INTO companies (name, address, phone, oib, logo_path, tagline_hr, tagline_en, iban, swift,
-      legal_text_domestic, legal_text_foreign_hr, legal_text_foreign_en,
-      email_from_address, email_from_name, email_subject_template, email_body_template,
-      default_payment_terms_days, issuer_name)
-    VALUES (${input.name}, ${input.address}, ${input.phone}, ${input.oib},
-      ${input.logoPath ?? null}, ${input.taglineHr ?? null}, ${input.taglineEn ?? null},
-      ${input.iban}, ${input.swift},
-      ${input.legalTextDomestic ?? ""}, ${input.legalTextForeignHr ?? ""}, ${input.legalTextForeignEn ?? ""},
-      ${input.emailFromAddress}, ${input.emailFromName},
-      ${input.emailSubjectTemplate ?? ""}, ${input.emailBodyTemplate ?? ""},
-      ${input.defaultPaymentTermsDays}, ${input.issuerName})
-    RETURNING *
-  `.execute(db);
-
-  return rowToCompany(result.rows[0] as Record<string, unknown>);
+  const row = await db
+    .insertInto("companies")
+    .values(input)
+    .returningAll()
+    .executeTakeFirstOrThrow();
+  return toCompany(row);
 }
 
 export async function listCompanies(): Promise<Company[]> {
   const db = getDb();
-  const result = await sql`SELECT * FROM companies ORDER BY name`.execute(db);
-  return result.rows.map((r) => rowToCompany(r as Record<string, unknown>));
+  const rows = await db
+    .selectFrom("companies")
+    .selectAll()
+    .orderBy("name")
+    .execute();
+  return rows.map(toCompany);
 }
 
 export async function getCompany(id: number): Promise<CompanyWithRelations | null> {
   const db = getDb();
-  const companyResult = await sql`SELECT * FROM companies WHERE id = ${id}`.execute(db);
-  if (companyResult.rows.length === 0) return null;
 
-  const company = rowToCompany(companyResult.rows[0] as Record<string, unknown>);
+  const companyRow = await db
+    .selectFrom("companies")
+    .selectAll()
+    .where("id", "=", id)
+    .executeTakeFirst();
 
-  const locationsResult = await sql`
-    SELECT * FROM locations WHERE company_id = ${id} ORDER BY number
-  `.execute(db);
-  const locations = locationsResult.rows.map((r) => rowToLocation(r as Record<string, unknown>));
+  if (!companyRow) return null;
 
-  const pmResult = await sql`
-    SELECT * FROM payment_methods WHERE company_id = ${id} ORDER BY number
-  `.execute(db);
-  const paymentMethods = pmResult.rows.map((r) => rowToPaymentMethod(r as Record<string, unknown>));
+  const company = toCompany(companyRow);
 
-  return { ...company, locations, paymentMethods };
-}
+  const locationRows = await db
+    .selectFrom("locations")
+    .selectAll()
+    .where("companyId", "=", id)
+    .orderBy("number")
+    .execute();
 
-export async function updateCompany(id: number, input: Partial<CompanyInput>): Promise<Company> {
-  const db = getDb();
+  const pmRows = await db
+    .selectFrom("paymentMethods")
+    .selectAll()
+    .where("companyId", "=", id)
+    .orderBy("number")
+    .execute();
 
-  const fieldMap: Record<string, string> = {
-    name: "name",
-    address: "address",
-    phone: "phone",
-    oib: "oib",
-    logoPath: "logo_path",
-    taglineHr: "tagline_hr",
-    taglineEn: "tagline_en",
-    iban: "iban",
-    swift: "swift",
-    legalTextDomestic: "legal_text_domestic",
-    legalTextForeignHr: "legal_text_foreign_hr",
-    legalTextForeignEn: "legal_text_foreign_en",
-    emailFromAddress: "email_from_address",
-    emailFromName: "email_from_name",
-    emailSubjectTemplate: "email_subject_template",
-    emailBodyTemplate: "email_body_template",
-    defaultPaymentTermsDays: "default_payment_terms_days",
-    issuerName: "issuer_name",
+  return {
+    ...company,
+    locations: locationRows.map(toLocation),
+    paymentMethods: pmRows.map(toPaymentMethod),
   };
-
-  const parts: ReturnType<typeof sql>[] = [];
-  for (const [key, column] of Object.entries(fieldMap)) {
-    if (key in input) {
-      const value = (input as Record<string, unknown>)[key];
-      parts.push(sql`${sql.ref(column)} = ${value}`);
-    }
-  }
-
-  if (parts.length === 0) {
-    const existing = await getCompany(id);
-    if (!existing) throw new Error("Company not found");
-    return existing;
-  }
-
-  parts.push(sql`updated_at = datetime('now')`);
-
-  await sql`UPDATE companies SET ${sql.join(parts, sql`, `)} WHERE id = ${id}`.execute(db);
-
-  const result = await sql`SELECT * FROM companies WHERE id = ${id}`.execute(db);
-  if (result.rows.length === 0) throw new Error("Company not found");
-  return rowToCompany(result.rows[0] as Record<string, unknown>);
 }
 
+export async function updateCompany(
+  id: number,
+  input: Partial<CompanyInput>,
+): Promise<Company> {
+  const result = await getDb()
+    .updateTable("companies")
+    .set({ ...input, updatedAt: sql`datetime('now')` })
+    .where("id", "=", id)
+    .returningAll()
+    .executeTakeFirst();
+
+  if (!result) throw new Error("Company not found");
+  return toCompany(result);
+}
+
+// TODO: remove `as any` casts when invoices/offers tables exist in the schema
 export async function deleteCompany(id: number): Promise<void> {
   const db = getDb();
-  // Check for referencing documents (invoices, offers) — block deletion if any exist
-  try {
-    const invoiceCheck = await sql`SELECT 1 FROM invoices WHERE company_id = ${id} LIMIT 1`.execute(db);
-    if (invoiceCheck.rows.length > 0) {
-      throw new Error("Cannot delete company: documents reference it");
-    }
-  } catch (e: unknown) {
-    if (e instanceof Error && e.message.includes("Cannot delete")) throw e;
-    // Table doesn't exist yet — safe to proceed
+
+  const hasInvoices = await db
+    .selectFrom("invoices" as any)
+    .select(sql`1`.as("one"))
+    .where("companyId" as any, "=", id)
+    .executeTakeFirst()
+    .catch((e: unknown) => {
+      if (e instanceof Error && e.message.includes("no such table")) return undefined;
+      throw e;
+    });
+
+  if (hasInvoices) {
+    throw new Error("Cannot delete company: documents reference it");
   }
 
-  try {
-    const offerCheck = await sql`SELECT 1 FROM offers WHERE company_id = ${id} LIMIT 1`.execute(db);
-    if (offerCheck.rows.length > 0) {
-      throw new Error("Cannot delete company: documents reference it");
-    }
-  } catch (e: unknown) {
-    if (e instanceof Error && e.message.includes("Cannot delete")) throw e;
+  const hasOffers = await db
+    .selectFrom("offers" as any)
+    .select(sql`1`.as("one"))
+    .where("companyId" as any, "=", id)
+    .executeTakeFirst()
+    .catch((e: unknown) => {
+      if (e instanceof Error && e.message.includes("no such table")) return undefined;
+      throw e;
+    });
+
+  if (hasOffers) {
+    throw new Error("Cannot delete company: documents reference it");
   }
 
-  await sql`DELETE FROM companies WHERE id = ${id}`.execute(db);
+  await db.deleteFrom("companies").where("id", "=", id).execute();
 }
 
 export async function createLocation(companyId: number, input: LocationInput): Promise<Location> {
   const db = getDb();
 
-  // If this is marked as default, or it's the first location, ensure default handling
-  const existing = await sql`SELECT id FROM locations WHERE company_id = ${companyId}`.execute(db);
-  const shouldBeDefault = input.isDefault || existing.rows.length === 0;
+  return await db.transaction().execute(async (trx) => {
+    const existing = await trx
+      .selectFrom("locations")
+      .select("id")
+      .where("companyId", "=", companyId)
+      .execute();
 
-  if (shouldBeDefault) {
-    await sql`UPDATE locations SET is_default = 0 WHERE company_id = ${companyId}`.execute(db);
-  }
+    const shouldBeDefault = input.isDefault === true || existing.length === 0;
 
-  const result = await sql`
-    INSERT INTO locations (company_id, number, name_hr, name_en, is_default)
-    VALUES (${companyId}, ${input.number}, ${input.nameHr}, ${input.nameEn ?? ""}, ${shouldBeDefault ? 1 : 0})
-    RETURNING *
-  `.execute(db);
+    if (shouldBeDefault) {
+      await trx
+        .updateTable("locations")
+        .set({ isDefault: 0 })
+        .where("companyId", "=", companyId)
+        .execute();
+    }
 
-  return rowToLocation(result.rows[0] as Record<string, unknown>);
+    const row = await trx
+      .insertInto("locations")
+      .values({
+        companyId,
+        number: input.number,
+        nameHr: input.nameHr,
+        nameEn: input.nameEn ?? null,
+        isDefault: shouldBeDefault ? 1 : 0,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    return toLocation(row);
+  });
 }
 
-export async function updateLocation(id: number, input: Partial<LocationInput>): Promise<Location> {
+export async function updateLocation(
+  id: number,
+  input: Partial<LocationInput>,
+): Promise<Location> {
   const db = getDb();
 
-  const current = await sql`SELECT * FROM locations WHERE id = ${id}`.execute(db);
-  if (current.rows.length === 0) throw new Error("Location not found");
-  const row = current.rows[0] as Record<string, unknown>;
-  const companyId = row.company_id as number;
+  return await db.transaction().execute(async (trx) => {
+    const current = await trx
+      .selectFrom("locations")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
 
-  if (input.isDefault) {
-    await sql`UPDATE locations SET is_default = 0 WHERE company_id = ${companyId}`.execute(db);
-  }
+    if (!current) throw new Error("Location not found");
 
-  const parts: ReturnType<typeof sql>[] = [];
-  if (input.number !== undefined) parts.push(sql`number = ${input.number}`);
-  if (input.nameHr !== undefined) parts.push(sql`name_hr = ${input.nameHr}`);
-  if (input.nameEn !== undefined) parts.push(sql`name_en = ${input.nameEn}`);
-  if (input.isDefault !== undefined) parts.push(sql`is_default = ${input.isDefault ? 1 : 0}`);
+    if (input.isDefault === true) {
+      await trx
+        .updateTable("locations")
+        .set({ isDefault: 0 })
+        .where("companyId", "=", current.companyId)
+        .execute();
+    }
 
-  if (parts.length > 0) {
-    parts.push(sql`updated_at = datetime('now')`);
-    await sql`UPDATE locations SET ${sql.join(parts, sql`, `)} WHERE id = ${id}`.execute(db);
-  }
+    const row = await trx
+      .updateTable("locations")
+      .set({
+        ...(input.number !== undefined && { number: input.number }),
+        ...(input.nameHr !== undefined && { nameHr: input.nameHr }),
+        ...(input.nameEn !== undefined && { nameEn: input.nameEn }),
+        ...(input.isDefault !== undefined && { isDefault: input.isDefault ? 1 : 0 }),
+        updatedAt: sql`datetime('now')`,
+      })
+      .where("id", "=", id)
+      .returningAll()
+      .executeTakeFirstOrThrow();
 
-  const result = await sql`SELECT * FROM locations WHERE id = ${id}`.execute(db);
-  return rowToLocation(result.rows[0] as Record<string, unknown>);
+    return toLocation(row);
+  });
 }
 
 export async function deleteLocation(id: number): Promise<void> {
   const db = getDb();
-  const current = await sql`SELECT * FROM locations WHERE id = ${id}`.execute(db);
-  if (current.rows.length === 0) throw new Error("Location not found");
 
-  const row = current.rows[0] as Record<string, unknown>;
-  const companyId = row.company_id as number;
+  await db.transaction().execute(async (trx) => {
+    const current = await trx
+      .selectFrom("locations")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
 
-  const count = await sql`SELECT COUNT(*) as cnt FROM locations WHERE company_id = ${companyId}`.execute(db);
-  const cnt = (count.rows[0] as Record<string, unknown>).cnt as number;
-  if (cnt <= 1) {
-    throw new Error("Cannot delete the only location");
-  }
+    if (!current) throw new Error("Location not found");
 
-  const isDefault = row.is_default === 1;
-  await sql`DELETE FROM locations WHERE id = ${id}`.execute(db);
+    const { countAll } = trx.fn;
+    const { cnt } = await trx
+      .selectFrom("locations")
+      .select(countAll<number>().as("cnt"))
+      .where("companyId", "=", current.companyId)
+      .executeTakeFirstOrThrow();
 
-  if (isDefault) {
-    await sql`
-      UPDATE locations SET is_default = 1
-      WHERE company_id = ${companyId} AND id = (SELECT MIN(id) FROM locations WHERE company_id = ${companyId})
-    `.execute(db);
-  }
+    if (cnt <= 1) {
+      throw new Error("Cannot delete the only location");
+    }
+
+    await trx.deleteFrom("locations").where("id", "=", id).execute();
+
+    if (current.isDefault === 1) {
+      const next = await trx
+        .selectFrom("locations")
+        .select("id")
+        .where("companyId", "=", current.companyId)
+        .orderBy("id")
+        .executeTakeFirstOrThrow();
+
+      await trx
+        .updateTable("locations")
+        .set({ isDefault: 1 })
+        .where("id", "=", next.id)
+        .execute();
+    }
+  });
 }
 
-export async function createPaymentMethod(companyId: number, input: PaymentMethodInput): Promise<PaymentMethod> {
+export async function createPaymentMethod(
+  companyId: number,
+  input: PaymentMethodInput,
+): Promise<PaymentMethod> {
   const db = getDb();
 
-  const existing = await sql`SELECT id FROM payment_methods WHERE company_id = ${companyId}`.execute(db);
-  const shouldBeDefault = input.isDefault || existing.rows.length === 0;
+  return await db.transaction().execute(async (trx) => {
+    const existing = await trx
+      .selectFrom("paymentMethods")
+      .select("id")
+      .where("companyId", "=", companyId)
+      .execute();
 
-  if (shouldBeDefault) {
-    await sql`UPDATE payment_methods SET is_default = 0 WHERE company_id = ${companyId}`.execute(db);
-  }
+    const shouldBeDefault = input.isDefault === true || existing.length === 0;
 
-  const result = await sql`
-    INSERT INTO payment_methods (company_id, number, name_hr, name_en, is_default)
-    VALUES (${companyId}, ${input.number}, ${input.nameHr}, ${input.nameEn ?? ""}, ${shouldBeDefault ? 1 : 0})
-    RETURNING *
-  `.execute(db);
+    if (shouldBeDefault) {
+      await trx
+        .updateTable("paymentMethods")
+        .set({ isDefault: 0 })
+        .where("companyId", "=", companyId)
+        .execute();
+    }
 
-  return rowToPaymentMethod(result.rows[0] as Record<string, unknown>);
+    const row = await trx
+      .insertInto("paymentMethods")
+      .values({
+        companyId,
+        number: input.number,
+        nameHr: input.nameHr,
+        nameEn: input.nameEn ?? null,
+        isDefault: shouldBeDefault ? 1 : 0,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    return toPaymentMethod(row);
+  });
 }
 
-export async function updatePaymentMethod(id: number, input: Partial<PaymentMethodInput>): Promise<PaymentMethod> {
+export async function updatePaymentMethod(
+  id: number,
+  input: Partial<PaymentMethodInput>,
+): Promise<PaymentMethod> {
   const db = getDb();
 
-  const current = await sql`SELECT * FROM payment_methods WHERE id = ${id}`.execute(db);
-  if (current.rows.length === 0) throw new Error("Payment method not found");
-  const row = current.rows[0] as Record<string, unknown>;
-  const companyId = row.company_id as number;
+  return await db.transaction().execute(async (trx) => {
+    const current = await trx
+      .selectFrom("paymentMethods")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
 
-  if (input.isDefault) {
-    await sql`UPDATE payment_methods SET is_default = 0 WHERE company_id = ${companyId}`.execute(db);
-  }
+    if (!current) throw new Error("Payment method not found");
 
-  const parts: ReturnType<typeof sql>[] = [];
-  if (input.number !== undefined) parts.push(sql`number = ${input.number}`);
-  if (input.nameHr !== undefined) parts.push(sql`name_hr = ${input.nameHr}`);
-  if (input.nameEn !== undefined) parts.push(sql`name_en = ${input.nameEn}`);
-  if (input.isDefault !== undefined) parts.push(sql`is_default = ${input.isDefault ? 1 : 0}`);
+    if (input.isDefault === true) {
+      await trx
+        .updateTable("paymentMethods")
+        .set({ isDefault: 0 })
+        .where("companyId", "=", current.companyId)
+        .execute();
+    }
 
-  if (parts.length > 0) {
-    parts.push(sql`updated_at = datetime('now')`);
-    await sql`UPDATE payment_methods SET ${sql.join(parts, sql`, `)} WHERE id = ${id}`.execute(db);
-  }
+    const row = await trx
+      .updateTable("paymentMethods")
+      .set({
+        ...(input.number !== undefined && { number: input.number }),
+        ...(input.nameHr !== undefined && { nameHr: input.nameHr }),
+        ...(input.nameEn !== undefined && { nameEn: input.nameEn }),
+        ...(input.isDefault !== undefined && { isDefault: input.isDefault ? 1 : 0 }),
+        updatedAt: sql`datetime('now')`,
+      })
+      .where("id", "=", id)
+      .returningAll()
+      .executeTakeFirstOrThrow();
 
-  const result = await sql`SELECT * FROM payment_methods WHERE id = ${id}`.execute(db);
-  return rowToPaymentMethod(result.rows[0] as Record<string, unknown>);
+    return toPaymentMethod(row);
+  });
 }
 
 export async function deletePaymentMethod(id: number): Promise<void> {
   const db = getDb();
-  const current = await sql`SELECT * FROM payment_methods WHERE id = ${id}`.execute(db);
-  if (current.rows.length === 0) throw new Error("Payment method not found");
 
-  const row = current.rows[0] as Record<string, unknown>;
-  const companyId = row.company_id as number;
+  await db.transaction().execute(async (trx) => {
+    const current = await trx
+      .selectFrom("paymentMethods")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
 
-  const count = await sql`SELECT COUNT(*) as cnt FROM payment_methods WHERE company_id = ${companyId}`.execute(db);
-  const cnt = (count.rows[0] as Record<string, unknown>).cnt as number;
-  if (cnt <= 1) {
-    throw new Error("Cannot delete the only payment method");
-  }
+    if (!current) throw new Error("Payment method not found");
 
-  const isDefault = row.is_default === 1;
-  await sql`DELETE FROM payment_methods WHERE id = ${id}`.execute(db);
+    const { countAll } = trx.fn;
+    const { cnt } = await trx
+      .selectFrom("paymentMethods")
+      .select(countAll<number>().as("cnt"))
+      .where("companyId", "=", current.companyId)
+      .executeTakeFirstOrThrow();
 
-  if (isDefault) {
-    await sql`
-      UPDATE payment_methods SET is_default = 1
-      WHERE company_id = ${companyId} AND id = (SELECT MIN(id) FROM payment_methods WHERE company_id = ${companyId})
-    `.execute(db);
-  }
+    if (cnt <= 1) {
+      throw new Error("Cannot delete the only payment method");
+    }
+
+    await trx.deleteFrom("paymentMethods").where("id", "=", id).execute();
+
+    if (current.isDefault === 1) {
+      const next = await trx
+        .selectFrom("paymentMethods")
+        .select("id")
+        .where("companyId", "=", current.companyId)
+        .orderBy("id")
+        .executeTakeFirstOrThrow();
+
+      await trx
+        .updateTable("paymentMethods")
+        .set({ isDefault: 1 })
+        .where("id", "=", next.id)
+        .execute();
+    }
+  });
 }

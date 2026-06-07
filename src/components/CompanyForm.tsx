@@ -237,7 +237,7 @@ export function CompanyForm({ company, onSave, onCancel, onCompanyUpdated }: Pro
   );
 }
 
-function LogoUpload({ companyId, currentPath, onUploaded }: { companyId: number; currentPath?: string; onUploaded: () => void }) {
+function LogoUpload({ companyId, currentPath, onUploaded }: { companyId: number; currentPath?: string | null; onUploaded: () => void }) {
   const [uploading, setUploading] = useState(false);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {

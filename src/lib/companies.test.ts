@@ -1,29 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { configureDb, getDb, resetDb } from "@/lib/db";
-import { readdirSync } from "node:fs";
-import { resolve, join } from "node:path";
-
-async function runMigrations() {
-  const db = getDb();
-  const migrationsDir = resolve("migrations");
-  const files = readdirSync(migrationsDir).filter((f) => f.endsWith(".ts")).sort();
-  for (const file of files) {
-    const modulePath = join(migrationsDir, file);
-    const migration = await import(modulePath);
-    await migration.up(db);
-  }
-}
-
-beforeEach(async () => {
-  await resetDb();
-  configureDb(":memory:");
-  await runMigrations();
-});
-
-afterEach(async () => {
-  await resetDb();
-});
-
+import { Migrator, FileMigrationProvider } from "kysely/migration";
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import {
   createCompany,
   getCompany,
@@ -36,8 +15,33 @@ import {
   createPaymentMethod,
   deletePaymentMethod,
 } from "@/lib/companies";
+import type { CompanyInput } from "@/lib/companies";
 
-const COMPANY_INPUT = {
+async function runMigrations() {
+  const db = getDb();
+  const migrator = new Migrator({
+    db,
+    provider: new FileMigrationProvider({
+      fs,
+      path,
+      migrationFolder: path.resolve("migrations"),
+    }),
+  });
+  const { error } = await migrator.migrateToLatest();
+  if (error) throw error;
+}
+
+beforeEach(async () => {
+  await resetDb();
+  configureDb(":memory:");
+  await runMigrations();
+});
+
+afterEach(async () => {
+  await resetDb();
+});
+
+const COMPANY_INPUT: CompanyInput = {
   name: "Firefly One d.o.o.",
   address: "Ilica 1, 10000 Zagreb",
   phone: "+385 1 234 5678",
@@ -55,7 +59,7 @@ const COMPANY_INPUT = {
   emailBodyTemplate: "Poštovani, u prilogu šaljemo račun.",
   defaultPaymentTermsDays: 15,
   issuerName: "Marko Marković",
-} as const;
+};
 
 describe("companies", () => {
   it("creates a company and retrieves it by id", async () => {
@@ -77,8 +81,8 @@ describe("companies", () => {
   });
 
   it("lists companies ordered by name", async () => {
-    await createCompany({ ...COMPANY_INPUT, name: "Zebra d.o.o." });
-    await createCompany({ ...COMPANY_INPUT, name: "Alpha d.o.o." });
+    await createCompany({ ...COMPANY_INPUT, name: "Zebra d.o.o.", oib: "11111111111" });
+    await createCompany({ ...COMPANY_INPUT, name: "Alpha d.o.o.", oib: "22222222222" });
 
     const list = await listCompanies();
     expect(list).toHaveLength(2);
