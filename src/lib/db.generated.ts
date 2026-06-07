@@ -9,6 +9,28 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export interface Clients {
+  address: string | null;
+  archivedAt: string | null;
+  country: string;
+  createdAt: Generated<string>;
+  defaultCurrency: string | null;
+  defaultPaymentTermsDays: number | null;
+  email: string | null;
+  id: Generated<number | null>;
+  name: string;
+  oib: string | null;
+  updatedAt: Generated<string>;
+  vatNumber: string | null;
+}
+
+export interface ClientTaxIds {
+  clientId: number;
+  id: Generated<number | null>;
+  label: string;
+  value: string;
+}
+
 export interface Companies {
   address: string;
   createdAt: Generated<string>;
@@ -56,6 +78,8 @@ export interface PaymentMethods {
 }
 
 export interface DB {
+  clients: Clients;
+  clientTaxIds: ClientTaxIds;
   companies: Companies;
   locations: Locations;
   paymentMethods: PaymentMethods;
