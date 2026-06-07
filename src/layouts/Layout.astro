@@ -1,27 +1,82 @@
 ---
-import '@/styles/global.css'
+import "@/styles/global.css";
+import { CompanySelector } from "@/components/CompanySelector";
+import { DarkModeToggle } from "@/components/DarkModeToggle";
+import { getCompanies } from "@/lib/company";
+
+const companies = await getCompanies();
+const companyId = Astro.cookies.get("companyId")?.value;
+
+const navLinks = [
+  { href: "/invoices", label: "Invoices" },
+  { href: "/offers", label: "Offers" },
+  { href: "/clients", label: "Clients" },
+  { href: "/companies", label: "Companies" },
+  { href: "/settings", label: "Settings" },
+];
+
+const currentPath = Astro.url.pathname;
 ---
 
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro Basics</title>
-	</head>
-	<body>
-		<slot />
-	</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="generator" content={Astro.generator} />
+    <title>FireRacuni</title>
+    <script is:inline>
+      if (localStorage.getItem("theme") === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <header class="border-b border-border">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-6">
+          <a href="/" class="text-lg font-semibold">FireRacuni</a>
+          <nav class="hidden items-center gap-1 md:flex">
+            {navLinks.map(({ href, label }) => (
+              <a
+                href={href}
+                class:list={[
+                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  currentPath.startsWith(href)
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                ]}
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+        </div>
+        <div class="flex items-center gap-3">
+          <CompanySelector client:load companies={companies} selectedId={companyId} />
+          <DarkModeToggle client:load />
+        </div>
+      </div>
+      <nav class="flex items-center gap-1 overflow-x-auto border-t border-border px-4 py-2 md:hidden">
+        {navLinks.map(({ href, label }) => (
+          <a
+            href={href}
+            class:list={[
+              "whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              currentPath.startsWith(href)
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            ]}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+    </header>
+    <main class="mx-auto max-w-7xl px-4 py-6">
+      <slot />
+    </main>
+  </body>
 </html>
-
-<style>
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
-	}
-</style>
