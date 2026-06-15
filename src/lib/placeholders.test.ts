@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { expandPlaceholders } from "@/lib/placeholders";
+import { expandPlaceholders, expandEmailTemplate } from "@/lib/placeholders";
 
 describe("expandPlaceholders", () => {
   const date = new Date(2026, 5, 7); // 7 June 2026
@@ -24,5 +24,29 @@ describe("expandPlaceholders", () => {
     const now = new Date();
     const year = String(now.getFullYear());
     expect(expandPlaceholders("{year}")).toBe(year);
+  });
+});
+
+describe("expandEmailTemplate", () => {
+  const vars = {
+    documentNumber: "1/1/1",
+    clientName: "Acme GmbH",
+    companyName: "Firefly One d.o.o.",
+  };
+
+  it("expands document number, client name and company name", () => {
+    expect(
+      expandEmailTemplate("Račun {documentNumber} za {clientName} od {companyName}", vars),
+    ).toBe("Račun 1/1/1 za Acme GmbH od Firefly One d.o.o.");
+  });
+
+  it("expands repeated placeholders", () => {
+    expect(expandEmailTemplate("{clientName} — {clientName}", vars)).toBe(
+      "Acme GmbH — Acme GmbH",
+    );
+  });
+
+  it("leaves unknown placeholders untouched", () => {
+    expect(expandEmailTemplate("Hello {unknown}", vars)).toBe("Hello {unknown}");
   });
 });

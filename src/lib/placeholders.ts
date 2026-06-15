@@ -10,3 +10,20 @@ export function expandPlaceholders(text: string, date: Date = new Date()): strin
     .replace(/\{month\}/g, month)
     .replace(/\{year\}/g, year);
 }
+
+// Variables a per-Company email subject/body template may reference. They are
+// expanded when building the send-dialog defaults for a finalized document.
+export interface EmailTemplateVars {
+  documentNumber: string;
+  clientName: string;
+  companyName: string;
+}
+
+// Email subject/body templates use {documentNumber}/{clientName}/{companyName}.
+// Unknown placeholders are left untouched so a typo is visible rather than silently dropped.
+export function expandEmailTemplate(text: string, vars: EmailTemplateVars): string {
+  return text
+    .replace(/\{documentNumber\}/g, vars.documentNumber)
+    .replace(/\{clientName\}/g, vars.clientName)
+    .replace(/\{companyName\}/g, vars.companyName);
+}

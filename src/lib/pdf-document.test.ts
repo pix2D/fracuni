@@ -74,6 +74,7 @@ function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
     pdfHashHr: null,
     pdfPathEn: null,
     pdfHashEn: null,
+    paymentDate: null,
     createdAt: "2026-06-15",
     updatedAt: "2026-06-15",
     lineItems: [

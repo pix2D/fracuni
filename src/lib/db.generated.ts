@@ -70,6 +70,17 @@ export interface DocumentNumberSequences {
   year: number;
 }
 
+export interface EmailLogs {
+  createdAt: Generated<string>;
+  errorMessage: string | null;
+  id: Generated<number | null>;
+  invoiceId: number;
+  postmarkMessageId: string | null;
+  recipient: string;
+  status: string;
+  subject: string;
+}
+
 export interface HolidaysCache {
   date: string;
   fetchedAt: Generated<string>;
@@ -94,6 +105,7 @@ export interface Invoices {
   locationId: number | null;
   notesEn: string | null;
   notesHr: string | null;
+  paymentDate: string | null;
   paymentMethodId: number | null;
   paymentTermsDays: number | null;
   pdfHashEn: string | null;
@@ -174,6 +186,7 @@ export interface DB {
   clientTaxIds: ClientTaxIds;
   companies: Companies;
   documentNumberSequences: DocumentNumberSequences;
+  emailLogs: EmailLogs;
   holidaysCache: HolidaysCache;
   invoices: Invoices;
   lineItems: LineItems;

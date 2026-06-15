@@ -11,6 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { InvoiceForm } from "@/components/InvoiceForm";
+import { SendEmailDialog } from "@/components/SendEmailDialog";
+import { MarkPaidDialog } from "@/components/MarkPaidDialog";
 import { computeInvoiceTotals } from "@/lib/invoice-totals";
 import { formatMoneyWithCurrency, isCurrencyCode } from "@/lib/currency";
 import { isDomestic } from "@/lib/countries";
@@ -32,6 +34,8 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [view, setView] = useState<"list" | "form">("list");
   const [editing, setEditing] = useState<Invoice | null>(null);
+  const [sending, setSending] = useState<Invoice | null>(null);
+  const [paying, setPaying] = useState<Invoice | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchInvoices = useCallback(async () => {
@@ -128,6 +132,26 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
     setView("form");
   }
 
+  function openSend(invoice: Invoice) {
+    setError(null);
+    setSending(invoice);
+  }
+
+  function openPay(invoice: Invoice) {
+    setError(null);
+    setPaying(invoice);
+  }
+
+  async function handleSent() {
+    setSending(null);
+    await fetchInvoices();
+  }
+
+  async function handlePaid() {
+    setPaying(null);
+    await fetchInvoices();
+  }
+
   if (!company) {
     return (
       <Card>
@@ -216,6 +240,16 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
                           ? "View"
                           : "Edit"}
                       </Button>
+                      {invoice.status === INVOICE_STATUS.FINALIZED && (
+                        <Button variant="ghost" size="sm" onClick={() => openSend(invoice)}>
+                          Send
+                        </Button>
+                      )}
+                      {invoice.status === INVOICE_STATUS.SENT && (
+                        <Button variant="ghost" size="sm" onClick={() => openPay(invoice)}>
+                          Mark as Paid
+                        </Button>
+                      )}
                       {invoice.status === INVOICE_STATUS.DRAFT && (
                         <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice.id)}>
                           Delete
@@ -229,6 +263,9 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
           </Table>
         </Card>
       )}
+
+      <SendEmailDialog invoice={sending} onClose={() => setSending(null)} onSent={handleSent} />
+      <MarkPaidDialog invoice={paying} onClose={() => setPaying(null)} onPaid={handlePaid} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { finalizeInvoice } from "@/lib/document-engine";
+import { finalizeInvoice, markInvoiceSent, markInvoicePaid } from "@/lib/document-engine";
 import { createInvoice, getInvoice, deleteInvoice, type Invoice } from "@/lib/invoices";
 import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
@@ -411,5 +411,43 @@ describe("finalizeInvoice — gap-free sequence", () => {
       .map((inv) => Number(inv.documentNumber!.split("/")[0]))
       .sort((a, b) => a - b);
     expect(sequences).toEqual([1, 2, 3, 4, 5]);
+  });
+});
+
+describe("markInvoiceSent", () => {
+  it("transitions a Finalized invoice to Sent", async () => {
+    const ids = await setupDomestic();
+    const finalized = await finalizeInvoice((await draft(ids)).id);
+
+    const sent = await markInvoiceSent(finalized.id);
+    expect(sent.status).toBe("sent");
+  });
+
+  it("refuses to mark a Draft as Sent", async () => {
+    const ids = await setupDomestic();
+    const draftInvoice = await draft(ids);
+
+    await expect(markInvoiceSent(draftInvoice.id)).rejects.toThrow(/Finalized/i);
+    expect((await getInvoice(draftInvoice.id))!.status).toBe("draft");
+  });
+});
+
+describe("markInvoicePaid", () => {
+  it("transitions a Sent invoice to Paid and records the payment date", async () => {
+    const ids = await setupDomestic();
+    const finalized = await finalizeInvoice((await draft(ids)).id);
+    const sent = await markInvoiceSent(finalized.id);
+
+    const paid = await markInvoicePaid(sent.id, "2026-06-20");
+    expect(paid.status).toBe("paid");
+    expect(paid.paymentDate).toBe("2026-06-20");
+  });
+
+  it("refuses to mark a Finalized (not yet Sent) invoice as Paid", async () => {
+    const ids = await setupDomestic();
+    const finalized = await finalizeInvoice((await draft(ids)).id);
+
+    await expect(markInvoicePaid(finalized.id, "2026-06-20")).rejects.toThrow(/Sent/i);
+    expect((await getInvoice(finalized.id))!.status).toBe("finalized");
   });
 });

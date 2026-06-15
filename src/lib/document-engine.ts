@@ -285,3 +285,53 @@ export async function editFinalizedInvoice(
   // Regenerate so the PDF on disk and its hash reflect the edited content.
   return generateInvoicePdfs(id, deps);
 }
+
+/**
+ * Transition a Finalized document to Sent. Called by the Email Service once a
+ * Postmark delivery succeeds — the email send is the only thing that flips this
+ * state. Idempotency is the caller's concern; here we simply refuse any source
+ * status other than Finalized.
+ */
+export async function markInvoiceSent(id: number): Promise<Invoice> {
+  const invoice = await getInvoice(id);
+  if (!invoice) throw notFound("Invoice not found");
+  if (invoice.status !== INVOICE_STATUS.FINALIZED) {
+    throw invalidOperation(
+      `Only Finalized documents can be marked Sent (current status: ${invoice.status})`,
+    );
+  }
+
+  await getDb()
+    .updateTable("invoices")
+    .set({ status: INVOICE_STATUS.SENT, updatedAt: sql`datetime('now')` })
+    .where("id", "=", id)
+    .execute();
+
+  const sent = await getInvoice(id);
+  if (!sent) throw notFound("Invoice not found");
+  return sent;
+}
+
+/**
+ * Transition a Sent document to Paid, recording the payment date. Settlement is
+ * a manual action, so the date is supplied by the user rather than derived.
+ */
+export async function markInvoicePaid(id: number, paymentDate: string): Promise<Invoice> {
+  const invoice = await getInvoice(id);
+  if (!invoice) throw notFound("Invoice not found");
+  if (invoice.status !== INVOICE_STATUS.SENT) {
+    throw invalidOperation(
+      `Only Sent documents can be marked Paid (current status: ${invoice.status})`,
+    );
+  }
+
+  await getDb()
+    .updateTable("invoices")
+    .set({ status: INVOICE_STATUS.PAID, paymentDate, updatedAt: sql`datetime('now')` })
+    .where("id", "=", id)
+    .execute();
+
+  const paid = await getInvoice(id);
+  if (!paid) throw notFound("Invoice not found");
+  return paid;
+}
