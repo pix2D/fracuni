@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { z } from "zod/v4";
-import { createInvoice, listInvoices, type DocumentType } from "@/lib/invoices";
+import { createInvoice, listInvoices } from "@/lib/invoices";
+import { DOCUMENT_TYPE, type DocumentType } from "@/lib/documents";
 import { handleApiError, errorResponse, jsonResponse, parseJsonRequest } from "@/lib/api";
 
 const LineItemSchema = z.object({
@@ -50,7 +51,7 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await parseJsonRequest(request, CreateInvoiceSchema);
     // This slice handles type=invoice only; the discriminator is fixed here.
-    const invoice = await createInvoice({ ...body, type: "invoice" });
+    const invoice = await createInvoice({ ...body, type: DOCUMENT_TYPE.INVOICE });
     return jsonResponse(invoice, { status: 201 });
   } catch (error: unknown) {
     return handleApiError(error);

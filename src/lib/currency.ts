@@ -41,6 +41,10 @@ const CURRENCIES: Record<CurrencyCode, DineroCurrency<number>> = {
   SEK,
 };
 
+// SSOT for the currencies the Currency Engine can handle. Settings' default
+// supported-currency list is derived from this so the two never drift apart.
+export const CURRENCY_CODES = Object.keys(CURRENCIES) as CurrencyCode[];
+
 export function getCurrency(code: CurrencyCode): DineroCurrency<number> {
   return CURRENCIES[code];
 }

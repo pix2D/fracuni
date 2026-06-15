@@ -3,12 +3,13 @@ import type { Selectable, Transaction } from "kysely";
 import { sql } from "kysely";
 import type { DB, Invoices, LineItems } from "@/lib/db.generated";
 import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
+import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
+import type { DocumentType, InvoiceStatus } from "@/lib/documents";
+
+export type { DocumentType, InvoiceStatus };
 
 // SQLite introspection reports autoincrement PKs as nullable; they never are after insert/select.
 type NonNullId<T extends { id: unknown }> = Omit<T, "id"> & { id: number };
-
-export type DocumentType = "invoice" | "credit_note";
-export type InvoiceStatus = "draft" | "finalized" | "sent" | "paid";
 
 export type LineItem = NonNullId<Selectable<LineItems>>;
 
@@ -110,8 +111,8 @@ export async function createInvoice(input: InvoiceInput): Promise<Invoice> {
       row = await trx
         .insertInto("invoices")
         .values({
-          type: input.type ?? "invoice",
-          status: "draft",
+          type: input.type ?? DOCUMENT_TYPE.INVOICE,
+          status: INVOICE_STATUS.DRAFT,
           companyId: input.companyId,
           clientId: input.clientId ?? null,
           locationId: input.locationId ?? null,
@@ -148,7 +149,7 @@ export async function listInvoices(opts: ListInvoicesOptions = {}): Promise<Invo
   let query = db
     .selectFrom("invoices")
     .selectAll()
-    .where("type", "=", opts.type ?? "invoice")
+    .where("type", "=", opts.type ?? DOCUMENT_TYPE.INVOICE)
     .orderBy("createdAt", "desc")
     .orderBy("id", "desc");
 
@@ -244,7 +245,7 @@ export async function deleteInvoice(id: number): Promise<void> {
     .executeTakeFirst();
 
   if (!row) throw notFound("Invoice not found");
-  if (row.status !== "draft") {
+  if (row.status !== INVOICE_STATUS.DRAFT) {
     throw invalidOperation("Only Draft invoices can be deleted");
   }
 

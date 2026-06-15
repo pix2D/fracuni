@@ -22,6 +22,7 @@ import {
 } from "@/components/LineItemsEditor";
 import { computeInvoiceTotals } from "@/lib/invoice-totals";
 import { formatMoneyWithCurrency, isCurrencyCode, type CurrencyCode } from "@/lib/currency";
+import { isDomestic } from "@/lib/countries";
 import type { Client } from "@/lib/clients";
 import type { CompanyWithRelations } from "@/lib/companies";
 import type { CatalogEntry } from "@/lib/service-catalog";
@@ -124,7 +125,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
   const [saving, setSaving] = useState(false);
 
   const selectedClient = clients.find((c) => c.id === state.clientId);
-  const domestic = selectedClient?.country === "Croatia";
+  const domestic = isDomestic(selectedClient?.country);
   const currencyCode: CurrencyCode | null = isCurrencyCode(state.currency) ? state.currency : null;
 
   function handleClientChange(value: string) {

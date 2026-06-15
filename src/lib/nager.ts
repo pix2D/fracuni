@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { CROATIA } from "@/lib/countries";
 
 type Fetcher = typeof fetch;
 
@@ -27,7 +28,7 @@ interface NagerHoliday {
 async function fetchAndCache(year: number, fetcher: Fetcher): Promise<NagerResult> {
   let response: Response;
   try {
-    response = await fetcher(`${NAGER_BASE_URL}/${year}/HR`);
+    response = await fetcher(`${NAGER_BASE_URL}/${year}/${CROATIA}`);
   } catch {
     return { ok: false, error: "Network error: Nager.Date service unreachable" };
   }
@@ -82,7 +83,7 @@ export async function refreshHolidays(
 
 export async function checkNagerHealth(fetcher: Fetcher = fetch): Promise<HealthStatus> {
   try {
-    const response = await fetcher(`${NAGER_BASE_URL}/2026/HR`);
+    const response = await fetcher(`${NAGER_BASE_URL}/2026/${CROATIA}`);
     return { reachable: response.ok };
   } catch {
     return { reachable: false };

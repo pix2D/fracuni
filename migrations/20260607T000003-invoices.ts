@@ -5,6 +5,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .createTable("invoices")
     .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
     // Discriminator: this slice creates "invoice" only; "credit_note" shares the table later.
+    // Frozen literals; runtime SSOT is DOCUMENT_TYPE / INVOICE_STATUS in @/lib/documents.
     .addColumn("type", "text", (col) => col.notNull().defaultTo("invoice"))
     .addColumn("status", "text", (col) => col.notNull().defaultTo("draft"))
     .addColumn("company_id", "integer", (col) =>

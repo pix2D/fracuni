@@ -13,6 +13,8 @@ import {
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { computeInvoiceTotals } from "@/lib/invoice-totals";
 import { formatMoneyWithCurrency, isCurrencyCode } from "@/lib/currency";
+import { isDomestic } from "@/lib/countries";
+import { INVOICE_STATUS } from "@/lib/documents";
 import type { Client } from "@/lib/clients";
 import type { CompanyWithRelations } from "@/lib/companies";
 import type { CatalogEntry } from "@/lib/service-catalog";
@@ -49,7 +51,7 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
 
   function invoiceTotal(invoice: Invoice): string {
     if (!invoice.currency || !isCurrencyCode(invoice.currency)) return "—";
-    const domestic = clients.find((c) => c.id === invoice.clientId)?.country === "Croatia";
+    const domestic = isDomestic(clients.find((c) => c.id === invoice.clientId)?.country);
     const totals = computeInvoiceTotals(
       invoice.lineItems.map((li) => ({ quantity: li.quantity ?? 0, unitPrice: li.unitPrice ?? 0 })),
       invoice.currency,
@@ -175,7 +177,7 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
                   <TableCell>{invoice.issueDate ?? "—"}</TableCell>
                   <TableCell className="tabular-nums">{invoiceTotal(invoice)}</TableCell>
                   <TableCell>
-                    <Badge variant={invoice.status === "draft" ? "secondary" : "default"}>
+                    <Badge variant={invoice.status === INVOICE_STATUS.DRAFT ? "secondary" : "default"}>
                       {invoice.status}
                     </Badge>
                   </TableCell>
@@ -184,7 +186,7 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
                       <Button variant="ghost" size="sm" onClick={() => openEdit(invoice)}>
                         Edit
                       </Button>
-                      {invoice.status === "draft" && (
+                      {invoice.status === INVOICE_STATUS.DRAFT && (
                         <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice.id)}>
                           Delete
                         </Button>

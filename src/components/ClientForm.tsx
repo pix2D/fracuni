@@ -11,19 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Client, ClientInput, TaxIdInput } from "@/lib/clients";
-
-const COUNTRIES = [
-  "Croatia",
-  "Germany",
-  "Austria",
-  "Slovenia",
-  "Italy",
-  "United Kingdom",
-  "United States",
-  "Netherlands",
-  "France",
-  "Switzerland",
-];
+import { COUNTRIES, isDomestic } from "@/lib/countries";
 
 interface Props {
   client?: Client;
@@ -75,7 +63,7 @@ export function ClientForm({ client, onSave, onCancel }: Props) {
     onSave(form);
   }
 
-  const isCroatia = form.country === "Croatia";
+  const isCroatia = isDomestic(form.country);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -92,8 +80,8 @@ export function ClientForm({ client, onSave, onCancel }: Props) {
             </SelectTrigger>
             <SelectContent>
               {COUNTRIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
+                <SelectItem key={c.code} value={c.code}>
+                  {c.name}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LocationsSection } from "@/components/LocationsSection";
 import { PaymentMethodsSection } from "@/components/PaymentMethodsSection";
 import type { CompanyWithRelations, CompanyInput } from "@/lib/companies";
+import { DEFAULT_PAYMENT_TERMS_DAYS } from "@/lib/defaults";
 
 const PLACEHOLDER_TOKENS = [
   { token: "{broj}", description: "Document number" },
@@ -39,7 +40,7 @@ export function CompanyForm({ company, onSave, onCancel, onCompanyUpdated }: Pro
     emailFromName: company?.emailFromName ?? "",
     emailSubjectTemplate: company?.emailSubjectTemplate ?? "",
     emailBodyTemplate: company?.emailBodyTemplate ?? "",
-    defaultPaymentTermsDays: company?.defaultPaymentTermsDays ?? 15,
+    defaultPaymentTermsDays: company?.defaultPaymentTermsDays ?? DEFAULT_PAYMENT_TERMS_DAYS,
     issuerName: company?.issuerName ?? "",
   });
 

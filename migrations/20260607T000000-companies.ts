@@ -20,6 +20,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn("email_from_name", "text", (col) => col.notNull())
     .addColumn("email_subject_template", "text")
     .addColumn("email_body_template", "text")
+    // Frozen literal; runtime SSOT is DEFAULT_PAYMENT_TERMS_DAYS in @/lib/defaults.
     .addColumn("default_payment_terms_days", "integer", (col) => col.notNull().defaultTo(15))
     .addColumn("issuer_name", "text", (col) => col.notNull())
     .addColumn("created_at", "text", (col) => col.notNull().defaultTo(sql`(datetime('now'))`))

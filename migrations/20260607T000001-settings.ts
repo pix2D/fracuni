@@ -1,5 +1,9 @@
 import { type Kysely, sql } from "kysely";
 
+// Column defaults below intentionally hardcode literal values: a migration is a
+// frozen historical record and must not change if the runtime constants evolve.
+// The runtime sources of truth are DEFAULT_VAT_RATE / DEFAULT_PAYMENT_TERMS_DAYS /
+// DEFAULT_OFFER_VALIDITY_DAYS in @/lib/defaults and CURRENCY_CODES in @/lib/currency.
 export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable("settings")

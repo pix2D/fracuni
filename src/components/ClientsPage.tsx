@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ClientForm } from "@/components/ClientForm";
+import { countryName } from "@/lib/countries";
 import type { Client, ClientInput } from "@/lib/clients";
 
 export function ClientsPage() {
@@ -150,7 +151,7 @@ export function ClientsPage() {
               {clients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">{client.name}</TableCell>
-                  <TableCell>{client.country}</TableCell>
+                  <TableCell>{countryName(client.country)}</TableCell>
                   <TableCell className="text-sm">{client.email}</TableCell>
                   <TableCell>{client.defaultCurrency}</TableCell>
                   <TableCell>

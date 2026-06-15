@@ -1,7 +1,11 @@
 import { getDb } from "@/lib/db";
 import { sql } from "kysely";
-
-const DEFAULT_CURRENCIES = ["EUR", "USD", "CZK", "DKK", "HUF", "ISK", "NOK", "PLN", "RON", "SEK"];
+import { CURRENCY_CODES } from "@/lib/currency";
+import {
+  DEFAULT_OFFER_VALIDITY_DAYS,
+  DEFAULT_PAYMENT_TERMS_DAYS,
+  DEFAULT_VAT_RATE,
+} from "@/lib/defaults";
 
 export interface Settings {
   defaultVatRate: number;
@@ -12,10 +16,10 @@ export interface Settings {
 }
 
 const DEFAULTS: Settings = {
-  defaultVatRate: 25.0,
-  supportedCurrencies: DEFAULT_CURRENCIES,
-  defaultPaymentTermsDays: 15,
-  defaultOfferValidityDays: 30,
+  defaultVatRate: DEFAULT_VAT_RATE,
+  supportedCurrencies: [...CURRENCY_CODES],
+  defaultPaymentTermsDays: DEFAULT_PAYMENT_TERMS_DAYS,
+  defaultOfferValidityDays: DEFAULT_OFFER_VALIDITY_DAYS,
   postmarkApiKey: null,
 };
 

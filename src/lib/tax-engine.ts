@@ -1,4 +1,5 @@
 import { validateVat, type ViesSuccess } from "@/lib/vies";
+import { isDomestic } from "@/lib/countries";
 
 export type TaxTreatment = "domestic" | "reverse-charge" | "international";
 
@@ -6,7 +7,7 @@ export function determineTaxTreatment(input: {
   clientCountry: string;
   clientVatNumber: string | null;
 }): TaxTreatment {
-  if (input.clientCountry === "HR") return "domestic";
+  if (isDomestic(input.clientCountry)) return "domestic";
   if (input.clientVatNumber) return "reverse-charge";
   return "international";
 }
