@@ -68,6 +68,7 @@ function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
     notesHr: null,
     notesEn: null,
     documentNumber: "1/1/1",
+    originalInvoiceNumber: null,
     exchangeRate: null,
     exchangeRateDate: null,
     pdfPathHr: null,
@@ -232,5 +233,29 @@ describe("buildPdfDocumentData — credit note", () => {
     const cn = makeInvoice({ type: "credit_note" });
     expect(buildPdfDocumentData(input({ invoice: cn, lang: "hr" })).title).toBe("Odobrenje");
     expect(buildPdfDocumentData(input({ invoice: cn, lang: "en" })).title).toBe("Credit Note");
+  });
+
+  it("renders negative line amounts and totals from negated unit prices", () => {
+    const cn = makeInvoice({
+      type: "credit_note",
+      lineItems: [
+        {
+          id: 1,
+          invoiceId: 10,
+          position: 1,
+          descriptionHr: "Povrat konzultacija",
+          descriptionEn: "Consulting refund",
+          quantity: 2,
+          unitPrice: -100,
+        },
+      ],
+    });
+    const data = buildPdfDocumentData(input({ invoice: cn }));
+
+    expect(data.lineItems[0]!.unitPrice).toBe("-100,00");
+    expect(data.lineItems[0]!.amount).toBe("-200,00");
+    expect(data.totals.subtotal).toBe("-200,00");
+    expect(data.totals.vat).toEqual({ rate: "25", amount: "-50,00" });
+    expect(data.totals.total).toBe("-250,00");
   });
 });

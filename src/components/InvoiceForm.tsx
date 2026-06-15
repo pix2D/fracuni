@@ -28,7 +28,7 @@ import type { CompanyWithRelations } from "@/lib/companies";
 import type { CatalogEntry } from "@/lib/service-catalog";
 import type { Settings } from "@/lib/settings";
 import type { Invoice, InvoiceInput } from "@/lib/invoices";
-import { INVOICE_STATUS } from "@/lib/documents";
+import { DOCUMENT_TYPE, INVOICE_STATUS, type DocumentType } from "@/lib/documents";
 
 interface ApiHealth {
   vies: { reachable: boolean };
@@ -46,6 +46,7 @@ interface Props {
   clients: Client[];
   catalog: CatalogEntry[];
   settings: Settings;
+  documentType?: DocumentType;
   invoice?: Invoice;
   onSave: (data: InvoiceInput) => Promise<void> | void;
   onFinalize?: (data: InvoiceInput) => Promise<void> | void;
@@ -81,7 +82,18 @@ function dateToStr(date: Date | undefined): string | null {
   return date ? format(date, "yyyy-MM-dd") : null;
 }
 
-export function InvoiceForm({ company, clients, catalog, settings, invoice, onSave, onFinalize, onCancel }: Props) {
+export function InvoiceForm({
+  company,
+  clients,
+  catalog,
+  settings,
+  documentType = DOCUMENT_TYPE.INVOICE,
+  invoice,
+  onSave,
+  onFinalize,
+  onCancel,
+}: Props) {
+  const noun = documentType === DOCUMENT_TYPE.CREDIT_NOTE ? "Credit Note" : "Invoice";
   const defaultCurrency = (client?: Client): string => {
     const supported = settings.supportedCurrencies;
     if (client?.defaultCurrency && supported.includes(client.defaultCurrency)) {
@@ -248,6 +260,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
 
   function buildPayload(): InvoiceInput {
     return {
+      type: documentType,
       companyId: company.id,
       clientId: state.clientId,
       locationId: state.locationId,
@@ -304,7 +317,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">
-            {!invoice ? "New Invoice" : readOnly ? "View Invoice" : "Edit Invoice"}
+            {!invoice ? `New ${noun}` : readOnly ? `View ${noun}` : `Edit ${noun}`}
           </h1>
           {invoice?.documentNumber && (
             <p className="text-sm text-muted-foreground">
@@ -332,15 +345,23 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
 
       {isFinalized && (
         <div className="rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-sm text-blue-700 dark:text-blue-300">
-          This invoice can be edited until it is sent. Each change is recorded in the audit log and
-          regenerates the PDF.
+          This {noun.toLowerCase()} can be edited until it is sent. Each change is recorded in the
+          audit log and regenerates the PDF.
         </div>
       )}
       {readOnly && (
         <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-          This invoice is {status} and is now read-only. Sent and paid invoices cannot be edited.
+          This {noun.toLowerCase()} is {status} and is now read-only. Sent and paid documents cannot
+          be edited.
         </div>
       )}
+      {invoice?.originalInvoiceNumber && (
+        <div className="text-sm text-muted-foreground">
+          Credit Note for Invoice{" "}
+          <span className="font-medium text-foreground">{invoice.originalInvoiceNumber}</span>
+        </div>
+      )}
+
 
       <Card>
         <CardContent className="space-y-4 pt-6">

@@ -80,6 +80,29 @@ describe("POST /api/invoices", () => {
     expect(response.status).toBe(201);
   });
 
+  it("creates a from-scratch Credit Note when type is credit_note", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+
+    const response = await POST(apiContext({
+      request: new Request("http://test.local/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: company.id,
+          type: "credit_note",
+          currency: "EUR",
+          lineItems: [{ descriptionHr: "Povrat", quantity: 1, unitPrice: -100 }],
+        }),
+      }),
+    }));
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.type).toBe("credit_note");
+    expect(body.status).toBe("draft");
+    expect(body.lineItems[0].unitPrice).toBe(-100);
+  });
+
   it("returns 400 when companyId is missing", async () => {
     const response = await POST(apiContext({
       request: new Request("http://test.local/api/invoices", {

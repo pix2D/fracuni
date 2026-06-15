@@ -4,6 +4,7 @@ import { sql } from "kysely";
 import type { DB } from "@/lib/db.generated";
 import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
 import {
+  createInvoice,
   getInvoice,
   updateInvoice,
   type Invoice,
@@ -11,7 +12,7 @@ import {
   type LineItem,
   type LineItemInput,
 } from "@/lib/invoices";
-import { INVOICE_STATUS } from "@/lib/documents";
+import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 import { determineTaxTreatment } from "@/lib/tax-engine";
 import { validateVat, type ViesSuccess } from "@/lib/vies";
 import { getExchangeRate, type HnbSuccess } from "@/lib/hnb";
@@ -334,4 +335,57 @@ export async function markInvoicePaid(id: number, paymentDate: string): Promise<
   const paid = await getInvoice(id);
   if (!paid) throw notFound("Invoice not found");
   return paid;
+}
+
+// Negating the unit price (not the quantity) yields negative line amounts while
+// leaving the quantity a natural positive count, matching how a user enters a
+// Credit Note from scratch.
+function negate(value: number | null): number | null {
+  return value == null ? value : -value;
+}
+
+/**
+ * Create a Draft Credit Note from an existing Finalized Invoice.
+ *
+ * Pre-fills every field from the source Invoice with all amounts negated, and
+ * records the source's Document Number so the refund is traceable to the
+ * original (User Story 32). The new Credit Note starts as a Draft with no
+ * Document Number — that is assigned later at finalization, sharing the
+ * Invoice/Credit Note sequence for its (Company, year, Payment Method).
+ */
+export async function createCreditNoteFromInvoice(sourceId: number): Promise<Invoice> {
+  const source = await getInvoice(sourceId);
+  if (!source) throw notFound("Invoice not found");
+
+  if (source.type !== DOCUMENT_TYPE.INVOICE) {
+    throw invalidOperation("A Credit Note can only be created from an Invoice");
+  }
+  // Only a Finalized Invoice carries the Document Number the Credit Note must
+  // reference; Drafts have none.
+  if (!source.documentNumber) {
+    throw invalidOperation("A Credit Note can only be created from a Finalized Invoice");
+  }
+
+  return createInvoice({
+    type: DOCUMENT_TYPE.CREDIT_NOTE,
+    companyId: source.companyId,
+    clientId: source.clientId,
+    locationId: source.locationId,
+    paymentMethodId: source.paymentMethodId,
+    currency: source.currency,
+    email: source.email,
+    issueDate: source.issueDate,
+    deliveryDate: source.deliveryDate,
+    dueDate: source.dueDate,
+    paymentTermsDays: source.paymentTermsDays,
+    notesHr: source.notesHr,
+    notesEn: source.notesEn,
+    originalInvoiceNumber: source.documentNumber,
+    lineItems: source.lineItems.map((li) => ({
+      descriptionHr: li.descriptionHr,
+      descriptionEn: li.descriptionEn,
+      quantity: li.quantity,
+      unitPrice: negate(li.unitPrice),
+    })),
+  });
 }

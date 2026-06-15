@@ -105,6 +105,7 @@ export interface Invoices {
   locationId: number | null;
   notesEn: string | null;
   notesHr: string | null;
+  originalInvoiceNumber: string | null;
   paymentDate: string | null;
   paymentMethodId: number | null;
   paymentTermsDays: number | null;

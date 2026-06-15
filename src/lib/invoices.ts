@@ -39,6 +39,9 @@ export type InvoiceInput = {
   paymentTermsDays?: number | null;
   notesHr?: string | null;
   notesEn?: string | null;
+  // Set only on a Credit Note created from an existing Invoice; the source
+  // Invoice's (immutable) Document Number. Never changes once written.
+  originalInvoiceNumber?: string | null;
   lineItems?: LineItemInput[];
 };
 
@@ -126,6 +129,7 @@ export async function createInvoice(input: InvoiceInput): Promise<Invoice> {
           paymentTermsDays: input.paymentTermsDays ?? null,
           notesHr: input.notesHr ?? null,
           notesEn: input.notesEn ?? null,
+          originalInvoiceNumber: input.originalInvoiceNumber ?? null,
         })
         .returningAll()
         .executeTakeFirstOrThrow();

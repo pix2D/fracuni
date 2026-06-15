@@ -16,7 +16,7 @@ import { MarkPaidDialog } from "@/components/MarkPaidDialog";
 import { computeInvoiceTotals } from "@/lib/invoice-totals";
 import { formatMoneyWithCurrency, isCurrencyCode } from "@/lib/currency";
 import { isDomestic } from "@/lib/countries";
-import { INVOICE_STATUS } from "@/lib/documents";
+import { DOCUMENT_TYPE, INVOICE_STATUS, type DocumentType } from "@/lib/documents";
 import type { Client } from "@/lib/clients";
 import type { CompanyWithRelations } from "@/lib/companies";
 import type { CatalogEntry } from "@/lib/service-catalog";
@@ -28,9 +28,33 @@ interface Props {
   clients: Client[];
   catalog: CatalogEntry[];
   settings: Settings;
+  // Invoices and Credit Notes share this list/form; the discriminator switches
+  // the labels, the fetched list, and the type-specific actions.
+  documentType?: DocumentType;
 }
 
-export function InvoicesPage({ company, clients, catalog, settings }: Props) {
+const COPY = {
+  [DOCUMENT_TYPE.INVOICE]: {
+    heading: "Invoices",
+    newLabel: "New Invoice",
+    empty: "No invoices yet. Create your first Draft to get started.",
+  },
+  [DOCUMENT_TYPE.CREDIT_NOTE]: {
+    heading: "Credit Notes",
+    newLabel: "New Credit Note",
+    empty: "No credit notes yet. Create one from scratch or from a finalized Invoice.",
+  },
+} as const;
+
+export function InvoicesPage({
+  company,
+  clients,
+  catalog,
+  settings,
+  documentType = DOCUMENT_TYPE.INVOICE,
+}: Props) {
+  const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
+  const copy = COPY[documentType];
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [view, setView] = useState<"list" | "form">("list");
   const [editing, setEditing] = useState<Invoice | null>(null);
@@ -40,9 +64,9 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
 
   const fetchInvoices = useCallback(async () => {
     if (!company) return;
-    const res = await fetch(`/api/invoices?companyId=${company.id}&type=invoice`);
+    const res = await fetch(`/api/invoices?companyId=${company.id}&type=${documentType}`);
     if (res.ok) setInvoices(await res.json());
-  }, [company]);
+  }, [company, documentType]);
 
   useEffect(() => {
     fetchInvoices();
@@ -120,6 +144,19 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
     await fetchInvoices();
   }
 
+  // "Create Credit Note" off a Finalized Invoice: the server pre-fills a Draft
+  // Credit Note with negated amounts; we send the user to the Credit Notes page
+  // to review and finalize it.
+  async function handleCreateCreditNote(id: number) {
+    const res = await fetch(`/api/invoices/${id}/credit-note`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setError(err.error || "Failed to create credit note");
+      return;
+    }
+    window.location.href = "/credit-notes";
+  }
+
   function openCreate() {
     setEditing(null);
     setError(null);
@@ -175,6 +212,7 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
           clients={clients}
           catalog={catalog}
           settings={settings}
+          documentType={documentType}
           invoice={editing ?? undefined}
           onSave={handleSave}
           onFinalize={editing ? handleFinalize : undefined}
@@ -190,8 +228,8 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Invoices</h1>
-        <Button onClick={openCreate}>New Invoice</Button>
+        <h1 className="text-2xl font-semibold">{copy.heading}</h1>
+        <Button onClick={openCreate}>{copy.newLabel}</Button>
       </div>
 
       {error && (
@@ -203,7 +241,7 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
       {invoices.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            No invoices yet. Create your first Draft to get started.
+            {copy.empty}
           </CardContent>
         </Card>
       ) : (
@@ -212,11 +250,12 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
             <TableHeader>
               <TableRow>
                 <TableHead>Number</TableHead>
+                {isCreditNote && <TableHead>Ref. Invoice</TableHead>}
                 <TableHead>Client</TableHead>
                 <TableHead>Issue Date</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-32" />
+                <TableHead className="w-40" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -225,6 +264,11 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
                   <TableCell className="text-muted-foreground">
                     {invoice.documentNumber ?? "—"}
                   </TableCell>
+                  {isCreditNote && (
+                    <TableCell className="text-muted-foreground">
+                      {invoice.originalInvoiceNumber ?? "—"}
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">{clientName(invoice.clientId)}</TableCell>
                   <TableCell>{invoice.issueDate ?? "—"}</TableCell>
                   <TableCell className="tabular-nums">{invoiceTotal(invoice)}</TableCell>
@@ -253,6 +297,15 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
                       {invoice.status === INVOICE_STATUS.DRAFT && (
                         <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice.id)}>
                           Delete
+                        </Button>
+                      )}
+                      {!isCreditNote && invoice.status !== INVOICE_STATUS.DRAFT && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCreateCreditNote(invoice.id)}
+                        >
+                          Credit Note
                         </Button>
                       )}
                     </div>

@@ -12,7 +12,10 @@ const LineItemSchema = z.object({
 });
 
 // Drafts are permissive: only the owning company is required, everything else is optional.
+// `type` lets the same endpoint create a from-scratch Invoice or Credit Note;
+// Credit Notes created from an Invoice go through the dedicated [id]/credit-note route.
 const CreateInvoiceSchema = z.object({
+  type: z.enum([DOCUMENT_TYPE.INVOICE, DOCUMENT_TYPE.CREDIT_NOTE]).optional(),
   companyId: z.number().int().positive(),
   clientId: z.number().int().positive().nullish(),
   locationId: z.number().int().positive().nullish(),
@@ -50,8 +53,7 @@ export const GET: APIRoute = async ({ request }) => {
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await parseJsonRequest(request, CreateInvoiceSchema);
-    // This slice handles type=invoice only; the discriminator is fixed here.
-    const invoice = await createInvoice({ ...body, type: DOCUMENT_TYPE.INVOICE });
+    const invoice = await createInvoice({ ...body, type: body.type ?? DOCUMENT_TYPE.INVOICE });
     return jsonResponse(invoice, { status: 201 });
   } catch (error: unknown) {
     return handleApiError(error);

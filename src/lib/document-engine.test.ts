@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { finalizeInvoice, markInvoiceSent, markInvoicePaid } from "@/lib/document-engine";
+import {
+  createCreditNoteFromInvoice,
+  finalizeInvoice,
+  markInvoiceSent,
+  markInvoicePaid,
+} from "@/lib/document-engine";
 import { createInvoice, getInvoice, deleteInvoice, type Invoice } from "@/lib/invoices";
 import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
@@ -372,6 +377,72 @@ describe("finalizeInvoice — status transition enforcement", () => {
     const finalized = await finalizeInvoice((await draft(ids)).id);
 
     await expect(deleteInvoice(finalized.id)).rejects.toThrow(/Only Draft invoices can be deleted/);
+  });
+});
+
+describe("createCreditNoteFromInvoice", () => {
+  it("pre-fills a Draft Credit Note from a finalized Invoice with negated amounts", async () => {
+    const ids = await setupDomestic();
+    const source = await finalizeInvoice(
+      (await draft(ids, { lineItems: [{ descriptionHr: "Usluga", quantity: 2, unitPrice: 150 }] })).id,
+    );
+
+    const creditNote = await createCreditNoteFromInvoice(source.id);
+
+    expect(creditNote.type).toBe("credit_note");
+    expect(creditNote.status).toBe("draft");
+    expect(creditNote.documentNumber).toBeNull();
+    expect(creditNote.clientId).toBe(source.clientId);
+    expect(creditNote.currency).toBe(source.currency);
+    expect(creditNote.lineItems).toHaveLength(1);
+    expect(creditNote.lineItems[0]).toMatchObject({
+      descriptionHr: "Usluga",
+      quantity: 2,
+      unitPrice: -150,
+    });
+  });
+
+  it("references the source Invoice's Document Number", async () => {
+    const ids = await setupDomestic();
+    const source = await finalizeInvoice((await draft(ids)).id);
+
+    const creditNote = await createCreditNoteFromInvoice(source.id);
+
+    expect(source.documentNumber).toBe("1/1/1");
+    expect(creditNote.originalInvoiceNumber).toBe("1/1/1");
+  });
+
+  it("shares the Document Number sequence when the Credit Note is finalized", async () => {
+    const ids = await setupDomestic();
+    const source = await finalizeInvoice((await draft(ids)).id);
+
+    const creditNote = await finalizeInvoice((await createCreditNoteFromInvoice(source.id)).id);
+
+    expect(source.documentNumber).toBe("1/1/1");
+    expect(creditNote.documentNumber).toBe("2/1/1");
+  });
+
+  it("refuses to create from a Draft Invoice (no Document Number yet)", async () => {
+    const ids = await setupDomestic();
+    const drafted = await draft(ids);
+
+    await expect(createCreditNoteFromInvoice(drafted.id)).rejects.toThrow(
+      /only be created from a Finalized Invoice/,
+    );
+  });
+
+  it("refuses to create a Credit Note from another Credit Note", async () => {
+    const ids = await setupDomestic();
+    const source = await finalizeInvoice((await draft(ids)).id);
+    const creditNote = await createCreditNoteFromInvoice(source.id);
+
+    await expect(createCreditNoteFromInvoice(creditNote.id)).rejects.toThrow(
+      /only be created from an Invoice/,
+    );
+  });
+
+  it("throws for a non-existent invoice", async () => {
+    await expect(createCreditNoteFromInvoice(9999)).rejects.toThrow("Invoice not found");
   });
 });
 
