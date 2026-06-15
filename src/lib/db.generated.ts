@@ -55,6 +55,14 @@ export interface Companies {
   updatedAt: Generated<string>;
 }
 
+export interface DocumentNumberSequences {
+  companyId: number;
+  id: Generated<number | null>;
+  lastValue: number;
+  paymentMethodId: number;
+  year: number;
+}
+
 export interface HolidaysCache {
   date: string;
   fetchedAt: Generated<string>;
@@ -72,6 +80,8 @@ export interface Invoices {
   documentNumber: string | null;
   dueDate: string | null;
   email: string | null;
+  exchangeRate: number | null;
+  exchangeRateDate: string | null;
   id: Generated<number | null>;
   issueDate: string | null;
   locationId: number | null;
@@ -134,10 +144,24 @@ export interface Settings {
   updatedAt: Generated<string>;
 }
 
+export interface ViesVerifications {
+  address: string | null;
+  countryCode: string;
+  createdAt: Generated<string>;
+  id: Generated<number | null>;
+  invoiceId: number;
+  name: string | null;
+  rawResponse: string;
+  requestDate: string | null;
+  valid: number;
+  vatNumber: string;
+}
+
 export interface DB {
   clients: Clients;
   clientTaxIds: ClientTaxIds;
   companies: Companies;
+  documentNumberSequences: DocumentNumberSequences;
   holidaysCache: HolidaysCache;
   invoices: Invoices;
   lineItems: LineItems;
@@ -145,4 +169,5 @@ export interface DB {
   paymentMethods: PaymentMethods;
   serviceCatalog: ServiceCatalog;
   settings: Settings;
+  viesVerifications: ViesVerifications;
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, addDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +28,12 @@ import type { CompanyWithRelations } from "@/lib/companies";
 import type { CatalogEntry } from "@/lib/service-catalog";
 import type { Settings } from "@/lib/settings";
 import type { Invoice, InvoiceInput } from "@/lib/invoices";
+import { INVOICE_STATUS } from "@/lib/documents";
+
+interface ApiHealth {
+  vies: { reachable: boolean };
+  hnb: { reachable: boolean };
+}
 
 interface Props {
   company: CompanyWithRelations;
@@ -36,7 +42,13 @@ interface Props {
   settings: Settings;
   invoice?: Invoice;
   onSave: (data: InvoiceInput) => Promise<void> | void;
+  onFinalize?: (data: InvoiceInput) => Promise<void> | void;
   onCancel: () => void;
+}
+
+function HealthDot({ ok }: { ok: boolean | null }) {
+  const color = ok === null ? "bg-muted-foreground/40" : ok ? "bg-green-500" : "bg-destructive";
+  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} aria-hidden="true" />;
 }
 
 interface FormState {
@@ -63,7 +75,7 @@ function dateToStr(date: Date | undefined): string | null {
   return date ? format(date, "yyyy-MM-dd") : null;
 }
 
-export function InvoiceForm({ company, clients, catalog, settings, invoice, onSave, onCancel }: Props) {
+export function InvoiceForm({ company, clients, catalog, settings, invoice, onSave, onFinalize, onCancel }: Props) {
   const defaultCurrency = (client?: Client): string => {
     const supported = settings.supportedCurrencies;
     if (client?.defaultCurrency && supported.includes(client.defaultCurrency)) {
@@ -123,6 +135,25 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
   });
 
   const [saving, setSaving] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+  const [health, setHealth] = useState<ApiHealth | null>(null);
+
+  // API health tells the user up front whether a finalization (which depends on
+  // VIES / HNB) is likely to succeed. Fetched once when the form mounts.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/health")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ApiHealth | null) => {
+        if (!cancelled) setHealth(data);
+      })
+      .catch(() => {
+        if (!cancelled) setHealth({ vies: { reachable: false }, hnb: { reachable: false } });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const selectedClient = clients.find((c) => c.id === state.clientId);
   const domestic = isDomestic(selectedClient?.country);
@@ -223,13 +254,39 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
     }
   }
 
+  async function handleFinalize() {
+    if (!onFinalize) return;
+    setFinalizing(true);
+    try {
+      await onFinalize(buildPayload());
+    } finally {
+      setFinalizing(false);
+    }
+  }
+
+  const isDraft = !invoice || invoice.status === INVOICE_STATUS.DRAFT;
+  const canFinalize = !!onFinalize && !!invoice && isDraft;
+  const busy = saving || finalizing;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">
           {invoice ? "Edit Invoice" : "New Invoice"}
         </h1>
-        <Badge variant="secondary">Draft</Badge>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <HealthDot ok={health ? health.vies.reachable : null} />
+              VIES
+            </span>
+            <span className="flex items-center gap-1.5">
+              <HealthDot ok={health ? health.hnb.reachable : null} />
+              HNB
+            </span>
+          </div>
+          <Badge variant="secondary">{invoice?.status ?? "draft"}</Badge>
+        </div>
       </div>
 
       <Card>
@@ -423,12 +480,17 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
       </Card>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
-        <Button type="button" onClick={handleSubmit} disabled={saving}>
+        <Button type="button" variant="secondary" onClick={handleSubmit} disabled={busy}>
           {saving ? "Saving…" : "Save Draft"}
         </Button>
+        {canFinalize && (
+          <Button type="button" onClick={handleFinalize} disabled={busy}>
+            {finalizing ? "Finalizing…" : "Finalize"}
+          </Button>
+        )}
       </div>
     </div>
   );

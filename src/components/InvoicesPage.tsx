@@ -79,6 +79,33 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
     await fetchInvoices();
   }
 
+  async function handleFinalize(data: InvoiceInput) {
+    // Persist the in-form edits before finalizing so the assigned Document
+    // Number reflects what the user sees. Finalize only runs on a saved draft.
+    if (!editing) return;
+    const saveRes = await fetch(`/api/invoices/${editing.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!saveRes.ok) {
+      const err = await saveRes.json().catch(() => ({}));
+      setError(err.error || "Failed to save invoice");
+      return;
+    }
+
+    const res = await fetch(`/api/invoices/${editing.id}/finalize`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setError(err.error || "Failed to finalize invoice");
+      return;
+    }
+    setError(null);
+    setView("list");
+    setEditing(null);
+    await fetchInvoices();
+  }
+
   async function handleDelete(id: number) {
     const res = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
     if (!res.ok) {
@@ -126,6 +153,7 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
           settings={settings}
           invoice={editing ?? undefined}
           onSave={handleSave}
+          onFinalize={editing ? handleFinalize : undefined}
           onCancel={() => {
             setView("list");
             setEditing(null);
