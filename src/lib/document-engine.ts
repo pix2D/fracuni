@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import type { Transaction } from "kysely";
 import { sql } from "kysely";
+import { addDays, format } from "date-fns";
 import type { DB } from "@/lib/db.generated";
 import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
 import {
@@ -12,11 +13,19 @@ import {
   type LineItem,
   type LineItemInput,
 } from "@/lib/invoices";
-import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
+import {
+  DOCUMENT_TYPE,
+  INVOICE_STATUS,
+  OFFER_STATUS,
+  OFFER_TRANSITIONS,
+  type DocumentType,
+  type OfferStatus,
+} from "@/lib/documents";
 import { determineTaxTreatment } from "@/lib/tax-engine";
 import { validateVat, type ViesSuccess } from "@/lib/vies";
 import { getExchangeRate, type HnbSuccess } from "@/lib/hnb";
 import { generateInvoicePdfs, type GenerateDeps } from "@/lib/pdf-generator";
+import { expandPlaceholders } from "@/lib/placeholders";
 
 // Invoices and Credit Notes are priced in EUR by default; only non-EUR documents
 // need an HNB exchange rate captured at finalization.
@@ -387,5 +396,185 @@ export async function createCreditNoteFromInvoice(sourceId: number): Promise<Inv
       quantity: li.quantity,
       unitPrice: negate(li.unitPrice),
     })),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Offers
+//
+// Offers live in the same `invoices` table (type='offer'). On an offer row,
+// issue_date = offer date, due_date = valid-until, payment_terms_days = validity.
+// They have their own simpler numbering and lifecycle, and no VIES/HNB gates —
+// rates only matter when an Offer is later converted to (and finalized as) an
+// Invoice.
+// ---------------------------------------------------------------------------
+
+const OFFER_REQUIRED_FIELDS: { label: string; present: (offer: Invoice) => boolean }[] = [
+  { label: "Client", present: (o) => o.clientId != null },
+  { label: "Location", present: (o) => o.locationId != null },
+  { label: "Payment Method", present: (o) => o.paymentMethodId != null },
+  { label: "Currency", present: (o) => !!o.currency },
+  { label: "Offer Date", present: (o) => !!o.issueDate },
+  { label: "at least one Line Item", present: (o) => o.lineItems.length > 0 },
+];
+
+async function loadOffer(id: number): Promise<Invoice> {
+  const offer = await getInvoice(id);
+  if (!offer || offer.type !== DOCUMENT_TYPE.OFFER) throw notFound("Offer not found");
+  return offer;
+}
+
+// The offer number is a plain per-(company, year) counter. The atomic upsert
+// seeds at 1 or increments and RETURNING hands back the assigned value, so
+// numbers are gap-free and unique even under concurrency.
+async function assignOfferSequence(
+  trx: Transaction<DB>,
+  companyId: number,
+  year: number,
+): Promise<number> {
+  const row = await trx
+    .insertInto("offerNumberSequences")
+    .values({ companyId, year, lastValue: 1 })
+    .onConflict((oc) =>
+      oc.columns(["companyId", "year"]).doUpdateSet({ lastValue: sql`last_value + 1` }),
+    )
+    .returning("lastValue")
+    .executeTakeFirstOrThrow();
+  return row.lastValue;
+}
+
+/**
+ * Transition a Draft Offer to Finalized, assigning its number. Unlike Invoices
+ * there are no VIES/HNB gates — an Offer is a proposal, not a tax document. The
+ * assigned number is the bare sequence value (e.g. "1"); display layers render
+ * it as "Ponuda #1".
+ */
+export async function finalizeOffer(id: number): Promise<Invoice> {
+  const db = getDb();
+  const offer = await loadOffer(id);
+
+  if (offer.status !== OFFER_STATUS.DRAFT) {
+    throw invalidOperation(`Only Draft offers can be finalized (current status: ${offer.status})`);
+  }
+
+  const missing = OFFER_REQUIRED_FIELDS.filter((f) => !f.present(offer)).map((f) => f.label);
+  if (missing.length > 0) {
+    throw invalidRequest(`Cannot finalize: missing required fields: ${missing.join(", ")}`, {
+      missingFields: missing,
+    });
+  }
+
+  await db.transaction().execute(async (trx) => {
+    const sequence = await assignOfferSequence(trx, offer.companyId, yearOf(offer.issueDate!));
+    await trx
+      .updateTable("invoices")
+      .set({
+        status: OFFER_STATUS.FINALIZED,
+        documentNumber: String(sequence),
+        updatedAt: sql`datetime('now')`,
+      })
+      .where("id", "=", id)
+      .execute();
+  });
+
+  return loadOffer(id);
+}
+
+/**
+ * Move a finalized Offer through its lifecycle: Finalized → Accepted / Rejected,
+ * and Rejected → Finalized (a Client can change their mind). Accepted is
+ * terminal — convert it to an Invoice instead.
+ */
+export async function transitionOfferStatus(id: number, target: OfferStatus): Promise<Invoice> {
+  const db = getDb();
+  const offer = await loadOffer(id);
+  const current = offer.status as OfferStatus;
+
+  const allowed = OFFER_TRANSITIONS[current] ?? [];
+  if (!allowed.includes(target)) {
+    throw invalidOperation(`Cannot move Offer from ${current} to ${target}`);
+  }
+
+  await db
+    .updateTable("invoices")
+    .set({ status: target, updatedAt: sql`datetime('now')` })
+    .where("id", "=", id)
+    .execute();
+
+  return loadOffer(id);
+}
+
+// Copies line items into a fresh draft, re-expanding any Service Catalog
+// {day}/{month}/{year} placeholders against the given date. (Most descriptions
+// are already-expanded literals, so this is a no-op for them.)
+function copyLineItems(lineItems: Invoice["lineItems"], now: Date): LineItemInput[] {
+  return lineItems.map((li) => ({
+    descriptionHr: li.descriptionHr != null ? expandPlaceholders(li.descriptionHr, now) : null,
+    descriptionEn: li.descriptionEn != null ? expandPlaceholders(li.descriptionEn, now) : null,
+    quantity: li.quantity,
+    unitPrice: li.unitPrice,
+  }));
+}
+
+/**
+ * Convert an Accepted Offer into a new Draft Invoice, copying Client, Line Items,
+ * currency, Notes, Location and Payment Method. The exchange rate is NOT copied —
+ * it is fetched fresh when the Invoice is finalized. The Offer is left untouched.
+ */
+export async function convertOfferToInvoice(offerId: number): Promise<Invoice> {
+  const offer = await loadOffer(offerId);
+  if (offer.status !== OFFER_STATUS.ACCEPTED) {
+    throw invalidOperation(
+      `Only Accepted offers can be converted to an Invoice (current status: ${offer.status})`,
+    );
+  }
+
+  const today = format(new Date(), "yyyy-MM-dd");
+  return createInvoice({
+    type: DOCUMENT_TYPE.INVOICE,
+    companyId: offer.companyId,
+    clientId: offer.clientId,
+    locationId: offer.locationId,
+    paymentMethodId: offer.paymentMethodId,
+    currency: offer.currency,
+    notesHr: offer.notesHr,
+    notesEn: offer.notesEn,
+    issueDate: today,
+    lineItems: copyLineItems(offer.lineItems, new Date()),
+  });
+}
+
+/**
+ * Duplicate any Invoice, Credit Note or Offer into a new Draft of the same type
+ * with today's date and re-expanded Service Catalog placeholders. All other data
+ * is copied; finalization-only fields (Document Number, exchange rate, PDFs) are
+ * not — the duplicate starts clean.
+ */
+export async function duplicateDocument(id: number): Promise<Invoice> {
+  const source = await getInvoice(id);
+  if (!source) throw notFound("Document not found");
+
+  const now = new Date();
+  const today = format(now, "yyyy-MM-dd");
+  const terms = source.paymentTermsDays;
+  // For Invoices this is the due date; for Offers the valid-until date. Both
+  // cascade off the same stored term count, so recompute from today.
+  const followUp = terms != null ? format(addDays(now, terms), "yyyy-MM-dd") : null;
+
+  return createInvoice({
+    type: source.type as DocumentType,
+    companyId: source.companyId,
+    clientId: source.clientId,
+    locationId: source.locationId,
+    paymentMethodId: source.paymentMethodId,
+    currency: source.currency,
+    email: source.email,
+    issueDate: today,
+    deliveryDate: source.type === DOCUMENT_TYPE.OFFER ? null : today,
+    dueDate: followUp,
+    paymentTermsDays: terms,
+    notesHr: source.notesHr,
+    notesEn: source.notesEn,
+    lineItems: copyLineItems(source.lineItems, now),
   });
 }

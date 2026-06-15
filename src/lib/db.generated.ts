@@ -22,6 +22,7 @@ export interface Clients {
   country: string;
   createdAt: Generated<string>;
   defaultCurrency: string | null;
+  defaultOfferValidityDays: number | null;
   defaultPaymentTermsDays: number | null;
   email: string | null;
   id: Generated<number | null>;
@@ -139,6 +140,13 @@ export interface Locations {
   updatedAt: Generated<string>;
 }
 
+export interface OfferNumberSequences {
+  companyId: number;
+  id: Generated<number | null>;
+  lastValue: number;
+  year: number;
+}
+
 export interface PaymentMethods {
   companyId: number;
   createdAt: Generated<string>;
@@ -192,6 +200,7 @@ export interface DB {
   invoices: Invoices;
   lineItems: LineItems;
   locations: Locations;
+  offerNumberSequences: OfferNumberSequences;
   paymentMethods: PaymentMethods;
   serviceCatalog: ServiceCatalog;
   settings: Settings;

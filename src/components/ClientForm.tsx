@@ -28,6 +28,7 @@ export function ClientForm({ client, onSave, onCancel }: Props) {
     vatNumber: client?.vatNumber ?? "",
     defaultCurrency: client?.defaultCurrency ?? "",
     defaultPaymentTermsDays: client?.defaultPaymentTermsDays ?? undefined,
+    defaultOfferValidityDays: client?.defaultOfferValidityDays ?? undefined,
     email: client?.email ?? "",
     taxIds: client?.taxIds?.map((t) => ({ label: t.label, value: t.value })) ?? [],
   });
@@ -153,6 +154,16 @@ export function ClientForm({ client, onSave, onCancel }: Props) {
             min={1}
             value={form.defaultPaymentTermsDays ?? ""}
             onChange={(e) => update("defaultPaymentTermsDays", e.target.value ? Number(e.target.value) : undefined)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="client-offer-validity">Default Offer Validity (days)</Label>
+          <Input
+            id="client-offer-validity"
+            type="number"
+            min={1}
+            value={form.defaultOfferValidityDays ?? ""}
+            onChange={(e) => update("defaultOfferValidityDays", e.target.value ? Number(e.target.value) : undefined)}
           />
         </div>
       </div>

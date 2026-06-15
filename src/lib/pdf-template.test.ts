@@ -6,6 +6,7 @@ function base(overrides: Partial<PdfDocumentData> = {}): PdfDocumentData {
   return {
     lang: "hr",
     title: "Račun",
+    isOffer: false,
     documentNumber: "1/1/1",
     company: {
       name: "Firefly One d.o.o.",

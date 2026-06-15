@@ -16,6 +16,7 @@ const CreateClientSchema = z.object({
   vatNumber: z.string().nullish(),
   defaultCurrency: z.string().nullish(),
   defaultPaymentTermsDays: z.number().int().positive().nullish(),
+  defaultOfferValidityDays: z.number().int().positive().nullish(),
   email: z.string().nullish(),
   taxIds: z.array(TaxIdSchema).optional(),
 });

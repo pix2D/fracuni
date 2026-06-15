@@ -21,6 +21,7 @@ export type ClientInput = {
   vatNumber?: string | null;
   defaultCurrency?: string | null;
   defaultPaymentTermsDays?: number | null;
+  defaultOfferValidityDays?: number | null;
   email?: string | null;
   taxIds?: TaxIdInput[];
 };
@@ -63,6 +64,7 @@ export async function createClient(input: ClientInput): Promise<Client> {
           vatNumber: clientData.vatNumber ?? null,
           defaultCurrency: clientData.defaultCurrency ?? null,
           defaultPaymentTermsDays: clientData.defaultPaymentTermsDays ?? null,
+          defaultOfferValidityDays: clientData.defaultOfferValidityDays ?? null,
           email: clientData.email ?? null,
         })
         .returningAll()
@@ -158,6 +160,7 @@ export async function updateClient(id: number, input: Partial<ClientInput>): Pro
     if (clientData.vatNumber !== undefined) updates.vatNumber = clientData.vatNumber;
     if (clientData.defaultCurrency !== undefined) updates.defaultCurrency = clientData.defaultCurrency;
     if (clientData.defaultPaymentTermsDays !== undefined) updates.defaultPaymentTermsDays = clientData.defaultPaymentTermsDays;
+    if (clientData.defaultOfferValidityDays !== undefined) updates.defaultOfferValidityDays = clientData.defaultOfferValidityDays;
     if (clientData.email !== undefined) updates.email = clientData.email;
 
     let row: Selectable<Clients> | undefined;

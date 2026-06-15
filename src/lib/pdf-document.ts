@@ -30,6 +30,7 @@ const BASE_CURRENCY = "EUR";
 const TITLES: Record<DocumentType, Record<PdfLang, string>> = {
   [DOCUMENT_TYPE.INVOICE]: { hr: "Račun", en: "Invoice" },
   [DOCUMENT_TYPE.CREDIT_NOTE]: { hr: "Odobrenje", en: "Credit Note" },
+  [DOCUMENT_TYPE.OFFER]: { hr: "Ponuda", en: "Offer" },
 };
 
 export interface PdfLineRow {
@@ -55,6 +56,8 @@ export interface PdfTotals {
 export interface PdfDocumentData {
   lang: PdfLang;
   title: string;
+  /** True for Offers: the template uses offer-date / valid-until date labels. */
+  isOffer: boolean;
   documentNumber: string;
   company: {
     name: string;
@@ -154,6 +157,7 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
     };
   });
 
+  const isOffer = invoice.type === DOCUMENT_TYPE.OFFER;
   const isForeignCurrency = currency !== BASE_CURRENCY && invoice.exchangeRate != null;
 
   // Domestic → domestic legal text; reverse charge → the configured foreign
@@ -171,7 +175,13 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
   return {
     lang,
     title: TITLES[invoice.type as DocumentType][lang],
-    documentNumber: invoice.documentNumber ?? "",
+    isOffer,
+    // Offers display as "Ponuda #1"; the stored number is the bare sequence.
+    documentNumber: invoice.documentNumber
+      ? isOffer
+        ? `#${invoice.documentNumber}`
+        : invoice.documentNumber
+      : "",
     company: {
       name: company.name,
       address: company.address,

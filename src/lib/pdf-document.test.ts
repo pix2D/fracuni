@@ -103,6 +103,7 @@ function makeClient(overrides: Partial<Client> = {}): Client {
     vatNumber: null,
     defaultCurrency: null,
     defaultPaymentTermsDays: null,
+    defaultOfferValidityDays: null,
     email: null,
     archivedAt: null,
     createdAt: "2026-01-01",
@@ -257,5 +258,27 @@ describe("buildPdfDocumentData — credit note", () => {
     expect(data.totals.subtotal).toBe("-200,00");
     expect(data.totals.vat).toEqual({ rate: "25", amount: "-50,00" });
     expect(data.totals.total).toBe("-250,00");
+  });
+});
+
+describe("buildPdfDocumentData — offer", () => {
+  // On an offer row, issue_date is the offer date and due_date is the valid-until.
+  const offer = makeInvoice({ type: "offer", documentNumber: "1" });
+
+  it("titles the document Ponuda / Offer and prefixes the number with #", () => {
+    const hr = buildPdfDocumentData(input({ invoice: offer, lang: "hr" }));
+    expect(hr.title).toBe("Ponuda");
+    expect(hr.isOffer).toBe(true);
+    expect(hr.documentNumber).toBe("#1");
+
+    const en = buildPdfDocumentData(input({ invoice: offer, lang: "en" }));
+    expect(en.title).toBe("Offer");
+    expect(en.documentNumber).toBe("#1");
+  });
+
+  it("carries the offer date and valid-until through the date fields", () => {
+    const data = buildPdfDocumentData(input({ invoice: offer, lang: "hr" }));
+    expect(data.dates.issue).toBe("15.06.2026.");
+    expect(data.dates.due).toBe("30.06.2026.");
   });
 });

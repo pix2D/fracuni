@@ -16,7 +16,10 @@ import { MarkPaidDialog } from "@/components/MarkPaidDialog";
 import { computeInvoiceTotals } from "@/lib/invoice-totals";
 import { formatMoneyWithCurrency, isCurrencyCode } from "@/lib/currency";
 import { isDomestic } from "@/lib/countries";
-import { DOCUMENT_TYPE, INVOICE_STATUS, type DocumentType } from "@/lib/documents";
+import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
+
+// This page drives only Invoices and Credit Notes; Offers have their own page.
+type InvoiceLikeType = typeof DOCUMENT_TYPE.INVOICE | typeof DOCUMENT_TYPE.CREDIT_NOTE;
 import type { Client } from "@/lib/clients";
 import type { CompanyWithRelations } from "@/lib/companies";
 import type { CatalogEntry } from "@/lib/service-catalog";
@@ -30,7 +33,7 @@ interface Props {
   settings: Settings;
   // Invoices and Credit Notes share this list/form; the discriminator switches
   // the labels, the fetched list, and the type-specific actions.
-  documentType?: DocumentType;
+  documentType?: InvoiceLikeType;
 }
 
 const COPY = {
@@ -131,6 +134,17 @@ export function InvoicesPage({
     setError(null);
     setView("list");
     setEditing(null);
+    await fetchInvoices();
+  }
+
+  async function handleDuplicate(id: number) {
+    const res = await fetch(`/api/invoices/${id}/duplicate`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setError(err.error || "Failed to duplicate invoice");
+      return;
+    }
+    setError(null);
     await fetchInvoices();
   }
 
@@ -294,6 +308,9 @@ export function InvoicesPage({
                           Mark as Paid
                         </Button>
                       )}
+                      <Button variant="ghost" size="sm" onClick={() => handleDuplicate(invoice.id)}>
+                        Duplicate
+                      </Button>
                       {invoice.status === INVOICE_STATUS.DRAFT && (
                         <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice.id)}>
                           Delete

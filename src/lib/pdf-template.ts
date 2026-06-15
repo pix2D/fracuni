@@ -11,6 +11,8 @@ interface Labels {
   issueDate: string;
   deliveryDate: string;
   dueDate: string;
+  offerDate: string;
+  validUntil: string;
   colNo: string;
   colDesc: string;
   colQty: string;
@@ -33,6 +35,8 @@ const LABELS: Record<PdfLang, Labels> = {
     issueDate: "Datum izdavanja",
     deliveryDate: "Datum isporuke",
     dueDate: "Dospijeće računa",
+    offerDate: "Datum ponude",
+    validUntil: "Vrijedi do",
     colNo: "R.br.",
     colDesc: "Naziv robe/usluge",
     colQty: "Kol.",
@@ -53,6 +57,8 @@ const LABELS: Record<PdfLang, Labels> = {
     issueDate: "Issue date",
     deliveryDate: "Delivery date",
     dueDate: "Due date",
+    offerDate: "Offer date",
+    validUntil: "Valid until",
     colNo: "ID",
     colDesc: "Service Description",
     colQty: "Qty.",
@@ -240,9 +246,9 @@ export function renderDocumentHtml(data: PdfDocumentData): string {
   </div>
 
   <div class="dates">
-    ${dateRow(labels.issueDate, data.dates.issue)}
+    ${dateRow(data.isOffer ? labels.offerDate : labels.issueDate, data.dates.issue)}
     ${dateRow(labels.deliveryDate, data.dates.delivery)}
-    ${dateRow(labels.dueDate, data.dates.due)}
+    ${dateRow(data.isOffer ? labels.validUntil : labels.dueDate, data.dates.due)}
   </div>
 
   <table class="items">
