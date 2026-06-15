@@ -45,6 +45,10 @@ export function getCurrency(code: CurrencyCode): DineroCurrency<number> {
   return CURRENCIES[code];
 }
 
+export function isCurrencyCode(code: string): code is CurrencyCode {
+  return Object.prototype.hasOwnProperty.call(CURRENCIES, code);
+}
+
 function getExponent(code: CurrencyCode): number {
   const currency = CURRENCIES[code];
   return currency.exponent;

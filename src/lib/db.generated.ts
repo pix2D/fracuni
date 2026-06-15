@@ -63,6 +63,37 @@ export interface HolidaysCache {
   year: number;
 }
 
+export interface Invoices {
+  clientId: number | null;
+  companyId: number;
+  createdAt: Generated<string>;
+  currency: string | null;
+  deliveryDate: string | null;
+  documentNumber: string | null;
+  dueDate: string | null;
+  email: string | null;
+  id: Generated<number | null>;
+  issueDate: string | null;
+  locationId: number | null;
+  notesEn: string | null;
+  notesHr: string | null;
+  paymentMethodId: number | null;
+  paymentTermsDays: number | null;
+  status: Generated<string>;
+  type: Generated<string>;
+  updatedAt: Generated<string>;
+}
+
+export interface LineItems {
+  descriptionEn: string | null;
+  descriptionHr: string | null;
+  id: Generated<number | null>;
+  invoiceId: number;
+  position: number;
+  quantity: number | null;
+  unitPrice: number | null;
+}
+
 export interface Locations {
   companyId: number;
   createdAt: Generated<string>;
@@ -108,6 +139,8 @@ export interface DB {
   clientTaxIds: ClientTaxIds;
   companies: Companies;
   holidaysCache: HolidaysCache;
+  invoices: Invoices;
+  lineItems: LineItems;
   locations: Locations;
   paymentMethods: PaymentMethods;
   serviceCatalog: ServiceCatalog;
