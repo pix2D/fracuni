@@ -1,12 +1,31 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { POST } from "@/pages/api/invoices/[id]/finalize";
 import { createInvoice, getInvoice } from "@/lib/invoices";
 import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
+import { configurePdfGeneration } from "@/lib/pdf-generator";
 import { apiContext } from "@/test/api";
 import { useMigratedDb } from "@/test/db";
 
 useMigratedDb();
+
+// The route generates PDFs as part of finalization. Swap in a fake renderer and
+// a temp data dir so these tests stay fast (no Chromium) and don't touch the
+// real data volume. Real rendering is covered in pdf-renderer.integration.test.ts.
+let dataDir: string;
+
+beforeEach(async () => {
+  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "fireracuni-route-"));
+  configurePdfGeneration({ renderer: async (html) => Buffer.from(html), dataDir });
+});
+
+afterEach(async () => {
+  configurePdfGeneration({ renderer: null, dataDir: null });
+  await fs.rm(dataDir, { recursive: true, force: true });
+});
 
 const COMPANY_INPUT = {
   name: "Firefly One d.o.o.",
@@ -50,6 +69,11 @@ describe("POST /api/invoices/:id/finalize", () => {
     const body = await response.json();
     expect(body.status).toBe("finalized");
     expect(body.documentNumber).toBe("1/1/1");
+    // Finalization also generates the PDF: a domestic client gets one HR file.
+    expect(body.pdfPathHr).toBe("pdfs/firefly-one-d-o-o/2026/06/1-1-1-domaci-d-o-o.pdf");
+    expect(body.pdfHashHr).toMatch(/^[0-9a-f]{64}$/);
+    expect(body.pdfPathEn).toBeNull();
+    await expect(fs.access(path.join(dataDir, body.pdfPathHr))).resolves.toBeUndefined();
   });
 
   it("returns 400 when required fields are missing", async () => {

@@ -159,6 +159,12 @@ export function formatMoneyWithCurrency(amount: Money): string {
   return `${formatMoney(amount)} ${code}`;
 }
 
+// EU-formats a plain number to a fixed number of decimals (comma decimal,
+// period thousands). Used for non-Money quantities on the PDF (e.g. "1,00").
+export function formatEuDecimal(value: number, decimals: number): string {
+  return formatEuNumber(value.toFixed(decimals), decimals);
+}
+
 function formatEuNumber(decimalStr: string, decimals: number): string {
   const isNegative = decimalStr.startsWith("-");
   const abs = decimalStr.replace("-", "");

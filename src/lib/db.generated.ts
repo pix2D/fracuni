@@ -89,6 +89,10 @@ export interface Invoices {
   notesHr: string | null;
   paymentMethodId: number | null;
   paymentTermsDays: number | null;
+  pdfHashEn: string | null;
+  pdfHashHr: string | null;
+  pdfPathEn: string | null;
+  pdfPathHr: string | null;
   status: Generated<string>;
   type: Generated<string>;
   updatedAt: Generated<string>;
