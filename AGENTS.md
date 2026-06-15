@@ -48,6 +48,10 @@ await sql`SELECT * FROM companies WHERE id = ${id}`.execute(db);
 - Add UNIQUE constraints where the domain demands uniqueness (OIB, email, etc.).
 - Snake_case column names in SQLite; CamelCasePlugin handles the mapping.
 
+### Worktree setup
+
+When working in a fresh worktree (e.g. tmux workers), run `pnpm install --frozen-lockfile` before anything else.
+
 ### Sandbox constraints
 
 LLM agents run in a sandboxed container. No watchers, no Docker commands, no long-running processes. Build, test, and one-shot commands work fine.
