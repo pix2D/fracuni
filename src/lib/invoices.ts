@@ -5,6 +5,7 @@ import type { DB, Invoices, LineItems } from "@/lib/db.generated";
 import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
 import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 import type { DocumentType, InvoiceStatus } from "@/lib/documents";
+import { recordAuditEntry } from "@/lib/audit-log";
 
 export type { DocumentType, InvoiceStatus };
 
@@ -191,10 +192,34 @@ export async function getInvoice(id: number): Promise<Invoice | null> {
   return toInvoice(row, lineItemRows);
 }
 
-export async function updateInvoice(id: number, input: Partial<InvoiceInput>): Promise<Invoice> {
+export interface UpdateInvoiceOptions {
+  // When set, an audit_log entry is written in the same transaction as the edit.
+  // Used for post-finalization edits (issue 13); omitted for Draft edits.
+  auditDescription?: string;
+}
+
+export async function updateInvoice(
+  id: number,
+  input: Partial<InvoiceInput>,
+  opts: UpdateInvoiceOptions = {},
+): Promise<Invoice> {
   const db = getDb();
 
   return await db.transaction().execute(async (trx) => {
+    // Sent and Paid documents are immutable legal records — reject any edit.
+    // Draft and Finalized stay editable (Finalized edits are audit-logged).
+    const current = await trx
+      .selectFrom("invoices")
+      .select("status")
+      .where("id", "=", id)
+      .executeTakeFirst();
+    if (!current) throw notFound("Invoice not found");
+    if (current.status === INVOICE_STATUS.SENT || current.status === INVOICE_STATUS.PAID) {
+      throw invalidOperation(
+        `A ${current.status} invoice is immutable and cannot be edited`,
+      );
+    }
+
     const updates: Record<string, unknown> = { updatedAt: sql`datetime('now')` };
     if (input.type !== undefined) updates.type = input.type;
     if (input.companyId !== undefined) updates.companyId = input.companyId;
@@ -228,6 +253,10 @@ export async function updateInvoice(id: number, input: Partial<InvoiceInput>): P
     if (input.lineItems !== undefined) {
       await trx.deleteFrom("lineItems").where("invoiceId", "=", id).execute();
       await insertLineItems(trx, id, input.lineItems);
+    }
+
+    if (opts.auditDescription !== undefined) {
+      await recordAuditEntry(trx, id, opts.auditDescription);
     }
 
     const lineItemRows = await loadLineItems(trx, id);

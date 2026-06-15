@@ -1,6 +1,9 @@
 import type { APIRoute } from "astro";
 import { z } from "zod/v4";
 import { getInvoice, updateInvoice, deleteInvoice } from "@/lib/invoices";
+import { editFinalizedInvoice } from "@/lib/document-engine";
+import { INVOICE_STATUS } from "@/lib/documents";
+import { invalidOperation, notFound } from "@/lib/app-errors";
 import {
   handleApiError,
   errorResponse,
@@ -48,8 +51,20 @@ export const PUT: APIRoute = async ({ params, request }) => {
   try {
     const id = parseIdParam(params.id, "invoice");
     const body = await parseJsonRequest(request, UpdateInvoiceSchema);
-    const invoice = await updateInvoice(id, body);
-    return jsonResponse(invoice);
+
+    const existing = await getInvoice(id);
+    if (!existing) throw notFound("Invoice not found");
+
+    // A Finalized document is still editable, but the edit must be audit-logged
+    // and its PDF(s) regenerated — that orchestration lives in the engine. Drafts
+    // edit in place; Sent/Paid are immutable.
+    if (existing.status === INVOICE_STATUS.FINALIZED) {
+      return jsonResponse(await editFinalizedInvoice(id, body));
+    }
+    if (existing.status === INVOICE_STATUS.SENT || existing.status === INVOICE_STATUS.PAID) {
+      throw invalidOperation(`A ${existing.status} invoice is immutable and cannot be edited`);
+    }
+    return jsonResponse(await updateInvoice(id, body));
   } catch (error: unknown) {
     return handleApiError(error);
   }

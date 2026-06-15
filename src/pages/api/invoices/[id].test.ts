@@ -1,12 +1,31 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { GET, PUT, DELETE } from "@/pages/api/invoices/[id]";
 import { createInvoice, getInvoice } from "@/lib/invoices";
-import { createCompany } from "@/lib/companies";
+import { finalizeInvoice } from "@/lib/document-engine";
+import { configurePdfGeneration } from "@/lib/pdf-generator";
+import { listAuditEntries } from "@/lib/audit-log";
+import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { createClient } from "@/lib/clients";
 import { getDb } from "@/lib/db";
 import { apiContext } from "@/test/api";
 import { useMigratedDb } from "@/test/db";
 
 useMigratedDb();
+
+// The Finalized-edit path regenerates PDFs. Swap in a fake renderer + temp dir so
+// these route tests stay fast and never touch the real data volume.
+let dataDir: string;
+beforeEach(async () => {
+  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "fireracuni-id-route-"));
+  configurePdfGeneration({ renderer: async (html) => Buffer.from(html), dataDir });
+});
+afterEach(async () => {
+  configurePdfGeneration({ renderer: null, dataDir: null });
+  await fs.rm(dataDir, { recursive: true, force: true });
+});
 
 const COMPANY_INPUT = {
   name: "Firefly One d.o.o.",
@@ -19,6 +38,37 @@ const COMPANY_INPUT = {
   emailFromName: "Firefly One",
   issuerName: "Ana Anić",
 };
+
+async function finalizedInvoiceId(): Promise<number> {
+  const company = await createCompany(COMPANY_INPUT);
+  const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
+  const paymentMethod = await createPaymentMethod(company.id, {
+    number: 1,
+    nameHr: "Transakcijski",
+    isDefault: true,
+  });
+  const client = await createClient({ name: "Domaći d.o.o.", country: "HR", oib: "98765432109" });
+  const draft = await createInvoice({
+    companyId: company.id,
+    clientId: client.id,
+    locationId: location.id,
+    paymentMethodId: paymentMethod.id,
+    currency: "EUR",
+    issueDate: "2026-06-15",
+    notesHr: "Original",
+    lineItems: [{ descriptionHr: "Usluga", quantity: 1, unitPrice: 100 }],
+  });
+  const finalized = await finalizeInvoice(draft.id);
+  return finalized.id;
+}
+
+function putRequest(id: number, body: unknown): Request {
+  return new Request(`http://test.local/api/invoices/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
 
 describe("GET /api/invoices/:id", () => {
   it("returns an invoice with line items", async () => {
@@ -71,6 +121,53 @@ describe("PUT /api/invoices/:id", () => {
     expect(body.currency).toBe("USD");
     expect(body.lineItems).toHaveLength(1);
     expect(body.lineItems[0].descriptionHr).toBe("New");
+  });
+
+  it("edits a Finalized invoice: audit-logs the change and regenerates the PDF", async () => {
+    const id = await finalizedInvoiceId();
+    const before = await getInvoice(id);
+
+    const response = await PUT(apiContext({
+      params: { id: String(id) },
+      request: putRequest(id, { notesHr: "Corrected" }),
+    }));
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.status).toBe("finalized");
+    expect(body.documentNumber).toBe(before!.documentNumber);
+    expect(body.notesHr).toBe("Corrected");
+    expect(body.pdfHashHr).toMatch(/^[0-9a-f]{64}$/);
+    expect(body.pdfHashHr).not.toBe(before!.pdfHashHr);
+
+    const entries = await listAuditEntries(id);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.description).toContain("Notes (HR)");
+  });
+
+  it("returns 409 when editing a Sent invoice", async () => {
+    const id = await finalizedInvoiceId();
+    await getDb().updateTable("invoices").set({ status: "sent" }).where("id", "=", id).execute();
+
+    const response = await PUT(apiContext({
+      params: { id: String(id) },
+      request: putRequest(id, { notesHr: "nope" }),
+    }));
+
+    expect(response.status).toBe(409);
+    expect((await getInvoice(id))!.notesHr).toBe("Original");
+  });
+
+  it("returns 409 when editing a Paid invoice", async () => {
+    const id = await finalizedInvoiceId();
+    await getDb().updateTable("invoices").set({ status: "paid" }).where("id", "=", id).execute();
+
+    const response = await PUT(apiContext({
+      params: { id: String(id) },
+      request: putRequest(id, { notesHr: "nope" }),
+    }));
+
+    expect(response.status).toBe(409);
   });
 
   it("returns 404 when updating a missing invoice", async () => {

@@ -11,9 +11,10 @@ interface DatePickerProps {
   value?: Date
   onChange: (date: Date | undefined) => void
   placeholder?: string
+  disabled?: boolean
 }
 
-function DatePicker({ value, onChange, placeholder = "Pick a date" }: DatePickerProps) {
+function DatePicker({ value, onChange, placeholder = "Pick a date", disabled = false }: DatePickerProps) {
   const [open, setOpen] = useState(false)
   const [month, setMonth] = useState<Date>(value ?? new Date())
   const [holidays, setHolidays] = useState<Date[]>([])
@@ -71,6 +72,7 @@ function DatePicker({ value, onChange, placeholder = "Pick a date" }: DatePicker
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          disabled={disabled}
           className={cn(
             "w-full justify-start text-left font-normal",
             !value && "text-muted-foreground",

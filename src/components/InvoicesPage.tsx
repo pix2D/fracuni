@@ -212,7 +212,9 @@ export function InvoicesPage({ company, clients, catalog, settings }: Props) {
                   <TableCell>
                     <div className="flex gap-2">
                       <Button variant="ghost" size="sm" onClick={() => openEdit(invoice)}>
-                        Edit
+                        {invoice.status === INVOICE_STATUS.SENT || invoice.status === INVOICE_STATUS.PAID
+                          ? "View"
+                          : "Edit"}
                       </Button>
                       {invoice.status === INVOICE_STATUS.DRAFT && (
                         <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice.id)}>

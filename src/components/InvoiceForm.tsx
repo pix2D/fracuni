@@ -35,6 +35,12 @@ interface ApiHealth {
   hnb: { reachable: boolean };
 }
 
+interface AuditEntry {
+  id: number;
+  description: string;
+  createdAt: string;
+}
+
 interface Props {
   company: CompanyWithRelations;
   clients: Client[];
@@ -137,6 +143,32 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [health, setHealth] = useState<ApiHealth | null>(null);
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+
+  const status = invoice?.status ?? INVOICE_STATUS.DRAFT;
+  const isDraft = status === INVOICE_STATUS.DRAFT;
+  const isFinalized = status === INVOICE_STATUS.FINALIZED;
+  // Sent and Paid are immutable legal records — the form renders read-only.
+  const readOnly = status === INVOICE_STATUS.SENT || status === INVOICE_STATUS.PAID;
+  // The audit trail exists only once a document has been finalized.
+  const showAuditLog = !!invoice && !isDraft;
+
+  // Load the audit trail for any finalized-or-later document so edits are visible.
+  useEffect(() => {
+    if (!invoice || isDraft) return;
+    let cancelled = false;
+    fetch(`/api/invoices/${invoice.id}/audit-log`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: AuditEntry[]) => {
+        if (!cancelled) setAuditLog(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setAuditLog([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [invoice, isDraft]);
 
   // API health tells the user up front whether a finalization (which depends on
   // VIES / HNB) is likely to succeed. Fetched once when the form mounts.
@@ -264,30 +296,51 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
     }
   }
 
-  const isDraft = !invoice || invoice.status === INVOICE_STATUS.DRAFT;
   const canFinalize = !!onFinalize && !!invoice && isDraft;
   const busy = saving || finalizing;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">
-          {invoice ? "Edit Invoice" : "New Invoice"}
-        </h1>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">
+            {!invoice ? "New Invoice" : readOnly ? "View Invoice" : "Edit Invoice"}
+          </h1>
+          {invoice?.documentNumber && (
+            <p className="text-sm text-muted-foreground">
+              Document Number <span className="font-medium text-foreground">{invoice.documentNumber}</span>
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <HealthDot ok={health ? health.vies.reachable : null} />
-              VIES
-            </span>
-            <span className="flex items-center gap-1.5">
-              <HealthDot ok={health ? health.hnb.reachable : null} />
-              HNB
-            </span>
-          </div>
-          <Badge variant="secondary">{invoice?.status ?? "draft"}</Badge>
+          {/* API health only matters while the document can still be finalized. */}
+          {isDraft && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <HealthDot ok={health ? health.vies.reachable : null} />
+                VIES
+              </span>
+              <span className="flex items-center gap-1.5">
+                <HealthDot ok={health ? health.hnb.reachable : null} />
+                HNB
+              </span>
+            </div>
+          )}
+          <Badge variant="secondary">{status}</Badge>
         </div>
       </div>
+
+      {isFinalized && (
+        <div className="rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-sm text-blue-700 dark:text-blue-300">
+          This invoice can be edited until it is sent. Each change is recorded in the audit log and
+          regenerates the PDF.
+        </div>
+      )}
+      {readOnly && (
+        <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+          This invoice is {status} and is now read-only. Sent and paid invoices cannot be edited.
+        </div>
+      )}
 
       <Card>
         <CardContent className="space-y-4 pt-6">
@@ -300,7 +353,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
             </div>
             <div className="space-y-2">
               <Label htmlFor="invoice-client">Client</Label>
-              <Select value={state.clientId ? String(state.clientId) : ""} onValueChange={handleClientChange}>
+              <Select value={state.clientId ? String(state.clientId) : ""} onValueChange={handleClientChange} disabled={readOnly}>
                 <SelectTrigger id="invoice-client">
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
@@ -321,6 +374,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
               <Select
                 value={state.locationId ? String(state.locationId) : ""}
                 onValueChange={(v) => setState((p) => ({ ...p, locationId: v ? Number(v) : null }))}
+                disabled={readOnly}
               >
                 <SelectTrigger id="invoice-location">
                   <SelectValue placeholder="Select location" />
@@ -339,6 +393,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
               <Select
                 value={state.paymentMethodId ? String(state.paymentMethodId) : ""}
                 onValueChange={(v) => setState((p) => ({ ...p, paymentMethodId: v ? Number(v) : null }))}
+                disabled={readOnly}
               >
                 <SelectTrigger id="invoice-payment">
                   <SelectValue placeholder="Select payment method" />
@@ -360,6 +415,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
               <Select
                 value={state.currency}
                 onValueChange={(v) => setState((p) => ({ ...p, currency: v }))}
+                disabled={readOnly}
               >
                 <SelectTrigger id="invoice-currency">
                   <SelectValue placeholder="Select currency" />
@@ -381,6 +437,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
                 value={state.email}
                 onChange={(e) => setState((p) => ({ ...p, email: e.target.value }))}
                 placeholder="recipient@example.com"
+                disabled={readOnly}
               />
             </div>
           </div>
@@ -391,13 +448,14 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
         <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2">
             <Label>Issue Date</Label>
-            <DatePicker value={state.issueDate} onChange={handleIssueDate} />
+            <DatePicker value={state.issueDate} onChange={handleIssueDate} disabled={readOnly} />
           </div>
           <div className="space-y-2">
             <Label>Delivery Date</Label>
             <DatePicker
               value={state.deliveryDate}
               onChange={(d) => setState((p) => ({ ...p, deliveryDate: d }))}
+              disabled={readOnly}
             />
           </div>
           <div className="space-y-2">
@@ -408,11 +466,12 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
               min="0"
               value={state.paymentTermsDays ?? ""}
               onChange={(e) => handleTermsChange(e.target.value)}
+              disabled={readOnly}
             />
           </div>
           <div className="space-y-2">
             <Label>Due Date</Label>
-            <DatePicker value={state.dueDate} onChange={handleDueDate} />
+            <DatePicker value={state.dueDate} onChange={handleDueDate} disabled={readOnly} />
           </div>
         </CardContent>
       </Card>
@@ -425,6 +484,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
             currencyCode={currencyCode}
             catalog={catalog}
             onChange={(items) => setState((p) => ({ ...p, lineItems: items }))}
+            disabled={readOnly}
           />
         </CardContent>
       </Card>
@@ -440,6 +500,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
                 value={state.notesHr}
                 onChange={(e) => setState((p) => ({ ...p, notesHr: e.target.value }))}
                 placeholder="Napomena"
+                disabled={readOnly}
               />
             </div>
             {!domestic && (
@@ -451,6 +512,7 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
                   value={state.notesEn}
                   onChange={(e) => setState((p) => ({ ...p, notesEn: e.target.value }))}
                   placeholder="Note"
+                  disabled={readOnly}
                 />
               </div>
             )}
@@ -479,17 +541,52 @@ export function InvoiceForm({ company, clients, catalog, settings, invoice, onSa
         </CardContent>
       </Card>
 
+      {showAuditLog && (
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <h2 className="text-sm font-semibold">Audit Log</h2>
+            {auditLog.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No changes recorded since finalization.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {auditLog.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="flex flex-col gap-0.5 border-b border-border pb-2 last:border-0 last:pb-0 sm:flex-row sm:justify-between sm:gap-4"
+                  >
+                    <span className="text-sm">{entry.description}</span>
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {entry.createdAt}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
-          Cancel
-        </Button>
-        <Button type="button" variant="secondary" onClick={handleSubmit} disabled={busy}>
-          {saving ? "Saving…" : "Save Draft"}
-        </Button>
-        {canFinalize && (
-          <Button type="button" onClick={handleFinalize} disabled={busy}>
-            {finalizing ? "Finalizing…" : "Finalize"}
+        {readOnly ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Close
           </Button>
+        ) : (
+          <>
+            <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
+              Cancel
+            </Button>
+            <Button type="button" variant="secondary" onClick={handleSubmit} disabled={busy}>
+              {saving ? "Saving…" : isDraft ? "Save Draft" : "Save Changes"}
+            </Button>
+            {canFinalize && (
+              <Button type="button" onClick={handleFinalize} disabled={busy}>
+                {finalizing ? "Finalizing…" : "Finalize"}
+              </Button>
+            )}
+          </>
         )}
       </div>
     </div>
