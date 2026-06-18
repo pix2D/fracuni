@@ -1,12 +1,7 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { promises as fs } from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { describe, expect, it } from "vitest";
 import { GET, PUT, DELETE } from "@/pages/api/invoices/[id]";
 import { createInvoice, getInvoice } from "@/lib/invoices";
 import { finalizeInvoice } from "@/lib/document-engine";
-import { configurePdfGeneration } from "@/lib/pdf-generator";
-import { listAuditEntries } from "@/lib/audit-log";
 import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { getDb } from "@/lib/db";
@@ -14,18 +9,6 @@ import { apiContext } from "@/test/api";
 import { useMigratedDb } from "@/test/db";
 
 useMigratedDb();
-
-// The Finalized-edit path regenerates PDFs. Swap in a fake renderer + temp dir so
-// these route tests stay fast and never touch the real data volume.
-let dataDir: string;
-beforeEach(async () => {
-  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "fireracuni-id-route-"));
-  configurePdfGeneration({ renderer: async (html) => Buffer.from(html), dataDir });
-});
-afterEach(async () => {
-  configurePdfGeneration({ renderer: null, dataDir: null });
-  await fs.rm(dataDir, { recursive: true, force: true });
-});
 
 const COMPANY_INPUT = {
   name: "Firefly One d.o.o.",
@@ -123,26 +106,16 @@ describe("PUT /api/invoices/:id", () => {
     expect(body.lineItems[0].descriptionHr).toBe("New");
   });
 
-  it("edits a Finalized invoice: audit-logs the change and regenerates the PDF", async () => {
+  it("returns 409 when updating a Finalized invoice", async () => {
     const id = await finalizedInvoiceId();
-    const before = await getInvoice(id);
 
     const response = await PUT(apiContext({
       params: { id: String(id) },
       request: putRequest(id, { notesHr: "Corrected" }),
     }));
 
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.status).toBe("finalized");
-    expect(body.documentNumber).toBe(before!.documentNumber);
-    expect(body.notesHr).toBe("Corrected");
-    expect(body.pdfHashHr).toMatch(/^[0-9a-f]{64}$/);
-    expect(body.pdfHashHr).not.toBe(before!.pdfHashHr);
-
-    const entries = await listAuditEntries(id);
-    expect(entries).toHaveLength(1);
-    expect(entries[0]!.description).toContain("Notes (HR)");
+    expect(response.status).toBe(409);
+    expect((await getInvoice(id))!.notesHr).toBe("Original");
   });
 
   it("returns 409 when editing a Sent invoice", async () => {

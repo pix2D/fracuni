@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format, addDays } from "date-fns";
+import { format, addDays, differenceInCalendarDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,11 @@ function dateToStr(date: Date | undefined): string | null {
   return date ? format(date, "yyyy-MM-dd") : null;
 }
 
+function daysBetween(start: Date | undefined, end: Date | undefined): number | undefined {
+  if (!start || !end) return undefined;
+  return differenceInCalendarDays(end, start);
+}
+
 export function OfferForm({ company, clients, catalog, settings, offer, onSave, onFinalize, onCancel }: Props) {
   const defaultCurrency = (client?: Client): string => {
     const supported = settings.supportedCurrencies;
@@ -89,7 +94,9 @@ export function OfferForm({ company, clients, catalog, settings, offer, onSave, 
         email: offer.email ?? "",
         offerDate: strToDate(offer.issueDate),
         validUntil: strToDate(offer.dueDate),
-        validityDays: offer.paymentTermsDays ?? undefined,
+        validityDays:
+          daysBetween(strToDate(offer.issueDate), strToDate(offer.dueDate)) ??
+          resolveValidity(clients.find((c) => c.id === offer.clientId) ?? undefined),
         notesHr: offer.notesHr ?? "",
         notesEn: offer.notesEn ?? "",
         lineItems: offer.lineItems.map((li) => ({
@@ -196,7 +203,6 @@ export function OfferForm({ company, clients, catalog, settings, offer, onSave, 
       email: state.email.trim() || null,
       issueDate: dateToStr(state.offerDate),
       dueDate: dateToStr(state.validUntil),
-      paymentTermsDays: state.validityDays ?? null,
       notesHr: state.notesHr.trim() || null,
       notesEn: domestic ? null : state.notesEn.trim() || null,
       lineItems: state.lineItems

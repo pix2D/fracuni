@@ -55,7 +55,6 @@ async function draftOffer(ids: Ids, overrides: Partial<Parameters<typeof createO
     currency: "EUR",
     issueDate: "2026-06-15",
     dueDate: "2026-07-15",
-    paymentTermsDays: 30,
     lineItems: [{ descriptionHr: "Usluga", quantity: 2, unitPrice: 100 }],
     ...overrides,
   });
@@ -208,6 +207,11 @@ describe("convertOfferToInvoice", () => {
 
 describe("duplicateDocument", () => {
   const today = new Date().toISOString().slice(0, 10);
+  const todayPlusDays = (days: number): string => {
+    const d = new Date(`${today}T00:00:00.000Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
 
   it("duplicates an Offer into a fresh Draft of the same type with today's offer date", async () => {
     const ids = await setup();
@@ -220,6 +224,7 @@ describe("duplicateDocument", () => {
     expect(dup.status).toBe("draft");
     expect(dup.documentNumber).toBeNull();
     expect(dup.issueDate).toBe(today);
+    expect(dup.dueDate).toBe(todayPlusDays(30));
     expect(dup.notesHr).toBe("x");
     expect(dup.lineItems).toHaveLength(1);
     expect(dup.id).not.toBe(offer.id);
@@ -228,7 +233,7 @@ describe("duplicateDocument", () => {
   it("duplicates an Invoice into a Draft Invoice with today's date", async () => {
     const ids = await setup();
     const invoice = await finalizeInvoice(
-      (await createInvoice({ ...ids, currency: "EUR", issueDate: "2026-01-01", paymentTermsDays: 15, lineItems: [{ descriptionHr: "A", quantity: 1, unitPrice: 50 }] })).id,
+      (await createInvoice({ ...ids, currency: "EUR", issueDate: "2026-01-01", dueDate: "2026-01-16", lineItems: [{ descriptionHr: "A", quantity: 1, unitPrice: 50 }] })).id,
     );
 
     const dup = await duplicateDocument(invoice.id);
@@ -237,6 +242,7 @@ describe("duplicateDocument", () => {
     expect(dup.status).toBe("draft");
     expect(dup.documentNumber).toBeNull();
     expect(dup.issueDate).toBe(today);
+    expect(dup.dueDate).toBe(todayPlusDays(15));
     expect(dup.lineItems[0]).toMatchObject({ descriptionHr: "A", quantity: 1, unitPrice: 50 });
   });
 

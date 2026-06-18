@@ -25,7 +25,6 @@ const UpdateOfferSchema = z.object({
   email: z.string().nullish(),
   issueDate: z.string().nullish(),
   dueDate: z.string().nullish(),
-  paymentTermsDays: z.number().int().nullish(),
   notesHr: z.string().nullish(),
   notesEn: z.string().nullish(),
   lineItems: z.array(LineItemSchema).optional(),

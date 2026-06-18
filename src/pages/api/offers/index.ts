@@ -12,7 +12,7 @@ const LineItemSchema = z.object({
 
 // Drafts are permissive: only the owning company is required. On an offer the
 // date fields carry offer-specific meaning (issueDate = offer date,
-// dueDate = valid-until, paymentTermsDays = validity period in days).
+// dueDate = valid-until). Validity days are form/defaulting state only.
 const CreateOfferSchema = z.object({
   companyId: z.number().int().positive(),
   clientId: z.number().int().positive().nullish(),
@@ -22,7 +22,6 @@ const CreateOfferSchema = z.object({
   email: z.string().nullish(),
   issueDate: z.string().nullish(),
   dueDate: z.string().nullish(),
-  paymentTermsDays: z.number().int().nullish(),
   notesHr: z.string().nullish(),
   notesEn: z.string().nullish(),
   lineItems: z.array(LineItemSchema).optional(),

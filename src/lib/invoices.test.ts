@@ -54,7 +54,6 @@ describe("invoices data layer", () => {
       email: "billing@acme.de",
       issueDate: "2026-06-15",
       dueDate: "2026-06-30",
-      paymentTermsDays: 15,
       notesHr: "Hvala",
       lineItems: [
         { descriptionHr: "Usluga A", quantity: 2, unitPrice: 100 },
@@ -157,6 +156,17 @@ describe("invoices data layer", () => {
 
   it("throws when updating a missing invoice", async () => {
     await expect(updateInvoice(9999, { notesHr: "x" })).rejects.toThrow("Invoice not found");
+  });
+
+  it("refuses to update a finalized invoice", async () => {
+    const { company } = await setupCompany();
+    const invoice = await createInvoice({ companyId: company.id, notesHr: "Original" });
+    await getDb().updateTable("invoices").set({ status: "finalized" }).where("id", "=", invoice.id).execute();
+
+    await expect(updateInvoice(invoice.id, { notesHr: "Corrected" })).rejects.toThrow(
+      /immutable/,
+    );
+    expect((await getInvoice(invoice.id))!.notesHr).toBe("Original");
   });
 
   it("deletes a draft and cascades line items", async () => {

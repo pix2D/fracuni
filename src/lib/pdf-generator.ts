@@ -4,8 +4,8 @@
 // SHA-256 of each file, and persists the paths + hashes on the invoice row.
 //
 // The renderer is injected (defaulting to the real Playwright one) so the whole
-// pipeline is testable without a browser, and so a Finalized edit (issue 13) can
-// reuse this to regenerate.
+// pipeline is testable without a browser, and so callers can generate PDFs
+// without launching Chromium in tests.
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";

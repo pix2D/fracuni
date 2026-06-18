@@ -7,13 +7,12 @@ import { type Kysely } from "kysely";
 //  1. Numbering. Offers number simply per (Company, calendar year) — NOT per
 //     Payment Method like Invoices/Credit Notes — so they get their own
 //     sequence table rather than sharing document_number_sequences.
-//  2. Validity. The "Vrijedi do" date cascades Settings → Client → manual, so a
-//     Client may carry a default offer validity (mirrors default_payment_terms_days
-//     for Invoice due dates).
+//  2. Validity. The "Vrijedi do" date cascades Settings → Client → manual. The
+//     final valid-until date is stored in due_date, just like Invoices store their
+//     final due date; validity days remain form/defaulting state only.
 //
 // Column reuse on `invoices` for an offer row: issue_date = offer date,
-// due_date = valid-until, payment_terms_days = validity days, delivery_date and
-// exchange_rate* stay null.
+// due_date = valid-until, delivery_date and exchange_rate* stay null.
 export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .alterTable("clients")

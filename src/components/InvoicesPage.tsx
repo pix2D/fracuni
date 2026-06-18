@@ -158,6 +158,17 @@ export function InvoicesPage({
     await fetchInvoices();
   }
 
+  async function handleMarkSent(id: number) {
+    const res = await fetch(`/api/invoices/${id}/mark-sent`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setError(err.error || "Failed to mark invoice as sent");
+      return;
+    }
+    setError(null);
+    await fetchInvoices();
+  }
+
   // "Create Credit Note" off a Finalized Invoice: the server pre-fills a Draft
   // Credit Note with negated amounts; we send the user to the Credit Notes page
   // to review and finalize it.
@@ -294,14 +305,17 @@ export function InvoicesPage({
                   <TableCell>
                     <div className="flex gap-2">
                       <Button variant="ghost" size="sm" onClick={() => openEdit(invoice)}>
-                        {invoice.status === INVOICE_STATUS.SENT || invoice.status === INVOICE_STATUS.PAID
-                          ? "View"
-                          : "Edit"}
+                        {invoice.status === INVOICE_STATUS.DRAFT ? "Edit" : "View"}
                       </Button>
                       {invoice.status === INVOICE_STATUS.FINALIZED && (
-                        <Button variant="ghost" size="sm" onClick={() => openSend(invoice)}>
-                          Send
-                        </Button>
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => openSend(invoice)}>
+                            Send Email
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleMarkSent(invoice.id)}>
+                            Mark Sent
+                          </Button>
+                        </>
                       )}
                       {invoice.status === INVOICE_STATUS.SENT && (
                         <Button variant="ghost" size="sm" onClick={() => openPay(invoice)}>

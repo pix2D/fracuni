@@ -9,13 +9,6 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
-export interface AuditLog {
-  createdAt: Generated<string>;
-  description: string;
-  id: Generated<number | null>;
-  invoiceId: number;
-}
-
 export interface Clients {
   address: string | null;
   archivedAt: string | null;
@@ -109,7 +102,6 @@ export interface Invoices {
   originalInvoiceNumber: string | null;
   paymentDate: string | null;
   paymentMethodId: number | null;
-  paymentTermsDays: number | null;
   pdfHashEn: string | null;
   pdfHashHr: string | null;
   pdfPathEn: string | null;
@@ -190,7 +182,6 @@ export interface ViesVerifications {
 }
 
 export interface DB {
-  auditLog: AuditLog;
   clients: Clients;
   clientTaxIds: ClientTaxIds;
   companies: Companies;

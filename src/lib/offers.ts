@@ -4,7 +4,6 @@
 //
 //   issue_date         → offer date ("Datum ponude")
 //   due_date           → valid-until ("Vrijedi do")
-//   payment_terms_days → validity period in days
 //
 // getOffer / updateOffer / deleteOffer are the (type-agnostic, id-keyed) invoice
 // functions re-exported under offer names so callers read clearly.

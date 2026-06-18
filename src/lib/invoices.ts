@@ -5,7 +5,6 @@ import type { DB, Invoices, LineItems } from "@/lib/db.generated";
 import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
 import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 import type { DocumentType, InvoiceStatus } from "@/lib/documents";
-import { recordAuditEntry } from "@/lib/audit-log";
 
 export type { DocumentType, InvoiceStatus };
 
@@ -36,7 +35,6 @@ export type InvoiceInput = {
   issueDate?: string | null;
   deliveryDate?: string | null;
   dueDate?: string | null;
-  paymentTermsDays?: number | null;
   notesHr?: string | null;
   notesEn?: string | null;
   // Set only on a Credit Note created from an existing Invoice; the source
@@ -126,7 +124,6 @@ export async function createInvoice(input: InvoiceInput): Promise<Invoice> {
           issueDate: input.issueDate ?? null,
           deliveryDate: input.deliveryDate ?? null,
           dueDate: input.dueDate ?? null,
-          paymentTermsDays: input.paymentTermsDays ?? null,
           notesHr: input.notesHr ?? null,
           notesEn: input.notesEn ?? null,
           originalInvoiceNumber: input.originalInvoiceNumber ?? null,
@@ -196,29 +193,24 @@ export async function getInvoice(id: number): Promise<Invoice | null> {
   return toInvoice(row, lineItemRows);
 }
 
-export interface UpdateInvoiceOptions {
-  // When set, an audit_log entry is written in the same transaction as the edit.
-  // Used for post-finalization edits (issue 13); omitted for Draft edits.
-  auditDescription?: string;
-}
-
 export async function updateInvoice(
   id: number,
   input: Partial<InvoiceInput>,
-  opts: UpdateInvoiceOptions = {},
 ): Promise<Invoice> {
   const db = getDb();
 
   return await db.transaction().execute(async (trx) => {
-    // Sent and Paid documents are immutable legal records — reject any edit.
-    // Draft and Finalized stay editable (Finalized edits are audit-logged).
     const current = await trx
       .selectFrom("invoices")
-      .select("status")
+      .select(["status", "type"])
       .where("id", "=", id)
       .executeTakeFirst();
     if (!current) throw notFound("Invoice not found");
-    if (current.status === INVOICE_STATUS.SENT || current.status === INVOICE_STATUS.PAID) {
+
+    // Invoices and Credit Notes become immutable once finalized. Offers share this
+    // table but have their own lifecycle and are intentionally left to the offer
+    // module/routes.
+    if (current.type !== DOCUMENT_TYPE.OFFER && current.status !== INVOICE_STATUS.DRAFT) {
       throw invalidOperation(
         `A ${current.status} invoice is immutable and cannot be edited`,
       );
@@ -235,7 +227,6 @@ export async function updateInvoice(
     if (input.issueDate !== undefined) updates.issueDate = input.issueDate;
     if (input.deliveryDate !== undefined) updates.deliveryDate = input.deliveryDate;
     if (input.dueDate !== undefined) updates.dueDate = input.dueDate;
-    if (input.paymentTermsDays !== undefined) updates.paymentTermsDays = input.paymentTermsDays;
     if (input.notesHr !== undefined) updates.notesHr = input.notesHr;
     if (input.notesEn !== undefined) updates.notesEn = input.notesEn;
 
@@ -257,10 +248,6 @@ export async function updateInvoice(
     if (input.lineItems !== undefined) {
       await trx.deleteFrom("lineItems").where("invoiceId", "=", id).execute();
       await insertLineItems(trx, id, input.lineItems);
-    }
-
-    if (opts.auditDescription !== undefined) {
-      await recordAuditEntry(trx, id, opts.auditDescription);
     }
 
     const lineItemRows = await loadLineItems(trx, id);

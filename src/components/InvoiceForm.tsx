@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format, addDays } from "date-fns";
+import { format, addDays, differenceInCalendarDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,12 +35,6 @@ interface ApiHealth {
   hnb: { reachable: boolean };
 }
 
-interface AuditEntry {
-  id: number;
-  description: string;
-  createdAt: string;
-}
-
 interface Props {
   company: CompanyWithRelations;
   clients: Client[];
@@ -67,7 +61,7 @@ interface FormState {
   issueDate: Date | undefined;
   deliveryDate: Date | undefined;
   dueDate: Date | undefined;
-  paymentTermsDays: number | undefined;
+  termsDays: number | undefined;
   notesHr: string;
   notesEn: string;
   lineItems: LineItemRow[];
@@ -80,6 +74,11 @@ function strToDate(value: string | null | undefined): Date | undefined {
 
 function dateToStr(date: Date | undefined): string | null {
   return date ? format(date, "yyyy-MM-dd") : null;
+}
+
+function daysBetween(start: Date | undefined, end: Date | undefined): number | undefined {
+  if (!start || !end) return undefined;
+  return differenceInCalendarDays(end, start);
 }
 
 export function InvoiceForm({
@@ -116,7 +115,9 @@ export function InvoiceForm({
         issueDate: strToDate(invoice.issueDate),
         deliveryDate: strToDate(invoice.deliveryDate),
         dueDate: strToDate(invoice.dueDate),
-        paymentTermsDays: invoice.paymentTermsDays ?? undefined,
+        termsDays:
+          daysBetween(strToDate(invoice.issueDate), strToDate(invoice.dueDate)) ??
+          resolveTerms(clients.find((c) => c.id === invoice.clientId) ?? undefined),
         notesHr: invoice.notesHr ?? "",
         notesEn: invoice.notesEn ?? "",
         lineItems: invoice.lineItems.map((li) => ({
@@ -144,7 +145,7 @@ export function InvoiceForm({
       issueDate: today,
       deliveryDate: today,
       dueDate: addDays(today, terms),
-      paymentTermsDays: terms,
+      termsDays: terms,
       notesHr: "",
       notesEn: "",
       lineItems: [{ ...EMPTY_LINE_ITEM }],
@@ -155,32 +156,11 @@ export function InvoiceForm({
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [health, setHealth] = useState<ApiHealth | null>(null);
-  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
 
   const status = invoice?.status ?? INVOICE_STATUS.DRAFT;
   const isDraft = status === INVOICE_STATUS.DRAFT;
-  const isFinalized = status === INVOICE_STATUS.FINALIZED;
-  // Sent and Paid are immutable legal records — the form renders read-only.
-  const readOnly = status === INVOICE_STATUS.SENT || status === INVOICE_STATUS.PAID;
-  // The audit trail exists only once a document has been finalized.
-  const showAuditLog = !!invoice && !isDraft;
-
-  // Load the audit trail for any finalized-or-later document so edits are visible.
-  useEffect(() => {
-    if (!invoice || isDraft) return;
-    let cancelled = false;
-    fetch(`/api/invoices/${invoice.id}/audit-log`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: AuditEntry[]) => {
-        if (!cancelled) setAuditLog(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (!cancelled) setAuditLog([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [invoice, isDraft]);
+  // Finalization is the point where an Invoice/Credit Note becomes read-only.
+  const readOnly = !isDraft;
 
   // API health tells the user up front whether a finalization (which depends on
   // VIES / HNB) is likely to succeed. Fetched once when the form mounts.
@@ -213,7 +193,7 @@ export function InvoiceForm({
         clientId: id,
         currency: client ? defaultCurrency(client) : prev.currency,
         email: client?.email ?? prev.email,
-        paymentTermsDays: terms,
+        termsDays: terms,
       };
       if (!prev.dueDateManual && next.issueDate) {
         next.dueDate = addDays(next.issueDate, terms);
@@ -225,8 +205,8 @@ export function InvoiceForm({
   function handleIssueDate(date: Date | undefined) {
     setState((prev) => {
       const next: FormState = { ...prev, issueDate: date };
-      if (!prev.dueDateManual && date && prev.paymentTermsDays != null) {
-        next.dueDate = addDays(date, prev.paymentTermsDays);
+      if (!prev.dueDateManual && date && prev.termsDays != null) {
+        next.dueDate = addDays(date, prev.termsDays);
       }
       return next;
     });
@@ -235,7 +215,7 @@ export function InvoiceForm({
   function handleTermsChange(value: string) {
     const terms = value ? Number(value) : undefined;
     setState((prev) => {
-      const next: FormState = { ...prev, paymentTermsDays: terms };
+      const next: FormState = { ...prev, termsDays: terms };
       if (!prev.dueDateManual && prev.issueDate && terms != null) {
         next.dueDate = addDays(prev.issueDate, terms);
       }
@@ -270,7 +250,6 @@ export function InvoiceForm({
       issueDate: dateToStr(state.issueDate),
       deliveryDate: dateToStr(state.deliveryDate),
       dueDate: dateToStr(state.dueDate),
-      paymentTermsDays: state.paymentTermsDays ?? null,
       notesHr: state.notesHr.trim() || null,
       notesEn: domestic ? null : state.notesEn.trim() || null,
       lineItems: state.lineItems
@@ -343,16 +322,9 @@ export function InvoiceForm({
         </div>
       </div>
 
-      {isFinalized && (
-        <div className="rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-sm text-blue-700 dark:text-blue-300">
-          This {noun.toLowerCase()} can be edited until it is sent. Each change is recorded in the
-          audit log and regenerates the PDF.
-        </div>
-      )}
       {readOnly && (
         <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-          This {noun.toLowerCase()} is {status} and is now read-only. Sent and paid documents cannot
-          be edited.
+          This {noun.toLowerCase()} is {status} and is read-only.
         </div>
       )}
       {invoice?.originalInvoiceNumber && (
@@ -485,7 +457,7 @@ export function InvoiceForm({
               id="invoice-terms"
               type="number"
               min="0"
-              value={state.paymentTermsDays ?? ""}
+              value={state.termsDays ?? ""}
               onChange={(e) => handleTermsChange(e.target.value)}
               disabled={readOnly}
             />
@@ -561,33 +533,6 @@ export function InvoiceForm({
           </div>
         </CardContent>
       </Card>
-
-      {showAuditLog && (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <h2 className="text-sm font-semibold">Audit Log</h2>
-            {auditLog.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No changes recorded since finalization.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {auditLog.map((entry) => (
-                  <li
-                    key={entry.id}
-                    className="flex flex-col gap-0.5 border-b border-border pb-2 last:border-0 last:pb-0 sm:flex-row sm:justify-between sm:gap-4"
-                  >
-                    <span className="text-sm">{entry.description}</span>
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                      {entry.createdAt}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       <div className="flex justify-end gap-2">
         {readOnly ? (

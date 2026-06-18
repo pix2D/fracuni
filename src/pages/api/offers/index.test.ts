@@ -57,7 +57,6 @@ describe("POST /api/offers", () => {
           currency: "EUR",
           issueDate: "2026-06-15",
           dueDate: "2026-07-15",
-          paymentTermsDays: 30,
           lineItems: [{ descriptionHr: "Usluga", quantity: 1, unitPrice: 100 }],
         }),
       }),

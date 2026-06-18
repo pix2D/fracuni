@@ -64,7 +64,6 @@ function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
     issueDate: "2026-06-15",
     deliveryDate: "2026-06-15",
     dueDate: "2026-06-30",
-    paymentTermsDays: 15,
     notesHr: null,
     notesEn: null,
     documentNumber: "1/1/1",

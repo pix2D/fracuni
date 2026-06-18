@@ -22,7 +22,6 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn("issue_date", "text")
     .addColumn("delivery_date", "text")
     .addColumn("due_date", "text")
-    .addColumn("payment_terms_days", "integer")
     .addColumn("notes_hr", "text")
     .addColumn("notes_en", "text")
     // Assigned at finalization (later slice); always null for a Draft.

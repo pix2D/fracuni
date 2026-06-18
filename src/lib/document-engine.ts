@@ -1,16 +1,13 @@
 import { getDb } from "@/lib/db";
 import type { Transaction } from "kysely";
 import { sql } from "kysely";
-import { addDays, format } from "date-fns";
+import { addDays, differenceInCalendarDays, format } from "date-fns";
 import type { DB } from "@/lib/db.generated";
 import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
 import {
   createInvoice,
   getInvoice,
-  updateInvoice,
   type Invoice,
-  type InvoiceInput,
-  type LineItem,
   type LineItemInput,
 } from "@/lib/invoices";
 import {
@@ -24,7 +21,6 @@ import {
 import { determineTaxTreatment } from "@/lib/tax-engine";
 import { validateVat, type ViesSuccess } from "@/lib/vies";
 import { getExchangeRate, type HnbSuccess } from "@/lib/hnb";
-import { generateInvoicePdfs, type GenerateDeps } from "@/lib/pdf-generator";
 import { expandPlaceholders } from "@/lib/placeholders";
 
 // Invoices and Credit Notes are priced in EUR by default; only non-EUR documents
@@ -204,103 +200,10 @@ export async function finalizeInvoice(id: number, deps: FinalizeDeps = {}): Prom
   return finalized;
 }
 
-// Empty strings from the form mean "not set", same as null — collapse them so a
-// "" → null edit doesn't register as a spurious change in the audit description.
-function normalizeText(value: unknown): unknown {
-  if (typeof value === "string" && value.trim() === "") return null;
-  return value ?? null;
-}
-
-function formatAuditValue(value: unknown): string {
-  const normalized = normalizeText(value);
-  return normalized === null ? "(none)" : String(normalized);
-}
-
-// Fields whose before/after values are meaningful in the audit trail. Reference
-// IDs (client/location/payment method) are listed too — they read as raw ids,
-// but the trail's job is "something changed", and the ids are stable anchors.
-const AUDITED_FIELDS: { key: keyof InvoiceInput & keyof Invoice; label: string }[] = [
-  { key: "clientId", label: "Client" },
-  { key: "locationId", label: "Location" },
-  { key: "paymentMethodId", label: "Payment Method" },
-  { key: "currency", label: "Currency" },
-  { key: "email", label: "Email" },
-  { key: "issueDate", label: "Issue Date" },
-  { key: "deliveryDate", label: "Delivery Date" },
-  { key: "dueDate", label: "Due Date" },
-  { key: "paymentTermsDays", label: "Payment Terms" },
-  { key: "notesHr", label: "Notes (HR)" },
-  { key: "notesEn", label: "Notes (EN)" },
-];
-
-function lineItemsChanged(before: LineItem[], after: LineItemInput[]): boolean {
-  if (before.length !== after.length) return true;
-  return before.some((b, i) => {
-    const a = after[i]!;
-    return (
-      normalizeText(b.descriptionHr) !== normalizeText(a.descriptionHr) ||
-      normalizeText(b.descriptionEn) !== normalizeText(a.descriptionEn) ||
-      (b.quantity ?? null) !== (a.quantity ?? null) ||
-      (b.unitPrice ?? null) !== (a.unitPrice ?? null)
-    );
-  });
-}
-
 /**
- * Human-readable summary of what an edit changes, for the audit log. Only fields
- * actually present in `after` (an undefined field means "not submitted") and
- * whose value differs from `before` are reported. Returns a fallback string when
- * nothing observable changed, so every saved edit still leaves a trail.
- */
-export function describeInvoiceChanges(before: Invoice, after: Partial<InvoiceInput>): string {
-  const changes: string[] = [];
-
-  for (const { key, label } of AUDITED_FIELDS) {
-    if (after[key] === undefined) continue;
-    if (normalizeText(after[key]) === normalizeText(before[key])) continue;
-    changes.push(`${label}: ${formatAuditValue(before[key])} → ${formatAuditValue(after[key])}`);
-  }
-
-  if (after.lineItems !== undefined && lineItemsChanged(before.lineItems, after.lineItems)) {
-    changes.push("Line items updated");
-  }
-
-  return changes.length > 0 ? changes.join("; ") : "Saved with no field changes";
-}
-
-/**
- * Edit a Finalized Invoice (or Credit Note) that has not yet been Sent. The edit
- * is audit-logged (atomically with the field changes) and the PDF(s) are
- * regenerated so the stored artifact and SHA-256 hash match the new content.
- *
- * Only Finalized documents take this path: Drafts edit without logging, and
- * Sent/Paid documents are immutable (rejected here and again in updateInvoice).
- */
-export async function editFinalizedInvoice(
-  id: number,
-  input: Partial<InvoiceInput>,
-  deps: GenerateDeps = {},
-): Promise<Invoice> {
-  const existing = await getInvoice(id);
-  if (!existing) throw notFound("Invoice not found");
-  if (existing.status !== INVOICE_STATUS.FINALIZED) {
-    throw invalidOperation(
-      `Only Finalized invoices can be edited (current status: ${existing.status})`,
-    );
-  }
-
-  const description = describeInvoiceChanges(existing, input);
-  await updateInvoice(id, input, { auditDescription: description });
-
-  // Regenerate so the PDF on disk and its hash reflect the edited content.
-  return generateInvoicePdfs(id, deps);
-}
-
-/**
- * Transition a Finalized document to Sent. Called by the Email Service once a
- * Postmark delivery succeeds — the email send is the only thing that flips this
- * state. Idempotency is the caller's concern; here we simply refuse any source
- * status other than Finalized.
+ * Transition a Finalized document to Sent. This can be called after a successful
+ * Postmark delivery or from a manual "mark as sent" action. Idempotency is the
+ * caller's concern; here we simply refuse any source status other than Finalized.
  */
 export async function markInvoiceSent(id: number): Promise<Invoice> {
   const invoice = await getInvoice(id);
@@ -386,7 +289,6 @@ export async function createCreditNoteFromInvoice(sourceId: number): Promise<Inv
     issueDate: source.issueDate,
     deliveryDate: source.deliveryDate,
     dueDate: source.dueDate,
-    paymentTermsDays: source.paymentTermsDays,
     notesHr: source.notesHr,
     notesEn: source.notesEn,
     originalInvoiceNumber: source.documentNumber,
@@ -403,7 +305,7 @@ export async function createCreditNoteFromInvoice(sourceId: number): Promise<Inv
 // Offers
 //
 // Offers live in the same `invoices` table (type='offer'). On an offer row,
-// issue_date = offer date, due_date = valid-until, payment_terms_days = validity.
+// issue_date = offer date and due_date = valid-until.
 // They have their own simpler numbering and lifecycle, and no VIES/HNB gates —
 // rates only matter when an Offer is later converted to (and finalized as) an
 // Invoice.
@@ -516,6 +418,11 @@ function copyLineItems(lineItems: Invoice["lineItems"], now: Date): LineItemInpu
   }));
 }
 
+function dateOffsetDays(start: string | null, end: string | null): number | null {
+  if (!start || !end) return null;
+  return differenceInCalendarDays(new Date(`${end}T00:00:00`), new Date(`${start}T00:00:00`));
+}
+
 /**
  * Convert an Accepted Offer into a new Draft Invoice, copying Client, Line Items,
  * currency, Notes, Location and Payment Method. The exchange rate is NOT copied —
@@ -556,10 +463,11 @@ export async function duplicateDocument(id: number): Promise<Invoice> {
 
   const now = new Date();
   const today = format(now, "yyyy-MM-dd");
-  const terms = source.paymentTermsDays;
-  // For Invoices this is the due date; for Offers the valid-until date. Both
-  // cascade off the same stored term count, so recompute from today.
-  const followUp = terms != null ? format(addDays(now, terms), "yyyy-MM-dd") : null;
+  // For Invoices this preserves the due-date offset; for Offers it preserves the
+  // valid-until offset. The offset is derived from dates because terms/validity
+  // days are defaulting state, not document data.
+  const offset = dateOffsetDays(source.issueDate, source.dueDate);
+  const followUp = offset != null ? format(addDays(now, offset), "yyyy-MM-dd") : null;
 
   return createInvoice({
     type: source.type as DocumentType,
@@ -572,7 +480,6 @@ export async function duplicateDocument(id: number): Promise<Invoice> {
     issueDate: today,
     deliveryDate: source.type === DOCUMENT_TYPE.OFFER ? null : today,
     dueDate: followUp,
-    paymentTermsDays: terms,
     notesHr: source.notesHr,
     notesEn: source.notesEn,
     lineItems: copyLineItems(source.lineItems, now),
