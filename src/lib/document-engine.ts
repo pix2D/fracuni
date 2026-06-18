@@ -3,7 +3,7 @@ import type { Transaction } from "kysely";
 import { sql } from "kysely";
 import { addDays, differenceInCalendarDays, format } from "date-fns";
 import type { DB } from "@/lib/db.generated";
-import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
+import { AppError, invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
 import {
   createInvoice,
   getInvoice,
@@ -22,6 +22,12 @@ import { determineTaxTreatment } from "@/lib/tax-engine";
 import { validateVat, type ViesSuccess } from "@/lib/vies";
 import { getExchangeRate, type HnbSuccess } from "@/lib/hnb";
 import { expandPlaceholders } from "@/lib/placeholders";
+import {
+  loadPdfGenerationContext,
+  renderAndStoreInvoicePdfs,
+  type GeneratedPdfArtifacts,
+  type GenerateDeps,
+} from "@/lib/pdf-generator";
 
 // Invoices and Credit Notes are priced in EUR by default; only non-EUR documents
 // need an HNB exchange rate captured at finalization.
@@ -33,6 +39,17 @@ export interface FinalizeDeps {
   viesFetcher?: typeof fetch;
   hnbFetcher?: typeof fetch;
 }
+
+export interface FinalizeWithPdfDeps extends FinalizeDeps, GenerateDeps {}
+
+interface InvoiceFinalizationPlan {
+  invoice: Invoice;
+  issueDate: string;
+  viesResult: ViesSuccess | null;
+  exchangeRate: HnbSuccess | null;
+}
+
+type PdfArtifactRenderer = (invoice: Invoice) => Promise<GeneratedPdfArtifacts>;
 
 // A Draft must carry these before it can become a legal document. Order here is
 // the order they surface in the error message.
@@ -56,6 +73,31 @@ function assertFinalizable(invoice: Invoice): void {
       missingFields: missing,
     });
   }
+}
+
+function wrapPdfFailure(error: unknown): never {
+  if (error instanceof AppError) throw error;
+  const message = error instanceof Error ? error.message : "unknown error";
+  throw invalidOperation(`PDF generation failed: ${message}`);
+}
+
+function finalizedInvoiceSnapshot(
+  invoice: Invoice,
+  documentNumber: string,
+  exchangeRate: HnbSuccess | null,
+  pdfs?: GeneratedPdfArtifacts,
+): Invoice {
+  return {
+    ...invoice,
+    status: INVOICE_STATUS.FINALIZED,
+    documentNumber,
+    exchangeRate: exchangeRate?.rate ?? null,
+    exchangeRateDate: exchangeRate?.effectiveDate ?? null,
+    pdfPathHr: pdfs?.pdfPathHr ?? invoice.pdfPathHr,
+    pdfHashHr: pdfs?.pdfHashHr ?? invoice.pdfHashHr,
+    pdfPathEn: pdfs?.pdfPathEn ?? invoice.pdfPathEn,
+    pdfHashEn: pdfs?.pdfHashEn ?? invoice.pdfHashEn,
+  };
 }
 
 // The Document Number's sequence segment. Atomic per (company, year, payment
@@ -95,19 +137,10 @@ async function loadNumber(
   return row.number;
 }
 
-/**
- * Transition a Draft Invoice (or Credit Note) to Finalized.
- *
- * Gates run before any write so a blocked finalization leaves the document a
- * Draft with no Document Number consumed:
- *  - required fields present;
- *  - VIES verification passes for foreign clients with a VAT Number (reverse charge);
- *  - HNB exchange rate available for non-EUR currencies.
- *
- * The write phase (sequence assignment, VIES proof, status flip) is a single
- * transaction, so a failure rolls back the sequence increment — no gaps.
- */
-export async function finalizeInvoice(id: number, deps: FinalizeDeps = {}): Promise<Invoice> {
+async function prepareInvoiceFinalization(
+  id: number,
+  deps: FinalizeDeps = {},
+): Promise<InvoiceFinalizationPlan> {
   const db = getDb();
 
   const invoice = await getInvoice(id);
@@ -154,6 +187,16 @@ export async function finalizeInvoice(id: number, deps: FinalizeDeps = {}): Prom
     exchangeRate = result;
   }
 
+  return { invoice, issueDate, viesResult, exchangeRate };
+}
+
+async function commitInvoiceFinalization(
+  plan: InvoiceFinalizationPlan,
+  renderPdfs?: PdfArtifactRenderer,
+): Promise<void> {
+  const db = getDb();
+  const { invoice, issueDate, viesResult, exchangeRate } = plan;
+
   await db.transaction().execute(async (trx) => {
     const locationNumber = await loadNumber(trx, "locations", invoice.locationId!);
     const paymentMethodNumber = await loadNumber(trx, "paymentMethods", invoice.paymentMethodId!);
@@ -166,11 +209,20 @@ export async function finalizeInvoice(id: number, deps: FinalizeDeps = {}): Prom
     );
     const documentNumber = `${sequence}/${locationNumber}/${paymentMethodNumber}`;
 
+    let pdfs: GeneratedPdfArtifacts | undefined;
+    if (renderPdfs) {
+      try {
+        pdfs = await renderPdfs(finalizedInvoiceSnapshot(invoice, documentNumber, exchangeRate));
+      } catch (error: unknown) {
+        wrapPdfFailure(error);
+      }
+    }
+
     if (viesResult) {
       await trx
         .insertInto("viesVerifications")
         .values({
-          invoiceId: id,
+          invoiceId: invoice.id,
           countryCode: viesResult.countryCode,
           vatNumber: viesResult.vatNumber,
           valid: viesResult.valid ? 1 : 0,
@@ -189,11 +241,52 @@ export async function finalizeInvoice(id: number, deps: FinalizeDeps = {}): Prom
         documentNumber,
         exchangeRate: exchangeRate?.rate ?? null,
         exchangeRateDate: exchangeRate?.effectiveDate ?? null,
+        ...(pdfs
+          ? {
+              pdfPathHr: pdfs.pdfPathHr,
+              pdfHashHr: pdfs.pdfHashHr,
+              pdfPathEn: pdfs.pdfPathEn,
+              pdfHashEn: pdfs.pdfHashEn,
+            }
+          : {}),
         updatedAt: sql`datetime('now')`,
       })
-      .where("id", "=", id)
+      .where("id", "=", invoice.id)
       .execute();
   });
+}
+
+/**
+ * Transition a Draft Invoice (or Credit Note) to Finalized.
+ *
+ * Gates run before any write so a blocked finalization leaves the document a
+ * Draft with no Document Number consumed:
+ *  - required fields present;
+ *  - VIES verification passes for foreign clients with a VAT Number (reverse charge);
+ *  - HNB exchange rate available for non-EUR currencies.
+ *
+ * The write phase (sequence assignment, VIES proof, status flip) is a single
+ * transaction, so a failure rolls back the sequence increment — no gaps.
+ */
+export async function finalizeInvoice(id: number, deps: FinalizeDeps = {}): Promise<Invoice> {
+  const plan = await prepareInvoiceFinalization(id, deps);
+  await commitInvoiceFinalization(plan);
+
+  const finalized = await getInvoice(id);
+  if (!finalized) throw notFound("Invoice not found");
+  return finalized;
+}
+
+export async function finalizeInvoiceWithPdfs(
+  id: number,
+  deps: FinalizeWithPdfDeps = {},
+): Promise<Invoice> {
+  const plan = await prepareInvoiceFinalization(id, deps);
+  const context = await loadPdfGenerationContext(plan.invoice, deps);
+
+  await commitInvoiceFinalization(plan, (finalized) =>
+    renderAndStoreInvoicePdfs(finalized, context, deps),
+  );
 
   const finalized = await getInvoice(id);
   if (!finalized) throw notFound("Invoice not found");
@@ -321,6 +414,19 @@ async function loadOffer(id: number): Promise<Invoice> {
   return offer;
 }
 
+function assertOfferFinalizable(offer: Invoice): void {
+  if (offer.status !== OFFER_STATUS.DRAFT) {
+    throw invalidOperation(`Only Draft offers can be finalized (current status: ${offer.status})`);
+  }
+
+  const missing = OFFER_REQUIRED_FIELDS.filter((f) => !f.present(offer)).map((f) => f.label);
+  if (missing.length > 0) {
+    throw invalidRequest(`Cannot finalize: missing required fields: ${missing.join(", ")}`, {
+      missingFields: missing,
+    });
+  }
+}
+
 // The offer number is a plain per-(company, year) counter. The atomic upsert
 // seeds at 1 or increments and RETURNING hands back the assigned value, so
 // numbers are gap-free and unique even under concurrency.
@@ -350,16 +456,7 @@ export async function finalizeOffer(id: number): Promise<Invoice> {
   const db = getDb();
   const offer = await loadOffer(id);
 
-  if (offer.status !== OFFER_STATUS.DRAFT) {
-    throw invalidOperation(`Only Draft offers can be finalized (current status: ${offer.status})`);
-  }
-
-  const missing = OFFER_REQUIRED_FIELDS.filter((f) => !f.present(offer)).map((f) => f.label);
-  if (missing.length > 0) {
-    throw invalidRequest(`Cannot finalize: missing required fields: ${missing.join(", ")}`, {
-      missingFields: missing,
-    });
-  }
+  assertOfferFinalizable(offer);
 
   await db.transaction().execute(async (trx) => {
     const sequence = await assignOfferSequence(trx, offer.companyId, yearOf(offer.issueDate!));
@@ -368,6 +465,46 @@ export async function finalizeOffer(id: number): Promise<Invoice> {
       .set({
         status: OFFER_STATUS.FINALIZED,
         documentNumber: String(sequence),
+        updatedAt: sql`datetime('now')`,
+      })
+      .where("id", "=", id)
+      .execute();
+  });
+
+  return loadOffer(id);
+}
+
+export async function finalizeOfferWithPdfs(
+  id: number,
+  deps: GenerateDeps = {},
+): Promise<Invoice> {
+  const db = getDb();
+  const offer = await loadOffer(id);
+  assertOfferFinalizable(offer);
+
+  const context = await loadPdfGenerationContext(offer, deps);
+
+  await db.transaction().execute(async (trx) => {
+    const sequence = await assignOfferSequence(trx, offer.companyId, yearOf(offer.issueDate!));
+    const documentNumber = String(sequence);
+    const finalized = { ...offer, status: OFFER_STATUS.FINALIZED, documentNumber };
+
+    let pdfs: GeneratedPdfArtifacts;
+    try {
+      pdfs = await renderAndStoreInvoicePdfs(finalized, context, deps);
+    } catch (error: unknown) {
+      wrapPdfFailure(error);
+    }
+
+    await trx
+      .updateTable("invoices")
+      .set({
+        status: OFFER_STATUS.FINALIZED,
+        documentNumber,
+        pdfPathHr: pdfs.pdfPathHr,
+        pdfHashHr: pdfs.pdfHashHr,
+        pdfPathEn: pdfs.pdfPathEn,
+        pdfHashEn: pdfs.pdfHashEn,
         updatedAt: sql`datetime('now')`,
       })
       .where("id", "=", id)

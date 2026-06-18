@@ -7,6 +7,7 @@ import { createInvoice, getInvoice } from "@/lib/invoices";
 import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { configurePdfGeneration } from "@/lib/pdf-generator";
+import { DOCUMENT_TYPE, type DocumentType } from "@/lib/documents";
 import { apiContext } from "@/test/api";
 import { useMigratedDb } from "@/test/db";
 
@@ -51,6 +52,20 @@ async function setup() {
   return { company, location, paymentMethod, client };
 }
 
+async function draftDocument(type: DocumentType = DOCUMENT_TYPE.INVOICE) {
+  const { company, location, paymentMethod, client } = await setup();
+  return createInvoice({
+    type,
+    companyId: company.id,
+    clientId: client.id,
+    locationId: location.id,
+    paymentMethodId: paymentMethod.id,
+    currency: "EUR",
+    issueDate: "2026-06-15",
+    lineItems: [{ descriptionHr: "Usluga", quantity: 1, unitPrice: 100 }],
+  });
+}
+
 describe("POST /api/invoices/:id/finalize", () => {
   it("finalizes a complete draft and returns the document number", async () => {
     const { company, location, paymentMethod, client } = await setup();
@@ -74,6 +89,68 @@ describe("POST /api/invoices/:id/finalize", () => {
     expect(body.pdfHashHr).toMatch(/^[0-9a-f]{64}$/);
     expect(body.pdfPathEn).toBeNull();
     await expect(fs.access(path.join(dataDir, body.pdfPathHr))).resolves.toBeUndefined();
+  });
+
+  it("rolls back Invoice finalization when PDF generation fails, then retries with the first number", async () => {
+    const invoice = await draftDocument();
+    configurePdfGeneration({
+      renderer: async () => {
+        throw new Error("renderer failed");
+      },
+      dataDir,
+    });
+
+    const response = await POST(apiContext({ params: { id: String(invoice.id) } }));
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.error).toMatch(/PDF generation failed/);
+
+    const failed = await getInvoice(invoice.id);
+    expect(failed).toMatchObject({
+      status: "draft",
+      documentNumber: null,
+      pdfPathHr: null,
+      pdfHashHr: null,
+      pdfPathEn: null,
+      pdfHashEn: null,
+    });
+
+    configurePdfGeneration({ renderer: async (html) => Buffer.from(html), dataDir });
+    const retry = await POST(apiContext({ params: { id: String(invoice.id) } }));
+    expect(retry.status).toBe(200);
+    const retried = await retry.json();
+    expect(retried.documentNumber).toBe("1/1/1");
+    expect(retried.pdfHashHr).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("rolls back Credit Note finalization when PDF generation fails, then retries with the first number", async () => {
+    const creditNote = await draftDocument(DOCUMENT_TYPE.CREDIT_NOTE);
+    configurePdfGeneration({
+      renderer: async () => {
+        throw new Error("renderer failed");
+      },
+      dataDir,
+    });
+
+    const response = await POST(apiContext({ params: { id: String(creditNote.id) } }));
+    expect(response.status).toBe(409);
+
+    const failed = await getInvoice(creditNote.id);
+    expect(failed).toMatchObject({
+      status: "draft",
+      documentNumber: null,
+      pdfPathHr: null,
+      pdfHashHr: null,
+      pdfPathEn: null,
+      pdfHashEn: null,
+    });
+
+    configurePdfGeneration({ renderer: async (html) => Buffer.from(html), dataDir });
+    const retry = await POST(apiContext({ params: { id: String(creditNote.id) } }));
+    expect(retry.status).toBe(200);
+    const retried = await retry.json();
+    expect(retried.documentNumber).toBe("1/1/1");
+    expect(retried.pdfPathHr).toBe("pdfs/firefly-one-d-o-o/2026/06/1-1-1-odobrenje-domaci-d-o-o.pdf");
   });
 
   it("returns 400 when required fields are missing", async () => {

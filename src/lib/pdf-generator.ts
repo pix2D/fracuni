@@ -22,6 +22,9 @@ import { DOCUMENT_TYPE, type DocumentType } from "@/lib/documents";
 import { isDomestic } from "@/lib/countries";
 import { slugify } from "@/lib/slug";
 import { invalidOperation, notFound } from "@/lib/app-errors";
+import type { CompanyWithRelations, Location, PaymentMethod } from "@/lib/companies";
+import type { Client } from "@/lib/clients";
+import type { Settings } from "@/lib/settings";
 
 export type HtmlRenderer = (html: string) => Promise<Buffer>;
 
@@ -30,6 +33,22 @@ export interface GenerateDeps {
   renderer?: HtmlRenderer;
   /** Root of the data volume; PDFs land under `<dataDir>/pdfs/…`. */
   dataDir?: string;
+}
+
+export interface GeneratedPdfArtifacts {
+  pdfPathHr: string | null;
+  pdfHashHr: string | null;
+  pdfPathEn: string | null;
+  pdfHashEn: string | null;
+}
+
+export interface PdfGenerationContext {
+  company: CompanyWithRelations;
+  client: Client;
+  location: Location;
+  paymentMethod: PaymentMethod;
+  settings: Settings;
+  logoDataUri: string | null;
 }
 
 const PDF_SUBDIR = "pdfs";
@@ -47,6 +66,13 @@ export function configurePdfGeneration(
   overrides: { renderer?: HtmlRenderer | null; dataDir?: string | null },
 ): void {
   defaults = { ...defaults, ...overrides };
+}
+
+function resolveRuntime(deps: GenerateDeps): { renderer: HtmlRenderer; dataDir: string } {
+  return {
+    renderer: deps.renderer ?? defaults.renderer ?? renderHtmlToPdf,
+    dataDir: deps.dataDir ?? defaults.dataDir ?? path.resolve("data"),
+  };
 }
 
 const LOGO_MIME: Record<string, string> = {
@@ -102,23 +128,15 @@ async function storePdf(
   return { path: relPath, hash };
 }
 
-/**
- * Generate (or regenerate) the PDF(s) for a finalized document and persist their
- * paths and SHA-256 hashes. Foreign clients produce two PDFs (HR + EN); domestic
- * clients produce one (HR). Returns the updated invoice.
- */
-export async function generateInvoicePdfs(
-  invoiceId: number,
+export async function loadPdfGenerationContext(
+  invoice: Invoice,
   deps: GenerateDeps = {},
-): Promise<Invoice> {
-  const renderer = deps.renderer ?? defaults.renderer ?? renderHtmlToPdf;
-  const dataDir = deps.dataDir ?? defaults.dataDir ?? path.resolve("data");
+): Promise<PdfGenerationContext> {
+  const { dataDir } = resolveRuntime(deps);
 
-  const invoice = await getInvoice(invoiceId);
-  if (!invoice) throw notFound("Invoice not found");
-  if (!invoice.documentNumber || !invoice.issueDate || invoice.clientId == null) {
-    throw invalidOperation("PDFs can only be generated for a finalized document");
-  }
+  if (invoice.clientId == null) throw invalidOperation("PDFs require a client");
+  if (invoice.locationId == null) throw invalidOperation("PDFs require a location");
+  if (invoice.paymentMethodId == null) throw invalidOperation("PDFs require a payment method");
 
   const company = await getCompany(invoice.companyId);
   if (!company) throw notFound("Company not found");
@@ -132,6 +150,21 @@ export async function generateInvoicePdfs(
   const settings = await getSettings();
   const logoDataUri = await readLogoDataUri(company.logoPath, dataDir);
 
+  return { company, client, location, paymentMethod, settings, logoDataUri };
+}
+
+export async function renderAndStoreInvoicePdfs(
+  invoice: Invoice,
+  context: PdfGenerationContext,
+  deps: GenerateDeps = {},
+): Promise<GeneratedPdfArtifacts> {
+  const { renderer, dataDir } = resolveRuntime(deps);
+
+  if (!invoice.documentNumber || !invoice.issueDate || invoice.clientId == null) {
+    throw invalidOperation("PDFs can only be generated for a finalized document");
+  }
+
+  const { company, client, location, paymentMethod, settings, logoDataUri } = context;
   const type = invoice.type as DocumentType;
   const langs: PdfLang[] = isDomestic(client.country) ? ["hr"] : ["hr", "en"];
 
@@ -162,13 +195,35 @@ export async function generateInvoicePdfs(
     stored[lang] = await storePdf(buffer, relPath, dataDir);
   }
 
+  return {
+    pdfPathHr: stored.hr?.path ?? null,
+    pdfHashHr: stored.hr?.hash ?? null,
+    pdfPathEn: stored.en?.path ?? null,
+    pdfHashEn: stored.en?.hash ?? null,
+  };
+}
+
+/**
+ * Generate (or regenerate) the PDF(s) for a finalized document and persist their
+ * paths and SHA-256 hashes. Foreign clients produce two PDFs (HR + EN); domestic
+ * clients produce one (HR). Returns the updated invoice.
+ */
+export async function generateInvoicePdfs(
+  invoiceId: number,
+  deps: GenerateDeps = {},
+): Promise<Invoice> {
+  const invoice = await getInvoice(invoiceId);
+  if (!invoice) throw notFound("Invoice not found");
+  const context = await loadPdfGenerationContext(invoice, deps);
+  const stored = await renderAndStoreInvoicePdfs(invoice, context, deps);
+
   await getDb()
     .updateTable("invoices")
     .set({
-      pdfPathHr: stored.hr?.path ?? null,
-      pdfHashHr: stored.hr?.hash ?? null,
-      pdfPathEn: stored.en?.path ?? null,
-      pdfHashEn: stored.en?.hash ?? null,
+      pdfPathHr: stored.pdfPathHr,
+      pdfHashHr: stored.pdfHashHr,
+      pdfPathEn: stored.pdfPathEn,
+      pdfHashEn: stored.pdfHashEn,
       updatedAt: sql`datetime('now')`,
     })
     .where("id", "=", invoiceId)
