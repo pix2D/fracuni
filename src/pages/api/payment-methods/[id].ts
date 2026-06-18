@@ -1,14 +1,9 @@
 import type { APIRoute } from "astro";
 import { updatePaymentMethod, deletePaymentMethod } from "@/lib/companies";
 import { handleApiError, jsonResponse, parseIdParam, parseJsonRequest } from "@/lib/api";
-import { z } from "zod/v4";
+import { CompanyNumberedSettingSchema } from "@/lib/companies.schema";
 
-const UpdatePaymentMethodSchema = z.object({
-  number: z.number().int().positive().optional(),
-  nameHr: z.string().min(1).optional(),
-  nameEn: z.string().nullish(),
-  isDefault: z.boolean().optional(),
-});
+const UpdatePaymentMethodSchema = CompanyNumberedSettingSchema.partial();
 
 export const PUT: APIRoute = async ({ params, request }) => {
   try {

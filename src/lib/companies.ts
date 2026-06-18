@@ -3,6 +3,7 @@ import type { Insertable, Selectable } from "kysely";
 import { sql } from "kysely";
 import type { Companies, Locations, PaymentMethods } from "@/lib/db.generated";
 import { conflict, invalidOperation, notFound } from "@/lib/app-errors";
+import type { CreateCompanyInput } from "@/lib/companies.schema";
 
 // SQLite introspection reports autoincrement PKs as nullable; they never are after insert/select.
 type NonNullId<T extends { id: unknown }> = Omit<T, "id"> & { id: number };
@@ -83,6 +84,59 @@ export async function createCompany(input: CompanyInput): Promise<Company> {
     }
     throw error;
   }
+}
+
+export async function createCompanyWithSetup(input: CreateCompanyInput): Promise<CompanyWithRelations> {
+  const db = getDb();
+  const { locations, paymentMethods, ...companyInput } = input;
+
+  let companyId: number;
+  try {
+    companyId = await db.transaction().execute(async (trx) => {
+      const company = await trx
+        .insertInto("companies")
+        .values(companyInput)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+
+      for (const location of locations) {
+        await trx
+          .insertInto("locations")
+          .values({
+            companyId: company.id!,
+            number: location.number,
+            nameHr: location.nameHr,
+            nameEn: location.nameEn ?? null,
+            isDefault: storedDefault(location.isDefault),
+          })
+          .execute();
+      }
+
+      for (const paymentMethod of paymentMethods) {
+        await trx
+          .insertInto("paymentMethods")
+          .values({
+            companyId: company.id!,
+            number: paymentMethod.number,
+            nameHr: paymentMethod.nameHr,
+            nameEn: paymentMethod.nameEn ?? null,
+            isDefault: storedDefault(paymentMethod.isDefault),
+          })
+          .execute();
+      }
+
+      return company.id!;
+    });
+  } catch (error: unknown) {
+    if (isSqliteError(error, "SQLITE_CONSTRAINT_UNIQUE")) {
+      throw conflict("A company with this OIB already exists");
+    }
+    throw error;
+  }
+
+  const company = await getCompany(companyId);
+  if (!company) throw notFound("Company not found");
+  return company;
 }
 
 export async function listCompanies(): Promise<Company[]> {
@@ -265,6 +319,10 @@ export async function updateLocation(
         .execute();
     }
 
+    if (input.isDefault === false && current.isDefault === 1) {
+      throw invalidOperation("Cannot unset the default location; choose another default instead");
+    }
+
     try {
       const row = await trx
         .updateTable("locations")
@@ -399,6 +457,10 @@ export async function updatePaymentMethod(
         .set({ isDefault: 0 })
         .where("companyId", "=", current.companyId)
         .execute();
+    }
+
+    if (input.isDefault === false && current.isDefault === 1) {
+      throw invalidOperation("Cannot unset the default payment method; choose another default instead");
     }
 
     try {

@@ -2,12 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Table,
   TableBody,
   TableCell,
@@ -15,13 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CompanyForm } from "@/components/CompanyForm";
-import type { CompanyWithRelations, CompanyInput } from "@/lib/companies";
+import type { CompanyWithRelations } from "@/lib/companies";
 
 export function CompaniesPage() {
   const [companies, setCompanies] = useState<CompanyWithRelations[]>([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCompanies = useCallback(async () => {
@@ -33,25 +24,6 @@ export function CompaniesPage() {
     fetchCompanies();
   }, [fetchCompanies]);
 
-  async function handleSave(data: CompanyInput) {
-    const url = editingId ? `/api/companies/${editingId}` : "/api/companies";
-    const method = editingId ? "PUT" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      setError(err.error || "Failed to save");
-      return;
-    }
-    setDialogOpen(false);
-    setEditingId(null);
-    setError(null);
-    await fetchCompanies();
-  }
-
   async function handleDelete(id: number) {
     if (!confirm("Are you sure you want to delete this company?")) return;
     const res = await fetch(`/api/companies/${id}`, { method: "DELETE" });
@@ -61,30 +33,17 @@ export function CompaniesPage() {
       return;
     }
     setError(null);
-    await fetchCompanies();
+    document.cookie = "companyId=;path=/;max-age=0;samesite=lax";
+    window.location.reload();
   }
-
-  function openCreate() {
-    setEditingId(null);
-    setError(null);
-    setDialogOpen(true);
-  }
-
-  function openEdit(id: number) {
-    setEditingId(id);
-    setError(null);
-    setDialogOpen(true);
-  }
-
-  const editingCompany = editingId
-    ? companies.find((c) => c.id === editingId)
-    : undefined;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Companies</h1>
-        <Button onClick={openCreate}>New Company</Button>
+        <Button asChild>
+          <a href="/companies/new">New Company</a>
+        </Button>
       </div>
 
       {error && (
@@ -122,8 +81,8 @@ export function CompaniesPage() {
                   <TableCell>{company.paymentMethods?.length ?? 0}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(company.id)}>
-                        Edit
+                      <Button asChild variant="ghost" size="sm">
+                        <a href={`/companies/${company.id}/edit`}>Edit</a>
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(company.id)}>
                         Delete
@@ -136,22 +95,6 @@ export function CompaniesPage() {
           </Table>
         </Card>
       )}
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingId ? "Edit Company" : "New Company"}
-            </DialogTitle>
-          </DialogHeader>
-          <CompanyForm
-            company={editingCompany}
-            onSave={handleSave}
-            onCancel={() => setDialogOpen(false)}
-            onCompanyUpdated={fetchCompanies}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

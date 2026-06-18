@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
 import type { CompanyInput } from "@/lib/companies";
-import { GET as getCompanies } from "@/pages/api/companies/index";
+import { GET as getCompanies, POST as createCompanyRoute } from "@/pages/api/companies/index";
 import { apiContext } from "@/test/api";
 import { useMigratedDb } from "@/test/db";
 
@@ -43,5 +43,52 @@ describe("GET /api/companies", () => {
       locations: [{ number: 1, nameHr: "Zagreb", isDefault: true }],
       paymentMethods: [{ number: 1, nameHr: "Virman", isDefault: true }],
     });
+  });
+});
+
+describe("POST /api/companies", () => {
+  it("creates a Company with initial Locations and Payment Methods", async () => {
+    const response = await createCompanyRoute(apiContext({
+      request: new Request("http://test.local/api/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...COMPANY_INPUT,
+          locations: [{ number: 1, nameHr: "Zagreb", nameEn: "Zagreb", isDefault: true }],
+          paymentMethods: [{ number: 1, nameHr: "Transakcijski", nameEn: "Bank transfer", isDefault: true }],
+        }),
+      }),
+    }));
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({
+      name: "Firefly One d.o.o.",
+      locations: [{ number: 1, nameHr: "Zagreb", isDefault: true }],
+      paymentMethods: [{ number: 1, nameHr: "Transakcijski", isDefault: true }],
+    });
+  });
+
+  it("returns 400 when setup defaults are missing", async () => {
+    const response = await createCompanyRoute(apiContext({
+      request: new Request("http://test.local/api/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...COMPANY_INPUT,
+          oib: "99999999999",
+          locations: [{ number: 1, nameHr: "Zagreb", isDefault: false }],
+          paymentMethods: [{ number: 1, nameHr: "Transakcijski", isDefault: true }],
+        }),
+      }),
+    }));
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe("Validation failed");
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: "Choose exactly one default Location" }),
+      ]),
+    );
   });
 });

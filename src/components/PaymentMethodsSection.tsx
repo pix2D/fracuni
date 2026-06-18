@@ -134,6 +134,7 @@ function PaymentMethodForm({
   const [nameHr, setNameHr] = useState(initial?.nameHr ?? "");
   const [nameEn, setNameEn] = useState(initial?.nameEn ?? "");
   const [isDefault, setIsDefault] = useState(initial?.isDefault ?? false);
+  const defaultLocked = initial?.isDefault === true;
 
   return (
     <Card>
@@ -151,11 +152,11 @@ function PaymentMethodForm({
             <Label className="text-xs">Name (EN)</Label>
             <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} />
           </div>
-          <div className="flex items-end gap-2 pb-1">
-            <div className="flex items-center gap-2">
-              <Switch checked={isDefault} onCheckedChange={setIsDefault} />
-              <Label className="text-xs">Default</Label>
-            </div>
+	          <div className="flex items-end gap-2 pb-1">
+	            <div className="flex items-center gap-2">
+	              <Switch checked={isDefault} onCheckedChange={setIsDefault} disabled={defaultLocked} />
+	              <Label className="text-xs">Default</Label>
+	            </div>
           </div>
         </div>
         <div className="flex gap-2">

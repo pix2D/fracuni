@@ -1,0 +1,18 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { CompanyForm } from "@/components/CompanyForm";
+import { getCompany } from "@/lib/companies";
+
+const id = Number(Astro.params.id);
+const company = Number.isInteger(id) && id > 0 ? await getCompany(id) : null;
+---
+
+<Layout>
+  {company ? (
+    <CompanyForm client:load company={company} />
+  ) : (
+    <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+      Company not found.
+    </div>
+  )}
+</Layout>

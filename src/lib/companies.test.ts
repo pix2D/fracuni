@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   createCompany,
+  createCompanyWithSetup,
   getCompany,
   listCompanies,
   updateCompany,
@@ -9,6 +10,7 @@ import {
   updateLocation,
   deleteLocation,
   createPaymentMethod,
+  updatePaymentMethod,
   deletePaymentMethod,
 } from "@/lib/companies";
 import type { CompanyInput } from "@/lib/companies";
@@ -53,6 +55,29 @@ describe("companies", () => {
     expect(fetched!.emailSubjectTemplate).toBe("Račun {broj}");
     expect(fetched!.defaultPaymentTermsDays).toBe(15);
     expect(fetched!.issuerName).toBe("Marko Marković");
+  });
+
+  it("creates a company with initial Locations and Payment Methods atomically", async () => {
+    const created = await createCompanyWithSetup({
+      ...COMPANY_INPUT,
+      defaultPaymentTermsDays: 15,
+      locations: [
+        { number: 1, nameHr: "Zagreb", nameEn: "Zagreb", isDefault: true },
+        { number: 2, nameHr: "Split", nameEn: "Split", isDefault: false },
+      ],
+      paymentMethods: [
+        { number: 1, nameHr: "Transakcijski", nameEn: "Bank transfer", isDefault: true },
+      ],
+    });
+
+    expect(created.name).toBe("Firefly One d.o.o.");
+    expect(created.locations).toMatchObject([
+      { number: 1, nameHr: "Zagreb", isDefault: true },
+      { number: 2, nameHr: "Split", isDefault: false },
+    ]);
+    expect(created.paymentMethods).toMatchObject([
+      { number: 1, nameHr: "Transakcijski", isDefault: true },
+    ]);
   });
 
   it("lists companies ordered by name", async () => {
@@ -142,6 +167,15 @@ describe("locations", () => {
     expect(updated.nameHr).toBe("Novi Zagreb");
     expect(updated.nameEn).toBe("New Zagreb");
   });
+
+  it("cannot unset the default location directly", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const loc = await createLocation(company.id, { number: 1, nameHr: "Zagreb" });
+
+    await expect(updateLocation(loc.id, { isDefault: false })).rejects.toThrow(
+      "Cannot unset the default location",
+    );
+  });
 });
 
 describe("payment methods", () => {
@@ -181,5 +215,14 @@ describe("payment methods", () => {
     const fetched = await getCompany(company.id);
     expect(fetched!.paymentMethods).toHaveLength(1);
     expect(fetched!.paymentMethods[0]!.isDefault).toBe(true);
+  });
+
+  it("cannot unset the default payment method directly", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const pm = await createPaymentMethod(company.id, { number: 1, nameHr: "Virman" });
+
+    await expect(updatePaymentMethod(pm.id, { isDefault: false })).rejects.toThrow(
+      "Cannot unset the default payment method",
+    );
   });
 });

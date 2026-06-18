@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
-import { sql } from "kysely";
+import type { Insertable, Updateable } from "kysely";
+import type { DB } from "@/lib/db.generated";
 import { CURRENCY_CODES } from "@/lib/currency";
 import {
   DEFAULT_OFFER_VALIDITY_DAYS,
@@ -24,6 +25,12 @@ const DEFAULTS: Settings = {
 };
 
 export type SettingsInput = Partial<Omit<Settings, "supportedCurrencies"> & { supportedCurrencies: string[] }>;
+type SettingsInsert = Insertable<DB["settings"]>;
+type SettingsUpdate = Updateable<DB["settings"]>;
+
+function currentTimestamp(): string {
+  return new Date().toISOString().slice(0, 19).replace("T", " ");
+}
 
 export async function getSettings(): Promise<Settings> {
   const db = getDb();
@@ -46,22 +53,36 @@ export async function getSettings(): Promise<Settings> {
 
 export async function updateSettings(input: SettingsInput): Promise<Settings> {
   const db = getDb();
-  const values: Record<string, unknown> = { id: 1 };
+  const updatedAt = currentTimestamp();
+  const values: SettingsInsert = { id: 1, updatedAt };
+  const updates: SettingsUpdate = { updatedAt };
 
-  if (input.defaultVatRate !== undefined) values.defaultVatRate = input.defaultVatRate;
-  if (input.supportedCurrencies !== undefined) values.supportedCurrencies = JSON.stringify(input.supportedCurrencies);
-  if (input.defaultPaymentTermsDays !== undefined) values.defaultPaymentTermsDays = input.defaultPaymentTermsDays;
-  if (input.defaultOfferValidityDays !== undefined) values.defaultOfferValidityDays = input.defaultOfferValidityDays;
-  if (input.postmarkApiKey !== undefined) values.postmarkApiKey = input.postmarkApiKey;
-
-  values.updatedAt = sql`datetime('now')`;
+  if (input.defaultVatRate !== undefined) {
+    values.defaultVatRate = input.defaultVatRate;
+    updates.defaultVatRate = input.defaultVatRate;
+  }
+  if (input.supportedCurrencies !== undefined) {
+    const supportedCurrencies = JSON.stringify(input.supportedCurrencies);
+    values.supportedCurrencies = supportedCurrencies;
+    updates.supportedCurrencies = supportedCurrencies;
+  }
+  if (input.defaultPaymentTermsDays !== undefined) {
+    values.defaultPaymentTermsDays = input.defaultPaymentTermsDays;
+    updates.defaultPaymentTermsDays = input.defaultPaymentTermsDays;
+  }
+  if (input.defaultOfferValidityDays !== undefined) {
+    values.defaultOfferValidityDays = input.defaultOfferValidityDays;
+    updates.defaultOfferValidityDays = input.defaultOfferValidityDays;
+  }
+  if (input.postmarkApiKey !== undefined) {
+    values.postmarkApiKey = input.postmarkApiKey;
+    updates.postmarkApiKey = input.postmarkApiKey;
+  }
 
   await db
     .insertInto("settings")
-    .values(values as never)
-    .onConflict((oc) =>
-      oc.column("id").doUpdateSet(values as never),
-    )
+    .values(values)
+    .onConflict((oc) => oc.column("id").doUpdateSet(updates))
     .execute();
 
   return getSettings();
