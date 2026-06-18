@@ -92,7 +92,8 @@ export function InvoiceForm({
   onFinalize,
   onCancel,
 }: Props) {
-  const noun = documentType === DOCUMENT_TYPE.CREDIT_NOTE ? "Credit Note" : "Invoice";
+  const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
+  const noun = isCreditNote ? "Credit Note" : "Invoice";
   const defaultCurrency = (client?: Client): string => {
     const supported = settings.supportedCurrencies;
     if (client?.defaultCurrency && supported.includes(client.defaultCurrency)) {
@@ -123,8 +124,8 @@ export function InvoiceForm({
         lineItems: invoice.lineItems.map((li) => ({
           descriptionHr: li.descriptionHr ?? "",
           descriptionEn: li.descriptionEn ?? "",
-          quantity: li.quantity != null ? String(li.quantity) : "",
-          unitPrice: li.unitPrice != null ? String(li.unitPrice) : "",
+          quantity: li.quantity != null ? String(isCreditNote ? Math.abs(li.quantity) : li.quantity) : "",
+          unitPrice: li.unitPrice != null ? String(isCreditNote ? Math.abs(li.unitPrice) : li.unitPrice) : "",
         })),
         dueDateManual: true,
       };
@@ -227,10 +228,14 @@ export function InvoiceForm({
     setState((prev) => ({ ...prev, dueDate: date, dueDateManual: true }));
   }
 
-  const totalsItems = state.lineItems.map((li) => ({
-    quantity: parseDecimal(li.quantity) ?? 0,
-    unitPrice: parseDecimal(li.unitPrice) ?? 0,
-  }));
+  const totalsItems = state.lineItems.map((li) => {
+    const quantity = parseDecimal(li.quantity) ?? 0;
+    const unitPrice = parseDecimal(li.unitPrice) ?? 0;
+    return {
+      quantity: isCreditNote ? Math.abs(quantity) : quantity,
+      unitPrice: isCreditNote ? -Math.abs(unitPrice) : unitPrice,
+    };
+  });
   const totals = currencyCode
     ? computeInvoiceTotals(totalsItems, currencyCode, {
         domestic,
@@ -239,6 +244,12 @@ export function InvoiceForm({
     : null;
 
   function buildPayload(): InvoiceInput {
+    const payloadNumber = (value: string): number | null => {
+      const parsed = parseDecimal(value);
+      if (parsed === null) return null;
+      return isCreditNote ? Math.abs(parsed) : parsed;
+    };
+
     return {
       type: documentType,
       companyId: company.id,
@@ -263,8 +274,8 @@ export function InvoiceForm({
         .map((li) => ({
           descriptionHr: li.descriptionHr.trim() || null,
           descriptionEn: domestic ? null : li.descriptionEn.trim() || null,
-          quantity: parseDecimal(li.quantity),
-          unitPrice: parseDecimal(li.unitPrice),
+          quantity: payloadNumber(li.quantity),
+          unitPrice: payloadNumber(li.unitPrice),
         })),
     };
   }
@@ -478,6 +489,7 @@ export function InvoiceForm({
             catalog={catalog}
             onChange={(items) => setState((p) => ({ ...p, lineItems: items }))}
             disabled={readOnly}
+            negativeAmounts={isCreditNote}
           />
         </CardContent>
       </Card>

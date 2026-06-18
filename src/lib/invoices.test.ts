@@ -122,6 +122,30 @@ describe("invoices data layer", () => {
     expect(invoices[0]!.type).toBe("invoice");
   });
 
+  it("normalizes Credit Note line items on create", async () => {
+    const { company } = await setupCompany();
+
+    const creditNote = await createInvoice({
+      companyId: company.id,
+      type: "credit_note",
+      lineItems: [
+        { descriptionHr: "Refund A", quantity: -2, unitPrice: 150 },
+        { descriptionHr: "Refund B", quantity: 1, unitPrice: -25 },
+      ],
+    });
+
+    expect(creditNote.lineItems[0]).toMatchObject({
+      descriptionHr: "Refund A",
+      quantity: 2,
+      unitPrice: -150,
+    });
+    expect(creditNote.lineItems[1]).toMatchObject({
+      descriptionHr: "Refund B",
+      quantity: 1,
+      unitPrice: -25,
+    });
+  });
+
   it("replaces line items on update, recalculating positions", async () => {
     const { company } = await setupCompany();
     const invoice = await createInvoice({
@@ -140,6 +164,26 @@ describe("invoices data layer", () => {
     expect(updated.currency).toBe("USD");
     expect(updated.lineItems).toHaveLength(1);
     expect(updated.lineItems[0]).toMatchObject({ position: 1, descriptionHr: "Only" });
+  });
+
+  it("normalizes Credit Note line items on update", async () => {
+    const { company } = await setupCompany();
+    const creditNote = await createInvoice({
+      companyId: company.id,
+      type: "credit_note",
+      lineItems: [{ descriptionHr: "Old", quantity: 1, unitPrice: 10 }],
+    });
+
+    const updated = await updateInvoice(creditNote.id, {
+      lineItems: [{ descriptionHr: "Replacement", quantity: -3, unitPrice: 40 }],
+    });
+
+    expect(updated.lineItems).toHaveLength(1);
+    expect(updated.lineItems[0]).toMatchObject({
+      descriptionHr: "Replacement",
+      quantity: 3,
+      unitPrice: -40,
+    });
   });
 
   it("keeps existing line items when update omits them", async () => {

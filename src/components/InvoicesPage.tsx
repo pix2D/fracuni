@@ -170,7 +170,7 @@ export function InvoicesPage({
   }
 
   // "Create Credit Note" off a Finalized Invoice: the server pre-fills a Draft
-  // Credit Note with negated amounts; we send the user to the Credit Notes page
+  // Credit Note with negative amounts; we send the user to the Credit Notes page
   // to review and finalize it.
   async function handleCreateCreditNote(id: number) {
     const res = await fetch(`/api/invoices/${id}/credit-note`, { method: "POST" });

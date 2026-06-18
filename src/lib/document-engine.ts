@@ -249,21 +249,16 @@ export async function markInvoicePaid(id: number, paymentDate: string): Promise<
   return paid;
 }
 
-// Negating the unit price (not the quantity) yields negative line amounts while
-// leaving the quantity a natural positive count, matching how a user enters a
-// Credit Note from scratch.
-function negate(value: number | null): number | null {
-  return value == null ? value : -value;
-}
-
 /**
  * Create a Draft Credit Note from an existing Finalized Invoice.
  *
- * Pre-fills every field from the source Invoice with all amounts negated, and
- * records the source's Document Number so the refund is traceable to the
- * original (User Story 32). The new Credit Note starts as a Draft with no
- * Document Number — that is assigned later at finalization, sharing the
- * Invoice/Credit Note sequence for its (Company, year, Payment Method).
+ * Pre-fills every field from the source Invoice and records the source's
+ * Document Number so the refund is traceable to the original (User Story 32).
+ * Credit Note line amounts are normalized by the invoice data layer: quantities
+ * stay positive, unit prices become negative magnitudes. The new Credit Note
+ * starts as a Draft with no Document Number — that is assigned later at
+ * finalization, sharing the Invoice/Credit Note sequence for its (Company, year,
+ * Payment Method).
  */
 export async function createCreditNoteFromInvoice(sourceId: number): Promise<Invoice> {
   const source = await getInvoice(sourceId);
@@ -296,7 +291,7 @@ export async function createCreditNoteFromInvoice(sourceId: number): Promise<Inv
       descriptionHr: li.descriptionHr,
       descriptionEn: li.descriptionEn,
       quantity: li.quantity,
-      unitPrice: negate(li.unitPrice),
+      unitPrice: li.unitPrice,
     })),
   });
 }

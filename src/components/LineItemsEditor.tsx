@@ -36,9 +36,18 @@ interface Props {
   catalog: CatalogEntry[];
   onChange: (items: LineItemRow[]) => void;
   disabled?: boolean;
+  negativeAmounts?: boolean;
 }
 
-export function LineItemsEditor({ items, domestic, currencyCode, catalog, onChange, disabled = false }: Props) {
+export function LineItemsEditor({
+  items,
+  domestic,
+  currencyCode,
+  catalog,
+  onChange,
+  disabled = false,
+  negativeAmounts = false,
+}: Props) {
   function updateRow(index: number, patch: Partial<LineItemRow>) {
     onChange(items.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
@@ -71,7 +80,9 @@ export function LineItemsEditor({ items, domestic, currencyCode, catalog, onChan
     const qty = parseDecimal(row.quantity);
     const price = parseDecimal(row.unitPrice);
     if (qty === null || price === null) return "—";
-    return formatMoney(lineItemAmount(qty, price, currencyCode));
+    const signedQty = negativeAmounts ? Math.abs(qty) : qty;
+    const signedPrice = negativeAmounts ? -Math.abs(price) : price;
+    return formatMoney(lineItemAmount(signedQty, signedPrice, currencyCode));
   }
 
   return (

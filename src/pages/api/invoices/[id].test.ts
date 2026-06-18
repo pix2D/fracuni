@@ -106,6 +106,31 @@ describe("PUT /api/invoices/:id", () => {
     expect(body.lineItems[0].descriptionHr).toBe("New");
   });
 
+  it("normalizes draft Credit Note line items on update", async () => {
+    const company = await createCompany(COMPANY_INPUT);
+    const creditNote = await createInvoice({
+      companyId: company.id,
+      type: "credit_note",
+      lineItems: [{ descriptionHr: "Old", quantity: 1, unitPrice: 5 }],
+    });
+
+    const response = await PUT(apiContext({
+      params: { id: String(creditNote.id) },
+      request: putRequest(creditNote.id, {
+        lineItems: [{ descriptionHr: "Refund", quantity: -2, unitPrice: 80 }],
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.lineItems).toHaveLength(1);
+    expect(body.lineItems[0]).toMatchObject({
+      descriptionHr: "Refund",
+      quantity: 2,
+      unitPrice: -80,
+    });
+  });
+
   it("returns 409 when updating a Finalized invoice", async () => {
     const id = await finalizedInvoiceId();
 

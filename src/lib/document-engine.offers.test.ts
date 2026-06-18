@@ -246,6 +246,33 @@ describe("duplicateDocument", () => {
     expect(dup.lineItems[0]).toMatchObject({ descriptionHr: "A", quantity: 1, unitPrice: 50 });
   });
 
+  it("duplicates a Credit Note into a Draft Credit Note with negative amounts", async () => {
+    const ids = await setup();
+    const creditNote = await finalizeInvoice(
+      (await createInvoice({
+        ...ids,
+        type: DOCUMENT_TYPE.CREDIT_NOTE,
+        currency: "EUR",
+        issueDate: "2026-01-01",
+        dueDate: "2026-01-16",
+        lineItems: [{ descriptionHr: "Refund", quantity: 2, unitPrice: 50 }],
+      })).id,
+    );
+
+    const dup = await duplicateDocument(creditNote.id);
+
+    expect(dup.type).toBe(DOCUMENT_TYPE.CREDIT_NOTE);
+    expect(dup.status).toBe("draft");
+    expect(dup.documentNumber).toBeNull();
+    expect(dup.issueDate).toBe(today);
+    expect(dup.dueDate).toBe(todayPlusDays(15));
+    expect(dup.lineItems[0]).toMatchObject({
+      descriptionHr: "Refund",
+      quantity: 2,
+      unitPrice: -50,
+    });
+  });
+
   it("re-expands Service Catalog placeholders against today", async () => {
     const ids = await setup();
     const draft = await createOffer({

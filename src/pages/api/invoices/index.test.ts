@@ -91,7 +91,7 @@ describe("POST /api/invoices", () => {
           companyId: company.id,
           type: "credit_note",
           currency: "EUR",
-          lineItems: [{ descriptionHr: "Povrat", quantity: 1, unitPrice: -100 }],
+          lineItems: [{ descriptionHr: "Povrat", quantity: -1, unitPrice: 100 }],
         }),
       }),
     }));
@@ -100,6 +100,7 @@ describe("POST /api/invoices", () => {
     const body = await response.json();
     expect(body.type).toBe("credit_note");
     expect(body.status).toBe("draft");
+    expect(body.lineItems[0].quantity).toBe(1);
     expect(body.lineItems[0].unitPrice).toBe(-100);
   });
 

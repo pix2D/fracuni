@@ -71,23 +71,46 @@ function mapForeignKeyError(error: unknown): never {
   throw error;
 }
 
+function positiveMagnitude(value: number | null | undefined): number | null | undefined {
+  return value == null ? value : Math.abs(value);
+}
+
+function negativeMagnitude(value: number | null | undefined): number | null | undefined {
+  if (value == null) return value;
+  const magnitude = Math.abs(value);
+  return magnitude === 0 ? 0 : -magnitude;
+}
+
+function normalizeLineItem(type: DocumentType, item: LineItemInput): LineItemInput {
+  if (type !== DOCUMENT_TYPE.CREDIT_NOTE) return item;
+  return {
+    ...item,
+    quantity: positiveMagnitude(item.quantity),
+    unitPrice: negativeMagnitude(item.unitPrice),
+  };
+}
+
 async function insertLineItems(
   trx: Transaction<DB>,
   invoiceId: number,
   lineItems: LineItemInput[],
+  type: DocumentType,
 ): Promise<void> {
   if (lineItems.length === 0) return;
   await trx
     .insertInto("lineItems")
     .values(
-      lineItems.map((item, index) => ({
-        invoiceId,
-        position: index + 1,
-        descriptionHr: item.descriptionHr ?? null,
-        descriptionEn: item.descriptionEn ?? null,
-        quantity: item.quantity ?? null,
-        unitPrice: item.unitPrice ?? null,
-      })),
+      lineItems.map((input, index) => {
+        const item = normalizeLineItem(type, input);
+        return {
+          invoiceId,
+          position: index + 1,
+          descriptionHr: item.descriptionHr ?? null,
+          descriptionEn: item.descriptionEn ?? null,
+          quantity: item.quantity ?? null,
+          unitPrice: item.unitPrice ?? null,
+        };
+      }),
     )
     .execute();
 }
@@ -134,7 +157,7 @@ export async function createInvoice(input: InvoiceInput): Promise<Invoice> {
       mapForeignKeyError(error);
     }
 
-    await insertLineItems(trx, row.id!, input.lineItems ?? []);
+    await insertLineItems(trx, row.id!, input.lineItems ?? [], row.type as DocumentType);
     const lineItemRows = await loadLineItems(trx, row.id!);
     return toInvoice(row, lineItemRows);
   });
@@ -247,7 +270,7 @@ export async function updateInvoice(
     // Line items are replaced wholesale so positions stay contiguous after reordering.
     if (input.lineItems !== undefined) {
       await trx.deleteFrom("lineItems").where("invoiceId", "=", id).execute();
-      await insertLineItems(trx, id, input.lineItems);
+      await insertLineItems(trx, id, input.lineItems, (input.type ?? current.type) as DocumentType);
     }
 
     const lineItemRows = await loadLineItems(trx, id);
