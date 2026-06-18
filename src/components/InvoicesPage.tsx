@@ -1,25 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { MarkPaidDialog } from "@/components/MarkPaidDialog";
-import { computeInvoiceTotals } from "@/lib/invoice-totals";
-import { formatMoneyWithCurrency, isCurrencyCode } from "@/lib/currency";
-import { isDomestic } from "@/lib/countries";
+import { DocumentDataTable } from "@/components/documents/DocumentDataTable";
+import { InvoiceDocumentActionsMenu } from "@/components/invoices/InvoiceDocumentActionsMenu";
 import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
-
-// This page drives only Invoices and Credit Notes; Offers have their own page.
-type InvoiceLikeType = typeof DOCUMENT_TYPE.INVOICE | typeof DOCUMENT_TYPE.CREDIT_NOTE;
 import type { Client } from "@/lib/clients";
 import type { CompanyWithRelations } from "@/lib/companies";
 import type { CatalogEntry } from "@/lib/service-catalog";
@@ -31,9 +18,9 @@ interface Props {
   clients: Client[];
   catalog: CatalogEntry[];
   settings: Settings;
-  // Invoices and Credit Notes share this list/form; the discriminator switches
-  // the labels, the fetched list, and the type-specific actions.
-  documentType?: InvoiceLikeType;
+  // Invoices and Credit Notes share this page; the discriminator switches
+  // labels, fetched document type, and type-specific actions.
+  documentType?: typeof DOCUMENT_TYPE.INVOICE | typeof DOCUMENT_TYPE.CREDIT_NOTE;
 }
 
 const COPY = {
@@ -56,8 +43,8 @@ export function InvoicesPage({
   settings,
   documentType = DOCUMENT_TYPE.INVOICE,
 }: Props) {
-  const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
   const copy = COPY[documentType];
+  const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [view, setView] = useState<"list" | "form">("list");
   const [editing, setEditing] = useState<Invoice | null>(null);
@@ -74,22 +61,6 @@ export function InvoicesPage({
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
-
-  function clientName(id: number | null): string {
-    if (id === null) return "—";
-    return clients.find((c) => c.id === id)?.name ?? "—";
-  }
-
-  function invoiceTotal(invoice: Invoice): string {
-    if (!invoice.currency || !isCurrencyCode(invoice.currency)) return "—";
-    const domestic = isDomestic(clients.find((c) => c.id === invoice.clientId)?.country);
-    const totals = computeInvoiceTotals(
-      invoice.lineItems.map((li) => ({ quantity: li.quantity ?? 0, unitPrice: li.unitPrice ?? 0 })),
-      invoice.currency,
-      { domestic, vatRate: settings.defaultVatRate },
-    );
-    return formatMoneyWithCurrency(totals.total);
-  }
 
   async function handleSave(data: InvoiceInput) {
     const url = editing ? `/api/invoices/${editing.id}` : "/api/invoices";
@@ -263,90 +234,49 @@ export function InvoicesPage({
         </div>
       )}
 
-      {invoices.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            {copy.empty}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Number</TableHead>
-                {isCreditNote && <TableHead>Ref. Invoice</TableHead>}
-                <TableHead>Client</TableHead>
-                <TableHead>Issue Date</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-40" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoices.map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="text-muted-foreground">
-                    {invoice.documentNumber ?? "—"}
-                  </TableCell>
-                  {isCreditNote && (
-                    <TableCell className="text-muted-foreground">
-                      {invoice.originalInvoiceNumber ?? "—"}
-                    </TableCell>
-                  )}
-                  <TableCell className="font-medium">{clientName(invoice.clientId)}</TableCell>
-                  <TableCell>{invoice.issueDate ?? "—"}</TableCell>
-                  <TableCell className="tabular-nums">{invoiceTotal(invoice)}</TableCell>
-                  <TableCell>
-                    <Badge variant={invoice.status === INVOICE_STATUS.DRAFT ? "secondary" : "default"}>
-                      {invoice.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(invoice)}>
-                        {invoice.status === INVOICE_STATUS.DRAFT ? "Edit" : "View"}
-                      </Button>
-                      {invoice.status === INVOICE_STATUS.FINALIZED && (
-                        <>
-                          <Button variant="ghost" size="sm" onClick={() => openSend(invoice)}>
-                            Send Email
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleMarkSent(invoice.id)}>
-                            Mark Sent
-                          </Button>
-                        </>
-                      )}
-                      {invoice.status === INVOICE_STATUS.SENT && (
-                        <Button variant="ghost" size="sm" onClick={() => openPay(invoice)}>
-                          Mark as Paid
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm" onClick={() => handleDuplicate(invoice.id)}>
-                        Duplicate
-                      </Button>
-                      {invoice.status === INVOICE_STATUS.DRAFT && (
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice.id)}>
-                          Delete
-                        </Button>
-                      )}
-                      {!isCreditNote && invoice.status !== INVOICE_STATUS.DRAFT && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCreateCreditNote(invoice.id)}
-                        >
-                          Credit Note
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
+      <DocumentDataTable
+        documents={invoices}
+        clients={clients}
+        settings={settings}
+        empty={copy.empty}
+        documentLabel={{
+          singular: isCreditNote ? "credit note" : "invoice",
+          plural: isCreditNote ? "credit notes" : "invoices",
+        }}
+        dateLabel="Issue Date"
+        statusOptions={[
+          { value: INVOICE_STATUS.DRAFT, label: "Draft" },
+          { value: INVOICE_STATUS.FINALIZED, label: "Finalized" },
+          { value: INVOICE_STATUS.SENT, label: "Sent" },
+          { value: INVOICE_STATUS.PAID, label: "Paid" },
+        ]}
+        summary={
+          isCreditNote
+            ? [{ label: "Credited", include: () => true }]
+            : [
+                {
+                  label: "Outstanding",
+                  include: (row) =>
+                    row.status === INVOICE_STATUS.FINALIZED || row.status === INVOICE_STATUS.SENT,
+                },
+                { label: "Revenue", include: () => true },
+              ]
+        }
+        showOriginalInvoiceNumber={isCreditNote}
+        renderActions={(invoice) => (
+          <InvoiceDocumentActionsMenu
+            invoice={invoice}
+            isCreditNote={isCreditNote}
+            onOpen={openEdit}
+            onSend={openSend}
+            onMarkSent={handleMarkSent}
+            onMarkPaid={openPay}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+            onCreateCreditNote={handleCreateCreditNote}
+          />
+        )}
+      />
 
       <SendEmailDialog invoice={sending} onClose={() => setSending(null)} onSent={handleSent} />
       <MarkPaidDialog invoice={paying} onClose={() => setPaying(null)} onPaid={handlePaid} />
