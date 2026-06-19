@@ -29,8 +29,16 @@ A legal entity that issues documents. Has its own branding, bank details, Locati
 _Avoid_: Organization, business, issuer
 
 **Client (Kupac)**:
-A recipient of documents. Shared across all Companies. Has a free-text address block, country, optional OIB (domestic) or VAT number (foreign), and additional tax ID key-value pairs.
+A recipient of documents. Shared across all Companies. A Client is explicitly either a **Business** or a **Person**. Has a free-text address block, country, optional tax identifiers, default document values, and additional tax ID key-value pairs.
 _Avoid_: Customer, buyer
+
+**Business Client**:
+A legal/entity Client receiving documents in a business capacity. Croatian Business Clients normally have an OIB. Foreign EU Business Clients may have a VAT Number; if provided, VIES Verification is required for reverse charge. Non-EU Business Clients are treated as outside the Croatian/EU VAT scope for the ordinary services this app handles.
+_Avoid_: B2B account
+
+**Person Client**:
+A natural-person Client receiving documents as a final consumer. Does not participate in VIES/reverse charge. Croatian and EU Person Clients are charged Croatian PDV for the ordinary services this app handles. Non-EU Person Clients are treated as outside the Croatian/EU VAT scope.
+_Avoid_: Consumer, buyer
 
 **Location (Mjesto izdavanja)**:
 A physical issuing location belonging to a Company. Has a number (used in the Document Number) and a multilingual name. Appears as "Mjesto izdavanja" on the document.
@@ -51,20 +59,28 @@ _Avoid_: Item, row, entry
 ### Tax & Compliance
 
 **OIB**:
-Croatian personal/company identification number (11 digits). Used for domestic Clients.
+Croatian personal/company identification number (11 digits). Required for Croatian Business Clients. Optional for Croatian Person Clients if the issuer chooses to store it.
 _Avoid_: Tax ID (ambiguous)
 
 **VAT Number**:
-EU VAT identification number. Used for foreign Clients. Triggers a VIES Verification when present on a non-Croatian Client.
+EU VAT identification number. Used for EU Business Clients outside Croatia. Triggers a VIES Verification when present.
 _Avoid_: VAT ID, tax number
 
 **VIES Verification**:
-A check against the EU VIES service to validate a Client's VAT Number. Required for reverse charge invoices. The full response is stored as proof for tax audits. A failed check blocks finalization.
+A check against the EU VIES service to validate a Business Client's VAT Number. Required for reverse charge invoices. The full response is stored as proof for tax audits. A failed check blocks finalization.
 _Avoid_: VAT check, VAT validation
 
 **Reverse Charge**:
-Tax mechanism where VAT liability shifts to the buyer. Applies when a foreign Client has a valid VAT Number (confirmed via VIES Verification). No PDV is charged; legal text is shown instead.
+Tax mechanism where VAT liability shifts to the buyer. Applies when a foreign EU Business Client has a valid VAT Number confirmed via VIES Verification. No PDV is charged; legal text is shown instead.
 _Avoid_: Zero-rate, VAT exempt
+
+**Croatian PDV**:
+The standard Croatian VAT charged by the issuing Company. Applies to Croatian Clients, EU Person Clients, and EU Business Clients when no VAT Number is provided. The app currently handles ordinary services only, not special B2C digital-service VAT regimes.
+_Avoid_: Domestic-only VAT
+
+**Non-EU Outside Scope**:
+Tax treatment for Clients outside the EU. For MVP ordinary services, no Croatian PDV is charged for non-EU Business or Person Clients. This is distinct from EU reverse charge: no VIES Verification is available or required.
+_Avoid_: Reverse charge
 
 **Exchange Rate (Tečaj)**:
 The HNB (Croatian National Bank) rate captured at Invoice finalization for non-EUR currencies. The latest available rate on or before the invoice date is used. Stored on the Invoice with the effective date.
@@ -98,7 +114,7 @@ _Avoid_: Settled, closed, completed
 - A **Credit Note** may reference the original **Invoice** it refunds
 - An **Offer** can be converted into a **Draft** **Invoice**
 - A **Line Item** belongs to one document (Invoice, Credit Note, or Offer)
-- A **VIES Verification** is stored per Invoice for non-Croatian Clients with a VAT Number
+- A **VIES Verification** is stored per Invoice for foreign EU **Business Clients** with a VAT Number
 
 ## Example dialogue
 
@@ -108,9 +124,16 @@ _Avoid_: Settled, closed, completed
 > **Dev:** "If we issue a Credit Note, does that use the next Invoice number?"
 > **Domain expert:** "Yes. Credit Notes and Invoices share one sequence per Company per year. If Invoice 5 was the last document, the Credit Note is number 6."
 
-> **Dev:** "A Client in Germany has a VAT Number. Do we charge PDV?"
+> **Dev:** "A Business Client in Germany has a VAT Number. Do we charge PDV?"
 > **Domain expert:** "No. We run a VIES Verification first. If it passes, the Invoice is reverse charge — no PDV, just the legal text. If VIES fails, the Invoice stays in Draft."
+
+> **Dev:** "An EU Business Client has no VAT Number. Do we still reverse charge?"
+> **Domain expert:** "No. If there is no VAT Number, we charge Croatian PDV. Person Clients never use VIES/reverse charge."
+
+> **Dev:** "What about a Client outside the EU?"
+> **Domain expert:** "For the ordinary services this app handles, non-EU Clients are outside scope and no Croatian PDV is charged, regardless of Business or Person type."
 
 ## Flagged ambiguities
 
 - "Invoice number" was used to mean both the sequence integer and the full formatted Document Number (e.g. `03/1/1`) — resolved: **Document Number** is the full format, the integer part is just the sequence.
+- The original MVP wording tied OIB/VAT mostly to country. Resolved: Client Type (Business vs Person) is explicit and participates in tax treatment.

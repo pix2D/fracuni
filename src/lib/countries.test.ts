@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { COUNTRIES, CROATIA, countryName, isDomestic } from "@/lib/countries";
+import { COUNTRIES, CROATIA, countryName, isDomestic, isEuCountry, isNonEuCountry } from "@/lib/countries";
 
 describe("countries", () => {
   it("treats the Croatian ISO code as domestic", () => {
@@ -23,5 +23,14 @@ describe("countries", () => {
 
   it("includes Croatia in the country list keyed by code", () => {
     expect(COUNTRIES.find((c) => c.code === CROATIA)?.name).toBe("Croatia");
+  });
+
+  it("distinguishes EU and non-EU country codes", () => {
+    expect(isEuCountry("HR")).toBe(true);
+    expect(isEuCountry("DE")).toBe(true);
+    expect(isEuCountry("US")).toBe(false);
+    expect(isNonEuCountry("US")).toBe(true);
+    expect(isNonEuCountry("CH")).toBe(true);
+    expect(isNonEuCountry("DE")).toBe(false);
   });
 });

@@ -11,6 +11,7 @@ useMigratedDb();
 
 const CLIENT_INPUT: ClientInput = {
   name: "Acme GmbH",
+  clientType: "business",
   country: "DE",
   vatNumber: "DE123456789",
   email: "billing@acme.de",
@@ -60,6 +61,39 @@ describe("PUT /api/clients/:id", () => {
     expect(body.name).toBe("Acme AG");
     expect(body.taxIds).toHaveLength(1);
     expect(body.taxIds[0].label).toBe("USt");
+  });
+
+  it("rejects an update that would make a Croatian business client missing OIB", async () => {
+    const client = await createClient({ name: "Ana", clientType: "person", country: "HR" });
+
+    const response = await PUT(apiContext({
+      params: { id: String(client.id) },
+      request: new Request("http://test.local", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientType: "business" }),
+      }),
+    }));
+
+    expect(response.status).toBe(400);
+  });
+
+  it("normalizes tax identifiers against the merged client type and country", async () => {
+    const client = await createClient(CLIENT_INPUT);
+
+    const response = await PUT(apiContext({
+      params: { id: String(client.id) },
+      request: new Request("http://test.local", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientType: "person" }),
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.clientType).toBe("person");
+    expect(body.vatNumber).toBeNull();
   });
 });
 

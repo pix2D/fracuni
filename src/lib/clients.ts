@@ -3,7 +3,8 @@ import type { Selectable } from "kysely";
 import { sql } from "kysely";
 import type { Clients, ClientTaxIds } from "@/lib/db.generated";
 import { conflict, notFound } from "@/lib/app-errors";
-import type { ClientInput } from "@/lib/clients.schema";
+import { parseClientType, type ClientType } from "@/lib/client-types";
+import { normalizeClientInput, normalizeClientPatch, type ClientInput } from "@/lib/clients.schema";
 
 export type { ClientInput, ClientTaxIdInput as TaxIdInput } from "@/lib/clients.schema";
 
@@ -11,7 +12,10 @@ type NonNullId<T extends { id: unknown }> = Omit<T, "id"> & { id: number };
 
 export type TaxId = NonNullId<Selectable<ClientTaxIds>>;
 
-export interface Client extends NonNullId<Selectable<Clients>> {
+type ClientRow = NonNullId<Selectable<Clients>>;
+
+export interface Client extends Omit<ClientRow, "clientType"> {
+  clientType: ClientType;
   taxIds: TaxId[];
 }
 
@@ -23,6 +27,7 @@ function toClient(row: Selectable<Clients>, taxIdRows: Selectable<ClientTaxIds>[
   return {
     ...row,
     id: row.id!,
+    clientType: parseClientType(row.clientType),
     taxIds: taxIdRows.map(toTaxId),
   };
 }
@@ -38,7 +43,7 @@ function isSqliteError(error: unknown, code: string): boolean {
 
 export async function createClient(input: ClientInput): Promise<Client> {
   const db = getDb();
-  const { taxIds, ...clientData } = input;
+  const { taxIds, ...clientData } = normalizeClientInput(input);
 
   return await db.transaction().execute(async (trx) => {
     let row: Selectable<Clients>;
@@ -47,6 +52,7 @@ export async function createClient(input: ClientInput): Promise<Client> {
         .insertInto("clients")
         .values({
           name: clientData.name,
+          clientType: clientData.clientType,
           country: clientData.country,
           address: clientData.address ?? null,
           oib: clientData.oib ?? null,
@@ -138,11 +144,12 @@ export async function getClient(id: number): Promise<Client | null> {
 
 export async function updateClient(id: number, input: Partial<ClientInput>): Promise<Client> {
   const db = getDb();
-  const { taxIds, ...clientData } = input;
+  const { taxIds, ...clientData } = normalizeClientPatch(input);
 
   return await db.transaction().execute(async (trx) => {
     const updates: Record<string, unknown> = { updatedAt: sql`datetime('now')` };
     if (clientData.name !== undefined) updates.name = clientData.name;
+    if (clientData.clientType !== undefined) updates.clientType = clientData.clientType;
     if (clientData.country !== undefined) updates.country = clientData.country;
     if (clientData.address !== undefined) updates.address = clientData.address;
     if (clientData.oib !== undefined) updates.oib = clientData.oib;

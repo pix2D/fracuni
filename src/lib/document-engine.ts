@@ -28,6 +28,7 @@ import {
   type GeneratedPdfArtifacts,
   type GenerateDeps,
 } from "@/lib/pdf-generator";
+import { parseClientType } from "@/lib/client-types";
 
 // Invoices and Credit Notes are priced in EUR by default; only non-EUR documents
 // need an HNB exchange rate captured at finalization.
@@ -155,7 +156,7 @@ async function prepareInvoiceFinalization(
 
   const client = await db
     .selectFrom("clients")
-    .select(["country", "vatNumber"])
+    .select(["clientType", "country", "vatNumber"])
     .where("id", "=", clientId)
     .executeTakeFirst();
   if (!client) throw notFound("Referenced client not found");
@@ -163,6 +164,7 @@ async function prepareInvoiceFinalization(
   // VIES gate — only foreign clients with a VAT Number (reverse charge) are checked.
   let viesResult: ViesSuccess | null = null;
   const treatment = determineTaxTreatment({
+    clientType: parseClientType(client.clientType),
     clientCountry: client.country,
     clientVatNumber: client.vatNumber,
   });

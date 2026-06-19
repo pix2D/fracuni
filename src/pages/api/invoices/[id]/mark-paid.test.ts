@@ -44,7 +44,7 @@ async function sentInvoice() {
     nameHr: "Transakcijski",
     isDefault: true,
   });
-  const client = await createClient({ name: "Domaći d.o.o.", country: "HR", oib: "98765432109" });
+  const client = await createClient({ name: "Domaći d.o.o.", clientType: "business", country: "HR", oib: "98765432109" });
   const draft = await createInvoice({
     companyId: company.id,
     clientId: client.id,
@@ -95,7 +95,7 @@ describe("POST /api/invoices/:id/mark-paid", () => {
       nameHr: "Transakcijski",
       isDefault: true,
     });
-    const client = await createClient({ name: "Drugi", country: "HR", oib: "11111111111" });
+    const client = await createClient({ name: "Drugi", clientType: "business", country: "HR", oib: "11111111111" });
     const draft = await createInvoice({
       companyId: company.id,
       clientId: client.id,

@@ -5,6 +5,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .createTable("clients")
     .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
     .addColumn("name", "text", (col) => col.notNull())
+    // Frozen literals; runtime SSOT is CLIENT_TYPE in @/lib/client-types.
+    .addColumn("client_type", "text", (col) => col.notNull().defaultTo("business"))
     .addColumn("country", "text", (col) => col.notNull())
     .addColumn("address", "text")
     .addColumn("oib", "text", (col) => col.unique())

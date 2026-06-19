@@ -44,7 +44,7 @@ async function draftOffer() {
     nameHr: "Transakcijski račun",
     isDefault: true,
   });
-  const client = await createClient({ name: "Domaći d.o.o.", country: "HR", oib: "98765432109" });
+  const client = await createClient({ name: "Domaći d.o.o.", clientType: "business", country: "HR", oib: "98765432109" });
 
   return createOffer({
     companyId: company.id,

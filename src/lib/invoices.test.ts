@@ -37,7 +37,7 @@ async function setupCompany() {
 }
 
 async function setupClient() {
-  return createClient({ name: "Acme GmbH", country: "DE", vatNumber: "DE123456789" });
+  return createClient({ name: "Acme GmbH", clientType: "business", country: "DE", vatNumber: "DE123456789" });
 }
 
 describe("invoices data layer", () => {

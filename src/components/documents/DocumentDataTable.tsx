@@ -39,7 +39,7 @@ import {
   toSmallestUnit,
   type Money,
 } from "@/lib/currency";
-import { isDomestic } from "@/lib/countries";
+import { chargesCroatianPdv, determineTaxTreatment } from "@/lib/tax-engine";
 import { cn } from "@/lib/utils";
 import type { Client } from "@/lib/clients";
 import type { Invoice } from "@/lib/invoices";
@@ -157,7 +157,16 @@ export function DocumentDataTable({
     () =>
       documents.map((document) => {
         const currency = document.currency && isCurrencyCode(document.currency) ? document.currency : "";
-        const domestic = isDomestic(clients.find((c) => c.id === document.clientId)?.country);
+        const clientRecord = clients.find((c) => c.id === document.clientId);
+        const chargeVat = clientRecord
+          ? chargesCroatianPdv(
+              determineTaxTreatment({
+                clientType: clientRecord.clientType,
+                clientCountry: clientRecord.country,
+                clientVatNumber: clientRecord.vatNumber,
+              }),
+            )
+          : false;
         const amount = currency
           ? computeInvoiceTotals(
               document.lineItems.map((li) => ({
@@ -165,7 +174,7 @@ export function DocumentDataTable({
                 unitPrice: li.unitPrice ?? 0,
               })),
               currency,
-              { domestic, vatRate: settings.defaultVatRate },
+              { chargeVat, vatRate: settings.defaultVatRate },
             ).total
           : null;
         const number = numberFormatter(document);

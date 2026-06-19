@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { clientTypeLabel } from "@/lib/client-types";
 import { countryName } from "@/lib/countries";
 import type { Client } from "@/lib/clients";
 
@@ -98,6 +99,7 @@ export function ClientsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Country</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Currency</TableHead>
@@ -109,6 +111,7 @@ export function ClientsPage() {
               {clients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">{client.name}</TableCell>
+                  <TableCell>{clientTypeLabel(client.clientType)}</TableCell>
                   <TableCell>{countryName(client.country)}</TableCell>
                   <TableCell className="text-sm">{client.email}</TableCell>
                   <TableCell>{client.defaultCurrency}</TableCell>

@@ -23,6 +23,7 @@ import {
 import { computeInvoiceTotals } from "@/lib/invoice-totals";
 import { formatMoneyWithCurrency, isCurrencyCode, type CurrencyCode } from "@/lib/currency";
 import { isDomestic } from "@/lib/countries";
+import { chargesCroatianPdv, determineTaxTreatment } from "@/lib/tax-engine";
 import type { Client } from "@/lib/clients";
 import type { CompanyWithRelations } from "@/lib/companies";
 import type { CatalogEntry } from "@/lib/service-catalog";
@@ -182,6 +183,14 @@ export function InvoiceForm({
 
   const selectedClient = clients.find((c) => c.id === state.clientId);
   const domestic = isDomestic(selectedClient?.country);
+  const taxTreatment = selectedClient
+    ? determineTaxTreatment({
+        clientType: selectedClient.clientType,
+        clientCountry: selectedClient.country,
+        clientVatNumber: selectedClient.vatNumber,
+      })
+    : null;
+  const chargeVat = taxTreatment ? chargesCroatianPdv(taxTreatment) : false;
   const currencyCode: CurrencyCode | null = isCurrencyCode(state.currency) ? state.currency : null;
 
   function handleClientChange(value: string) {
@@ -238,7 +247,7 @@ export function InvoiceForm({
   });
   const totals = currencyCode
     ? computeInvoiceTotals(totalsItems, currencyCode, {
-        domestic,
+        chargeVat,
         vatRate: settings.defaultVatRate,
       })
     : null;

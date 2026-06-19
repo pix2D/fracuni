@@ -38,12 +38,20 @@ async function setupCompany(overrides: Partial<typeof COMPANY_INPUT> = {}) {
 
 // Domestic Croatian client — no VIES, EUR, so finalization needs no network.
 async function domesticClient() {
-  return createClient({ name: "Domaći d.o.o.", country: "HR", oib: "98765432109" });
+  return createClient({ name: "Domaći d.o.o.", clientType: "business", country: "HR", oib: "98765432109" });
 }
 
 // Foreign client with a VAT Number — triggers the VIES (reverse charge) gate.
 async function foreignVatClient() {
-  return createClient({ name: "Acme GmbH", country: "DE", vatNumber: "DE123456789" });
+  return createClient({ name: "Acme GmbH", clientType: "business", country: "DE", vatNumber: "DE123456789" });
+}
+
+async function euBusinessNoVatClient() {
+  return createClient({ name: "Acme No VAT GmbH", clientType: "business", country: "DE" });
+}
+
+async function nonEuPersonClient() {
+  return createClient({ name: "Taylor Client", clientType: "person", country: "US" });
 }
 
 type Ids = { companyId: number; clientId: number; locationId: number; paymentMethodId: number };
@@ -62,7 +70,7 @@ async function draft(ids: Ids, overrides: Partial<Parameters<typeof createInvoic
 }
 
 function mockJson(body: unknown, status = 200): typeof fetch {
-  return (async () => new Response(JSON.stringify(body), { status })) as typeof fetch;
+  return async () => new Response(JSON.stringify(body), { status });
 }
 
 const VIES_VALID = mockJson({
@@ -83,17 +91,17 @@ const VIES_INVALID = mockJson({
   address: "---",
 });
 
-const VIES_DOWN: typeof fetch = (async () => {
+const VIES_DOWN: typeof fetch = async () => {
   throw new Error("ECONNREFUSED");
-}) as typeof fetch;
+};
 
 const HNB_USD = mockJson([
   { datum_primjene: "2026-06-13", valuta: "USD", jedinica: 1, srednji_tecaj: "1,0823" },
 ]);
 
-const HNB_DOWN: typeof fetch = (async () => {
+const HNB_DOWN: typeof fetch = async () => {
   throw new Error("ECONNREFUSED");
-}) as typeof fetch;
+};
 
 async function setupDomestic() {
   const { company, location, paymentMethod } = await setupCompany();
@@ -168,7 +176,7 @@ describe("finalizeInvoice — sequence isolation", () => {
     const a = await setupCompany();
     const b = await setupCompany({ oib: "99999999999" });
     const clientA = await domesticClient();
-    const clientB = await createClient({ name: "Drugi", country: "HR", oib: "11111111111" });
+    const clientB = await createClient({ name: "Drugi", clientType: "business", country: "HR", oib: "11111111111" });
 
     const invA = await finalizeInvoice(
       (
@@ -295,6 +303,48 @@ describe("finalizeInvoice — VIES gate", () => {
     // VIES_DOWN would throw if called — finalization must succeed without touching it.
     const finalized = await finalizeInvoice((await draft(ids)).id, { viesFetcher: VIES_DOWN });
     expect(finalized.status).toBe("finalized");
+  });
+
+  it("does not run VIES for an EU business client without a VAT number", async () => {
+    const { company, location, paymentMethod } = await setupCompany();
+    const client = await euBusinessNoVatClient();
+    const drafted = await draft({
+      companyId: company.id,
+      clientId: client.id,
+      locationId: location.id,
+      paymentMethodId: paymentMethod.id,
+    });
+
+    const finalized = await finalizeInvoice(drafted.id, { viesFetcher: VIES_DOWN });
+
+    expect(finalized.status).toBe("finalized");
+    const stored = await getDb()
+      .selectFrom("viesVerifications")
+      .selectAll()
+      .where("invoiceId", "=", drafted.id)
+      .execute();
+    expect(stored).toHaveLength(0);
+  });
+
+  it("does not run VIES for a non-EU person client", async () => {
+    const { company, location, paymentMethod } = await setupCompany();
+    const client = await nonEuPersonClient();
+    const drafted = await draft({
+      companyId: company.id,
+      clientId: client.id,
+      locationId: location.id,
+      paymentMethodId: paymentMethod.id,
+    });
+
+    const finalized = await finalizeInvoice(drafted.id, { viesFetcher: VIES_DOWN });
+
+    expect(finalized.status).toBe("finalized");
+    const stored = await getDb()
+      .selectFrom("viesVerifications")
+      .selectAll()
+      .where("invoiceId", "=", drafted.id)
+      .execute();
+    expect(stored).toHaveLength(0);
   });
 });
 

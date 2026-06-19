@@ -59,6 +59,7 @@ async function readyInvoice() {
   });
   const client = await createClient({
     name: "Domaći d.o.o.",
+    clientType: "business",
     country: "HR",
     oib: "98765432109",
     email: "racuni@domaci.hr",

@@ -33,7 +33,7 @@ function isPdf(bytes: Buffer): boolean {
 }
 
 function mockJson(body: unknown): typeof fetch {
-  return (async () => new Response(JSON.stringify(body), { status: 200 })) as typeof fetch;
+  return async () => new Response(JSON.stringify(body), { status: 200 });
 }
 
 describe("renderHtmlToPdf (real Chromium)", () => {
@@ -71,7 +71,7 @@ describe("generateInvoicePdfs (real Chromium, full pipeline)", () => {
         nameHr: "Transakcijski",
         isDefault: true,
       });
-      const client = await createClient({ name: "Acme GmbH", country: "DE", vatNumber: "DE123456789" });
+      const client = await createClient({ name: "Acme GmbH", clientType: "business", country: "DE", vatNumber: "DE123456789" });
       const draft = await createInvoice({
         companyId: company.id,
         clientId: client.id,

@@ -10,16 +10,16 @@ describe("computeInvoiceTotals", () => {
         { quantity: 1, unitPrice: 50.5 },
       ],
       "EUR",
-      { domestic: false, vatRate: 25 },
+      { chargeVat: false, vatRate: 25 },
     );
     expect(formatMoney(totals.subtotal)).toBe("250,50");
   });
 
-  it("adds 25% PDV for domestic invoices", () => {
+  it("adds 25% PDV when Croatian VAT applies", () => {
     const totals = computeInvoiceTotals(
       [{ quantity: 1, unitPrice: 100 }],
       "EUR",
-      { domestic: true, vatRate: 25 },
+      { chargeVat: true, vatRate: 25 },
     );
     expect(formatMoney(totals.subtotal)).toBe("100,00");
     expect(totals.pdv).not.toBeNull();
@@ -27,18 +27,18 @@ describe("computeInvoiceTotals", () => {
     expect(formatMoney(totals.total)).toBe("125,00");
   });
 
-  it("omits PDV for foreign invoices", () => {
+  it("omits PDV when Croatian VAT does not apply", () => {
     const totals = computeInvoiceTotals(
       [{ quantity: 1, unitPrice: 100 }],
       "EUR",
-      { domestic: false, vatRate: 25 },
+      { chargeVat: false, vatRate: 25 },
     );
     expect(totals.pdv).toBeNull();
     expect(formatMoney(totals.total)).toBe("100,00");
   });
 
   it("returns zero for an empty line item list", () => {
-    const totals = computeInvoiceTotals([], "EUR", { domestic: true, vatRate: 25 });
+    const totals = computeInvoiceTotals([], "EUR", { chargeVat: true, vatRate: 25 });
     expect(formatMoney(totals.subtotal)).toBe("0,00");
     expect(formatMoney(totals.total)).toBe("0,00");
   });
@@ -47,7 +47,7 @@ describe("computeInvoiceTotals", () => {
     const totals = computeInvoiceTotals(
       [{ quantity: 3, unitPrice: 1000 }],
       "HUF",
-      { domestic: false, vatRate: 25 },
+      { chargeVat: false, vatRate: 25 },
     );
     expect(formatMoney(totals.subtotal)).toBe("3.000");
   });

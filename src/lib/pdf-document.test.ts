@@ -93,9 +93,10 @@ function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
 }
 
 function makeClient(overrides: Partial<Client> = {}): Client {
-  return {
+  const base: Client = {
     id: 100,
     name: "Domaći d.o.o.",
+    clientType: "business",
     country: "HR",
     address: "Klijentska 5\n21000 Split",
     oib: "98765432109",
@@ -108,8 +109,9 @@ function makeClient(overrides: Partial<Client> = {}): Client {
     createdAt: "2026-01-01",
     updatedAt: "2026-01-01",
     taxIds: [],
-    ...overrides,
   };
+
+  return { ...base, ...overrides, clientType: overrides.clientType ?? base.clientType };
 }
 
 function input(overrides: Partial<BuildPdfDataInput> = {}): BuildPdfDataInput {
@@ -207,6 +209,45 @@ describe("buildPdfDocumentData — foreign reverse-charge invoice", () => {
       { label: "VAT No.", value: "DE123456789" },
       { label: "EORI", value: "DE999" },
     ]);
+  });
+});
+
+describe("buildPdfDocumentData — EU business client without VAT", () => {
+  const euBusinessWithoutVat = makeClient({
+    name: "No VAT GmbH",
+    country: "DE",
+    oib: null,
+    vatNumber: null,
+  });
+
+  it("charges Croatian PDV and uses the Croatian PDV legal text", () => {
+    const data = buildPdfDocumentData(input({ lang: "en", client: euBusinessWithoutVat }));
+
+    expect(data.totals.subtotal).toBe("200,00");
+    expect(data.totals.vat).toEqual({ rate: "25", amount: "50,00" });
+    expect(data.totals.total).toBe("250,00");
+    expect(data.legalText).toBe("Domaći zakonski tekst.");
+    expect(data.lineItems[0]!.vatPercent).toBe("25");
+  });
+});
+
+describe("buildPdfDocumentData — non-EU outside-scope client", () => {
+  const nonEuPerson = makeClient({
+    name: "Taylor Client",
+    clientType: "person",
+    country: "US",
+    oib: null,
+    vatNumber: null,
+  });
+
+  it("does not charge Croatian PDV or show reverse-charge legal text", () => {
+    const data = buildPdfDocumentData(input({ lang: "en", client: nonEuPerson }));
+
+    expect(data.totals.subtotal).toBe("200,00");
+    expect(data.totals.vat).toBeNull();
+    expect(data.totals.total).toBe("200,00");
+    expect(data.legalText).toBeNull();
+    expect(data.lineItems[0]!.vatPercent).toBe("0");
   });
 });
 

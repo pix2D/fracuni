@@ -58,7 +58,7 @@ async function setupCompany() {
 }
 
 function mockJson(body: unknown): typeof fetch {
-  return (async () => new Response(JSON.stringify(body), { status: 200 })) as typeof fetch;
+  return async () => new Response(JSON.stringify(body), { status: 200 });
 }
 
 const VIES_VALID = mockJson({
@@ -75,6 +75,7 @@ async function readyDomestic(invoiceOverrides: Record<string, unknown> = {}): Pr
   const { company, location, paymentMethod } = await setupCompany();
   const client = await createClient({
     name: "Domaći d.o.o.",
+    clientType: "business",
     country: "HR",
     oib: "98765432109",
     email: "racuni@domaci.hr",
@@ -97,6 +98,7 @@ async function readyForeign(): Promise<Invoice> {
   const { company, location, paymentMethod } = await setupCompany();
   const client = await createClient({
     name: "Acme GmbH",
+    clientType: "business",
     country: "DE",
     vatNumber: "DE123456789",
     email: "billing@acme.de",
@@ -221,7 +223,7 @@ describe("sendInvoiceEmail", () => {
 
   it("refuses to send a draft", async () => {
     const { company, location, paymentMethod } = await setupCompany();
-    const client = await createClient({ name: "Domaći", country: "HR", oib: "98765432109" });
+    const client = await createClient({ name: "Domaći", clientType: "business", country: "HR", oib: "98765432109" });
     const draft = await createInvoice({
       companyId: company.id,
       clientId: client.id,

@@ -30,7 +30,7 @@ async function finalizedInvoiceId(): Promise<number> {
     nameHr: "Transakcijski",
     isDefault: true,
   });
-  const client = await createClient({ name: "Domaći d.o.o.", country: "HR", oib: "98765432109" });
+  const client = await createClient({ name: "Domaći d.o.o.", clientType: "business", country: "HR", oib: "98765432109" });
   const draft = await createInvoice({
     companyId: company.id,
     clientId: client.id,

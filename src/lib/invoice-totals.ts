@@ -15,14 +15,13 @@ export interface TotalsLineItem {
 
 export interface InvoiceTotals {
   subtotal: Money;
-  // null when no PDV applies (foreign / reverse-charge / international).
+  // null when Croatian PDV does not apply (reverse charge / outside scope).
   pdv: Money | null;
   total: Money;
 }
 
 export interface TotalsOptions {
-  // Domestic (Croatian client) invoices carry a PDV line; foreign ones do not.
-  domestic: boolean;
+  chargeVat: boolean;
   vatRate: number;
 }
 
@@ -39,7 +38,7 @@ export function computeInvoiceTotals(
 
   const subtotal = amounts.length > 0 ? sumAmounts(amounts) : moneyFromSmallestUnit(0, currency);
 
-  if (!opts.domestic) {
+  if (!opts.chargeVat) {
     return { subtotal, pdv: null, total: subtotal };
   }
 

@@ -1,6 +1,8 @@
+import { CLIENT_TYPE } from "@/lib/client-types";
 import { COUNTRIES } from "@/lib/countries";
+import { CURRENCY_CODES } from "@/lib/currency";
 import {
-  ClientFieldsSchema,
+  ClientFieldsBaseSchema,
   ClientTaxIdSchema,
   type ClientFieldsInput,
 } from "@/lib/clients.schema";
@@ -14,17 +16,28 @@ export const clientCountryOptions = COUNTRIES.map((country) => ({
   label: country.name,
 }));
 
+export const clientTypeOptions = [
+  { value: CLIENT_TYPE.BUSINESS, label: "Business" },
+  { value: CLIENT_TYPE.PERSON, label: "Person" },
+];
+
+export const clientCurrencyOptions = CURRENCY_CODES.map((code) => ({
+  value: code,
+  label: code,
+}));
+
 export const clientFieldValidators = {
-  name: { onSubmit: ClientFieldsSchema.shape.name },
-  country: { onSubmit: ClientFieldsSchema.shape.country },
-  address: { onSubmit: ClientFieldsSchema.shape.address },
-  oib: { onSubmit: ClientFieldsSchema.shape.oib },
-  vatNumber: { onSubmit: ClientFieldsSchema.shape.vatNumber },
-  defaultCurrency: { onSubmit: ClientFieldsSchema.shape.defaultCurrency },
-  defaultPaymentTermsDays: { onSubmit: ClientFieldsSchema.shape.defaultPaymentTermsDays },
-  defaultOfferValidityDays: { onSubmit: ClientFieldsSchema.shape.defaultOfferValidityDays },
-  email: { onSubmit: ClientFieldsSchema.shape.email },
-  taxIds: { onSubmit: ClientFieldsSchema.shape.taxIds },
+  name: { onSubmit: ClientFieldsBaseSchema.shape.name },
+  clientType: { onSubmit: ClientFieldsBaseSchema.shape.clientType },
+  country: { onSubmit: ClientFieldsBaseSchema.shape.country },
+  address: { onSubmit: ClientFieldsBaseSchema.shape.address },
+  oib: { onSubmit: ClientFieldsBaseSchema.shape.oib },
+  vatNumber: { onSubmit: ClientFieldsBaseSchema.shape.vatNumber },
+  defaultCurrency: { onSubmit: ClientFieldsBaseSchema.shape.defaultCurrency },
+  defaultPaymentTermsDays: { onSubmit: ClientFieldsBaseSchema.shape.defaultPaymentTermsDays },
+  defaultOfferValidityDays: { onSubmit: ClientFieldsBaseSchema.shape.defaultOfferValidityDays },
+  email: { onSubmit: ClientFieldsBaseSchema.shape.email },
+  taxIds: { onSubmit: ClientFieldsBaseSchema.shape.taxIds },
 };
 
 export const clientTaxIdFieldValidators = {
@@ -34,6 +47,7 @@ export const clientTaxIdFieldValidators = {
 
 export const clientDetailDefaults: ClientDetailFieldsInput = {
   name: "",
+  clientType: CLIENT_TYPE.BUSINESS,
   country: "",
   address: "",
   oib: "",
@@ -55,6 +69,7 @@ export const clientDefaults: ClientFieldsInput = {
 
 export const clientDetailFields = {
   name: "name",
+  clientType: "clientType",
   country: "country",
   address: "address",
   oib: "oib",
@@ -72,6 +87,7 @@ export const clientTaxIdsFields = {
 export function clientDefaultsFromClient(client: Client): ClientFieldsInput {
   return {
     name: client.name,
+    clientType: client.clientType,
     country: client.country,
     address: client.address ?? "",
     oib: client.oib ?? "",

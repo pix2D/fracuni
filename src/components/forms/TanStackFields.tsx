@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useFieldContext } from "@/components/forms/app-form-context";
@@ -78,19 +79,27 @@ interface SelectFieldProps {
   label: string;
   placeholder?: string;
   options: Array<{ value: string; label: string }>;
+  emptyLabel?: string;
 }
 
-export function SelectField({ label, placeholder = "Select an option", options }: SelectFieldProps) {
+const EMPTY_SELECT_VALUE = "__empty__";
+
+export function SelectField({ label, placeholder = "Select an option", options, emptyLabel }: SelectFieldProps) {
   const field = useFieldContext<string | null | undefined>();
+  const value = field.state.value || (emptyLabel ? EMPTY_SELECT_VALUE : "");
 
   return (
     <Field data-invalid={!field.state.meta.isValid}>
       <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
-      <Select value={field.state.value ?? ""} onValueChange={field.handleChange}>
+      <Select
+        value={value}
+        onValueChange={(next) => field.handleChange(next === EMPTY_SELECT_VALUE ? "" : next)}
+      >
         <SelectTrigger id={field.name} className="w-full" aria-invalid={!field.state.meta.isValid}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
+          {emptyLabel && <SelectItem value={EMPTY_SELECT_VALUE}>{emptyLabel}</SelectItem>}
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
@@ -98,6 +107,30 @@ export function SelectField({ label, placeholder = "Select an option", options }
           ))}
         </SelectContent>
       </Select>
+      <FieldError errors={normalizeErrors(field.state.meta.errors)} />
+    </Field>
+  );
+}
+
+interface RadioFieldProps {
+  label: string;
+  options: Array<{ value: string; label: string }>;
+}
+
+export function RadioField({ label, options }: RadioFieldProps) {
+  const field = useFieldContext<string | null | undefined>();
+
+  return (
+    <Field data-invalid={!field.state.meta.isValid}>
+      <FieldLabel>{label}</FieldLabel>
+      <RadioGroup value={field.state.value ?? ""} onValueChange={field.handleChange} className="flex flex-wrap gap-3">
+        {options.map((option) => (
+          <Field key={option.value} orientation="horizontal" className="w-auto">
+            <RadioGroupItem id={`${field.name}-${option.value}`} value={option.value} />
+            <FieldLabel htmlFor={`${field.name}-${option.value}`}>{option.label}</FieldLabel>
+          </Field>
+        ))}
+      </RadioGroup>
       <FieldError errors={normalizeErrors(field.state.meta.errors)} />
     </Field>
   );

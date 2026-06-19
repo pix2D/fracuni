@@ -5,6 +5,7 @@
 // holiday client key off the same codes, so domestic detection stays consistent
 // across the form, the data layer, and the tax logic.
 export const CROATIA = "HR";
+const EU_COUNTRY_CODES = new Set(["HR", "DE", "AT", "SI", "IT", "NL", "FR"]);
 
 export interface Country {
   code: string;
@@ -33,4 +34,12 @@ export function countryName(code: string | null | undefined): string {
 
 export function isDomestic(countryCode: string | null | undefined): boolean {
   return countryCode === CROATIA;
+}
+
+export function isEuCountry(countryCode: string | null | undefined): boolean {
+  return !!countryCode && EU_COUNTRY_CODES.has(countryCode);
+}
+
+export function isNonEuCountry(countryCode: string | null | undefined): boolean {
+  return !!countryCode && !isEuCountry(countryCode);
 }

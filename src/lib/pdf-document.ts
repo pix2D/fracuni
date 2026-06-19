@@ -9,8 +9,7 @@ import type { Company, Location, PaymentMethod } from "@/lib/companies";
 import type { Client } from "@/lib/clients";
 import type { DocumentType } from "@/lib/documents";
 import { DOCUMENT_TYPE } from "@/lib/documents";
-import { isDomestic } from "@/lib/countries";
-import { determineTaxTreatment } from "@/lib/tax-engine";
+import { determineTaxTreatment, chargesCroatianPdv } from "@/lib/tax-engine";
 import { computeInvoiceTotals } from "@/lib/invoice-totals";
 import {
   eurEquivalent,
@@ -45,7 +44,7 @@ export interface PdfLineRow {
 
 export interface PdfTotals {
   subtotal: string;
-  /** null for foreign (reverse-charge / international) documents — no PDV line. */
+  /** null for reverse-charge / outside-scope documents — no PDV line. */
   vat: { rate: string; amount: string } | null;
   total: string;
   currency: string;
@@ -115,12 +114,11 @@ function requireCurrency(currency: string | null): CurrencyCode {
 
 function buildTaxIds(client: Client, lang: PdfLang): { label: string; value: string }[] {
   const ids: { label: string; value: string }[] = [];
-  if (isDomestic(client.country)) {
-    if (client.oib) ids.push({ label: "OIB", value: client.oib });
-  } else if (client.vatNumber) {
-    ids.push({ label: lang === "hr" ? "PDV ID" : "VAT No.", value: client.vatNumber });
-  } else if (client.oib) {
+  if (client.oib) {
     ids.push({ label: "OIB", value: client.oib });
+  }
+  if (client.vatNumber) {
+    ids.push({ label: lang === "hr" ? "PDV ID" : "VAT No.", value: client.vatNumber });
   }
   for (const extra of client.taxIds) {
     ids.push({ label: extra.label, value: extra.value });
@@ -132,17 +130,18 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
   const { lang, invoice, company, client, location, paymentMethod, vatRate } = input;
 
   const currency = requireCurrency(invoice.currency);
-  const domestic = isDomestic(client.country);
   const treatment = determineTaxTreatment({
+    clientType: client.clientType,
     clientCountry: client.country,
     clientVatNumber: client.vatNumber,
   });
+  const chargeVat = chargesCroatianPdv(treatment);
 
   const items = invoice.lineItems.map((li) => ({
     quantity: li.quantity ?? 0,
     unitPrice: li.unitPrice ?? 0,
   }));
-  const totals = computeInvoiceTotals(items, currency, { domestic, vatRate });
+  const totals = computeInvoiceTotals(items, currency, { chargeVat, vatRate });
 
   const lineItems: PdfLineRow[] = invoice.lineItems.map((li) => {
     const quantity = li.quantity ?? 0;
@@ -151,7 +150,7 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
       position: li.position,
       description: pick(lang, li.descriptionHr, li.descriptionEn) ?? "",
       quantity: formatEuDecimal(quantity, 2),
-      vatPercent: domestic ? String(vatRate) : "0",
+      vatPercent: chargeVat ? String(vatRate) : "0",
       unitPrice: formatMoney(lineItemAmount(1, unitPrice, currency)),
       amount: formatMoney(lineItemAmount(quantity, unitPrice, currency)),
     };
@@ -160,11 +159,11 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
   const isOffer = invoice.type === DOCUMENT_TYPE.OFFER;
   const isForeignCurrency = currency !== BASE_CURRENCY && invoice.exchangeRate != null;
 
-  // Domestic → domestic legal text; reverse charge → the configured foreign
-  // (reverse-charge) text; international (foreign client, no VAT Number) → no
-  // legal text, since the reverse-charge wording would not apply.
+  // Croatian PDV → domestic legal text; reverse charge → configured foreign
+  // (reverse-charge) text; non-EU outside scope → no text until the product has
+  // a dedicated outside-scope legal text field.
   let legalText: string | null;
-  if (treatment === "domestic") {
+  if (treatment === "croatian-pdv") {
     legalText = company.legalTextDomestic;
   } else if (treatment === "reverse-charge") {
     legalText = pick(lang, company.legalTextForeignHr, company.legalTextForeignEn);

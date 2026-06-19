@@ -12,6 +12,7 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 export interface Clients {
   address: string | null;
   archivedAt: string | null;
+  clientType: Generated<string>;
   country: string;
   createdAt: Generated<string>;
   defaultCurrency: string | null;

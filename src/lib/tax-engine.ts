@@ -1,15 +1,23 @@
 import { validateVat, type ViesSuccess } from "@/lib/vies";
-import { isDomestic } from "@/lib/countries";
+import { CLIENT_TYPE, type ClientType } from "@/lib/client-types";
+import { isDomestic, isEuCountry } from "@/lib/countries";
 
-export type TaxTreatment = "domestic" | "reverse-charge" | "international";
+export type TaxTreatment = "croatian-pdv" | "reverse-charge" | "outside-scope";
 
 export function determineTaxTreatment(input: {
+  clientType: ClientType;
   clientCountry: string;
   clientVatNumber: string | null;
 }): TaxTreatment {
-  if (isDomestic(input.clientCountry)) return "domestic";
+  if (!isEuCountry(input.clientCountry)) return "outside-scope";
+  if (input.clientType === CLIENT_TYPE.PERSON) return "croatian-pdv";
+  if (isDomestic(input.clientCountry)) return "croatian-pdv";
   if (input.clientVatNumber) return "reverse-charge";
-  return "international";
+  return "croatian-pdv";
+}
+
+export function chargesCroatianPdv(treatment: TaxTreatment): boolean {
+  return treatment === "croatian-pdv";
 }
 
 export type TaxBreakdown = {
@@ -24,6 +32,7 @@ export function calculateTaxBreakdown(baseAmount: number, vatRate: number): TaxB
 }
 
 export type TaxInput = {
+  clientType: ClientType;
   clientCountry: string;
   clientVatNumber: string | null;
   vatRate: number;
@@ -35,9 +44,9 @@ export type TaxInput = {
   };
 };
 
-type DomesticResult = {
+type CroatianPdvResult = {
   ok: true;
-  type: "domestic";
+  type: "croatian-pdv";
   breakdown: TaxBreakdown;
   legalTexts: { domestic: string | null };
 };
@@ -50,9 +59,9 @@ type ReverseChargeResult = {
   viesResult: ViesSuccess;
 };
 
-type InternationalResult = {
+type OutsideScopeResult = {
   ok: true;
-  type: "international";
+  type: "outside-scope";
   breakdown: TaxBreakdown;
   legalTexts: Record<string, never>;
 };
@@ -63,7 +72,7 @@ type TaxError = {
   code: "vies_invalid" | "vies_error";
 };
 
-export type TaxResult = DomesticResult | ReverseChargeResult | InternationalResult | TaxError;
+export type TaxResult = CroatianPdvResult | ReverseChargeResult | OutsideScopeResult | TaxError;
 
 export async function verifyAndDetermine(
   input: TaxInput,
@@ -71,21 +80,21 @@ export async function verifyAndDetermine(
 ): Promise<TaxResult> {
   const treatment = determineTaxTreatment(input);
 
-  if (treatment === "domestic") {
+  if (treatment === "croatian-pdv") {
     return {
       ok: true,
-      type: "domestic",
+      type: "croatian-pdv",
       breakdown: calculateTaxBreakdown(input.baseAmount, input.vatRate),
       legalTexts: { domestic: input.companyLegalTexts.domestic },
     };
   }
 
-  if (treatment === "international") {
+  if (treatment === "outside-scope") {
     return {
       ok: true,
-      type: "international",
+      type: "outside-scope",
       breakdown: calculateTaxBreakdown(input.baseAmount, 0),
-      legalTexts: {} as Record<string, never>,
+      legalTexts: {},
     };
   }
 

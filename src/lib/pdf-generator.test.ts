@@ -53,7 +53,7 @@ async function setupCompany() {
 }
 
 function mockJson(body: unknown): typeof fetch {
-  return (async () => new Response(JSON.stringify(body), { status: 200 })) as typeof fetch;
+  return async () => new Response(JSON.stringify(body), { status: 200 });
 }
 
 const VIES_VALID = mockJson({
@@ -67,7 +67,7 @@ const VIES_VALID = mockJson({
 
 async function finalizedDomestic(): Promise<Invoice> {
   const { company, location, paymentMethod } = await setupCompany();
-  const client = await createClient({ name: "Domaći d.o.o.", country: "HR", oib: "98765432109" });
+  const client = await createClient({ name: "Domaći d.o.o.", clientType: "business", country: "HR", oib: "98765432109" });
   const draft = await createInvoice({
     companyId: company.id,
     clientId: client.id,
@@ -82,7 +82,7 @@ async function finalizedDomestic(): Promise<Invoice> {
 
 async function finalizedForeign(type: "invoice" | "credit_note" = "invoice"): Promise<Invoice> {
   const { company, location, paymentMethod } = await setupCompany();
-  const client = await createClient({ name: "Acme GmbH", country: "DE", vatNumber: "DE123456789" });
+  const client = await createClient({ name: "Acme GmbH", clientType: "business", country: "DE", vatNumber: "DE123456789" });
   const draft = await createInvoice({
     type,
     companyId: company.id,
@@ -165,7 +165,7 @@ describe("generateInvoicePdfs — regeneration", () => {
 describe("generateInvoicePdfs — guards", () => {
   it("refuses to generate for a draft (no document number)", async () => {
     const { company, location, paymentMethod } = await setupCompany();
-    const client = await createClient({ name: "Domaći", country: "HR", oib: "98765432109" });
+    const client = await createClient({ name: "Domaći", clientType: "business", country: "HR", oib: "98765432109" });
     const draft = await createInvoice({
       companyId: company.id,
       clientId: client.id,

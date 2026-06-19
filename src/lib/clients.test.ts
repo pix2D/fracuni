@@ -15,6 +15,7 @@ useMigratedDb();
 
 const CLIENT_INPUT: ClientInput = {
   name: "Acme GmbH",
+  clientType: "business",
   country: "DE",
   address: "Berliner Str. 1, 10115 Berlin",
   vatNumber: "DE123456789",
@@ -92,10 +93,10 @@ describe("clients", () => {
   });
 
   it("throws conflict for duplicate OIB", async () => {
-    await createClient({ name: "A", country: "HR", oib: "12345678901" });
+    await createClient({ name: "A", clientType: "business", country: "HR", oib: "12345678901" });
 
     await expect(
-      createClient({ name: "B", country: "HR", oib: "12345678901" }),
+      createClient({ name: "B", clientType: "business", country: "HR", oib: "12345678901" }),
     ).rejects.toMatchObject({
       code: "conflict",
       status: 409,
