@@ -5,7 +5,7 @@ import path from "node:path";
 
 export default defineConfig({
   dialect: new SqliteDialect({
-    database: new Database(path.resolve("data/fireracuni.db")),
+    database: new Database(path.resolve(process.env.FIRERACUNI_DB_PATH ?? "data/fireracuni.db")),
   }),
   migrations: {
     migrationFolder: "migrations",

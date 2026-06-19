@@ -32,6 +32,7 @@ export const InvoiceDatesSection = withFieldGroup<
                 <DatePicker
                   value={field.state.value}
                   disabled={readOnly}
+                  ariaLabel="Issue Date"
                   onChange={(date) => {
                     field.handleChange(date);
                     if (!group.state.values.dueDateManual) {
@@ -49,7 +50,7 @@ export const InvoiceDatesSection = withFieldGroup<
             {(field) => (
               <Field data-invalid={!field.state.meta.isValid}>
                 <FieldLabel>Delivery Date</FieldLabel>
-                <DatePicker value={field.state.value} disabled={readOnly} onChange={field.handleChange} />
+                <DatePicker value={field.state.value} disabled={readOnly} ariaLabel="Delivery Date" onChange={field.handleChange} />
                 <FieldError errors={normalizeErrors(field.state.meta.errors)} />
               </Field>
             )}
@@ -90,6 +91,7 @@ export const InvoiceDatesSection = withFieldGroup<
                 <DatePicker
                   value={field.state.value}
                   disabled={readOnly}
+                  ariaLabel="Due Date"
                   onChange={(date) => {
                     field.handleChange(date);
                     group.setFieldValue("dueDateManual", true);

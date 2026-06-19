@@ -4,7 +4,7 @@ import type { DB } from "@/lib/db.generated";
 import fs from "node:fs";
 import path from "node:path";
 
-const DEFAULT_DB_PATH = path.resolve("data/fireracuni.db");
+const DEFAULT_DB_PATH = path.resolve(process.env.FIRERACUNI_DB_PATH ?? "data/fireracuni.db");
 
 const global = globalThis as unknown as { __db?: Kysely<DB>; __dbPath?: string };
 

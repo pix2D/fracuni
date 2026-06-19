@@ -139,8 +139,11 @@ export function LineItemsEditor({
 
               <div className={domestic ? "space-y-2" : "grid gap-2 sm:grid-cols-2"}>
                 <div className="space-y-1">
-                  <Label className="text-xs">Description (HR)</Label>
+                  <Label htmlFor={`line-item-${index}-description-hr`} className="text-xs">
+                    Description (HR)
+                  </Label>
                   <Textarea
+                    id={`line-item-${index}-description-hr`}
                     rows={2}
                     value={row.descriptionHr}
                     onChange={(e) => updateRow(index, { descriptionHr: e.target.value })}
@@ -150,8 +153,11 @@ export function LineItemsEditor({
                 </div>
                 {!domestic && (
                   <div className="space-y-1">
-                    <Label className="text-xs">Description (EN)</Label>
+                    <Label htmlFor={`line-item-${index}-description-en`} className="text-xs">
+                      Description (EN)
+                    </Label>
                     <Textarea
+                      id={`line-item-${index}-description-en`}
                       rows={2}
                       value={row.descriptionEn}
                       onChange={(e) => updateRow(index, { descriptionEn: e.target.value })}
@@ -164,8 +170,11 @@ export function LineItemsEditor({
 
               <div className="mt-2 grid grid-cols-3 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">Quantity</Label>
+                  <Label htmlFor={`line-item-${index}-quantity`} className="text-xs">
+                    Quantity
+                  </Label>
                   <Input
+                    id={`line-item-${index}-quantity`}
                     type="number"
                     step="0.01"
                     min="0"
@@ -175,8 +184,11 @@ export function LineItemsEditor({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Unit Price</Label>
+                  <Label htmlFor={`line-item-${index}-unit-price`} className="text-xs">
+                    Unit Price
+                  </Label>
                   <Input
+                    id={`line-item-${index}-unit-price`}
                     type="number"
                     step="0.01"
                     min="0"

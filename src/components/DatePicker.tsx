@@ -12,9 +12,10 @@ interface DatePickerProps {
   onChange: (date: Date | undefined) => void
   placeholder?: string
   disabled?: boolean
+  ariaLabel?: string
 }
 
-function DatePicker({ value, onChange, placeholder = "Pick a date", disabled = false }: DatePickerProps) {
+function DatePicker({ value, onChange, placeholder = "Pick a date", disabled = false, ariaLabel }: DatePickerProps) {
   const [open, setOpen] = useState(false)
   const [month, setMonth] = useState<Date>(value ?? new Date())
   const [holidays, setHolidays] = useState<Date[]>([])
@@ -73,6 +74,7 @@ function DatePicker({ value, onChange, placeholder = "Pick a date", disabled = f
         <Button
           variant="outline"
           disabled={disabled}
+          aria-label={ariaLabel}
           className={cn(
             "w-full justify-start text-left font-normal",
             !value && "text-muted-foreground",
