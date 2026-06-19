@@ -129,6 +129,18 @@ describe("POST /api/invoices/:id/email", () => {
     expect(response.status).toBe(400);
   });
 
+  it("returns 400 when the recipient is not a valid email address", async () => {
+    const invoice = await readyInvoice();
+    await updateSettings({ postmarkApiKey: "test-key" });
+
+    const request = new Request("http://test.local", {
+      method: "POST",
+      body: JSON.stringify({ to: "not-an-email", subject: "Hi", body: "Body" }),
+    });
+    const response = await POST(apiContext({ params: { id: String(invoice.id) }, request }));
+    expect(response.status).toBe(400);
+  });
+
   it("returns 409 and keeps the invoice Finalized when Postmark is not configured", async () => {
     const invoice = await readyInvoice();
 

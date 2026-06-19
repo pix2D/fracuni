@@ -1,17 +1,12 @@
 import type { APIRoute } from "astro";
 import { getCompany, updateCompany } from "@/lib/companies";
 import { errorResponse, handleApiError, jsonResponse, parseIdParam } from "@/lib/api";
+import { LOGO_TYPES, logoFileError, logoTypeForMime } from "@/lib/logo-upload";
 import fs from "node:fs/promises";
 import path from "node:path";
 
 const DATA_DIR = path.resolve("data");
 const LOGOS_DIR = path.resolve("data/logos");
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const LOGO_TYPES = {
-  "image/jpeg": { extension: ".jpg", contentType: "image/jpeg" },
-  "image/png": { extension: ".png", contentType: "image/png" },
-  "image/webp": { extension: ".webp", contentType: "image/webp" },
-} as const;
 
 async function resolveExistingDataPath(relativePath: string): Promise<string | null> {
   const resolved = path.resolve(DATA_DIR, relativePath);
@@ -27,10 +22,6 @@ async function resolveExistingDataPath(relativePath: string): Promise<string | n
   } catch {
     return null;
   }
-}
-
-function logoTypeForMime(mimeType: string): (typeof LOGO_TYPES)[keyof typeof LOGO_TYPES] | null {
-  return LOGO_TYPES[mimeType as keyof typeof LOGO_TYPES] ?? null;
 }
 
 function contentTypeForPath(filePath: string): string | null {
@@ -84,14 +75,13 @@ export const POST: APIRoute = async ({ params, request }) => {
       return errorResponse("No file provided", 400);
     }
 
-    const logoType = logoTypeForMime(file.type);
-    if (!logoType) {
-      return errorResponse("File must be a PNG, JPEG, or WebP image", 400);
+    const logoError = logoFileError(file);
+    if (logoError) {
+      return errorResponse(logoError, 400);
     }
 
-    if (file.size > MAX_FILE_SIZE) {
-      return errorResponse("File exceeds 5 MB limit", 400);
-    }
+    const logoType = logoTypeForMime(file.type);
+    if (!logoType) return errorResponse("File must be a PNG, JPEG, or WebP image", 400);
 
     const filename = `${id}${logoType.extension}`;
     const filepath = path.join(LOGOS_DIR, filename);

@@ -1,12 +1,7 @@
 import type { APIRoute } from "astro";
-import { z } from "zod/v4";
 import { markInvoicePaid } from "@/lib/document-engine";
 import { handleApiError, jsonResponse, parseIdParam, parseJsonRequest } from "@/lib/api";
-
-// YYYY-MM-DD, matching how dates are stored elsewhere on the invoice.
-const MarkPaidSchema = z.object({
-  paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected an ISO date (YYYY-MM-DD)"),
-});
+import { MarkPaidSchema } from "@/lib/mark-paid.schema";
 
 export const POST: APIRoute = async ({ params, request }) => {
   try {

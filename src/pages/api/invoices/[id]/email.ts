@@ -1,13 +1,7 @@
 import type { APIRoute } from "astro";
-import { z } from "zod/v4";
 import { buildEmailDefaults, listEmailLogs, sendInvoiceEmail } from "@/lib/email";
 import { handleApiError, jsonResponse, parseIdParam, parseJsonRequest } from "@/lib/api";
-
-const SendEmailSchema = z.object({
-  to: z.string().trim().min(1, "Recipient email is required"),
-  subject: z.string(),
-  body: z.string(),
-});
+import { SendEmailSchema } from "@/lib/email.schema";
 
 // Returns the pre-filled send-dialog defaults plus the document's send history.
 export const GET: APIRoute = async ({ params }) => {
