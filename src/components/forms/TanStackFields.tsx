@@ -20,7 +20,7 @@ export function normalizeErrors(errors: unknown[]): FieldErrors {
 
 interface TextFieldProps {
   label: string;
-  type?: "text" | "email";
+  type?: "text" | "email" | "password";
   placeholder?: string;
   maxLength?: number;
   description?: ReactNode;
@@ -54,10 +54,12 @@ export function TextField({ label, type = "text", placeholder, maxLength, descri
 interface NumberFieldProps {
   label: string;
   min?: number;
+  max?: number;
+  step?: number;
   disabled?: boolean;
 }
 
-export function NumberField({ label, min, disabled = false }: NumberFieldProps) {
+export function NumberField({ label, min, max, step, disabled = false }: NumberFieldProps) {
   const field = useFieldContext<number | null | undefined>();
 
   return (
@@ -68,6 +70,8 @@ export function NumberField({ label, min, disabled = false }: NumberFieldProps) 
         name={field.name}
         type="number"
         min={min}
+        max={max}
+        step={step}
         disabled={disabled}
         value={field.state.value != null && Number.isFinite(Number(field.state.value)) ? Number(field.state.value) : ""}
         onBlur={field.handleBlur}

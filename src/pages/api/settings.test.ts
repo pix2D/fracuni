@@ -77,4 +77,28 @@ describe("PUT /api/settings", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("rejects currencies unsupported by the currency engine", async () => {
+    const response = await PUT(apiContext({
+      request: new Request("http://test.local", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supportedCurrencies: ["EUR", "GBP"] }),
+      }),
+    }));
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects duplicate currencies", async () => {
+    const response = await PUT(apiContext({
+      request: new Request("http://test.local", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supportedCurrencies: ["EUR", "eur"] }),
+      }),
+    }));
+
+    expect(response.status).toBe(400);
+  });
 });

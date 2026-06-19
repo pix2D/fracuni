@@ -7,6 +7,7 @@ import {
   DEFAULT_PAYMENT_TERMS_DAYS,
   DEFAULT_VAT_RATE,
 } from "@/lib/defaults";
+import type { UpdateSettingsInput } from "@/lib/settings.schema";
 
 export interface Settings {
   defaultVatRate: number;
@@ -24,7 +25,7 @@ const DEFAULTS: Settings = {
   postmarkApiKey: null,
 };
 
-export type SettingsInput = Partial<Omit<Settings, "supportedCurrencies"> & { supportedCurrencies: string[] }>;
+export type SettingsInput = UpdateSettingsInput;
 type SettingsInsert = Insertable<DB["settings"]>;
 type SettingsUpdate = Updateable<DB["settings"]>;
 
