@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
+import { CompanyNumberedSettingForm } from "@/components/companies/CompanyNumberedSettingForm";
+import { responseError } from "@/lib/api-response";
+import type { CompanyNumberedSettingInput } from "@/lib/companies.schema";
 import type { PaymentMethod } from "@/lib/companies";
 
 interface Props {
@@ -17,32 +17,28 @@ export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleAdd(data: { number: number; nameHr: string; nameEn: string; isDefault: boolean }) {
+  async function handleAdd(data: CompanyNumberedSettingInput) {
     const res = await fetch(`/api/companies/${companyId}/payment-methods`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) {
-      const err = await res.json();
-      setError(err.error);
-      return;
+      throw new Error(await responseError(res, "Failed to add payment method"));
     }
     setAdding(false);
     setError(null);
     onUpdated();
   }
 
-  async function handleUpdate(id: number, data: Partial<{ number: number; nameHr: string; nameEn: string; isDefault: boolean }>) {
+  async function handleUpdate(id: number, data: CompanyNumberedSettingInput) {
     const res = await fetch(`/api/payment-methods/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!res.ok) {
-      const err = await res.json();
-      setError(err.error);
-      return;
+      throw new Error(await responseError(res, "Failed to update payment method"));
     }
     setEditingId(null);
     setError(null);
@@ -52,8 +48,7 @@ export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: 
   async function handleDelete(id: number) {
     const res = await fetch(`/api/payment-methods/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      const err = await res.json();
-      setError(err.error);
+      setError(await responseError(res, "Failed to delete payment method"));
       return;
     }
     setError(null);
@@ -121,53 +116,12 @@ export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: 
   );
 }
 
-function PaymentMethodForm({
-  initial,
-  onSave,
-  onCancel,
-}: {
+function PaymentMethodForm(props: {
   initial?: PaymentMethod;
-  onSave: (data: { number: number; nameHr: string; nameEn: string; isDefault: boolean }) => void;
+  onSave: (data: CompanyNumberedSettingInput) => Promise<void> | void;
   onCancel: () => void;
 }) {
-  const [number, setNumber] = useState(initial?.number ?? 1);
-  const [nameHr, setNameHr] = useState(initial?.nameHr ?? "");
-  const [nameEn, setNameEn] = useState(initial?.nameEn ?? "");
-  const [isDefault, setIsDefault] = useState(initial?.isDefault ?? false);
-  const defaultLocked = initial?.isDefault === true;
-
   return (
-    <Card>
-      <CardContent className="space-y-3 py-3">
-        <div className="grid gap-3 sm:grid-cols-4">
-          <div className="space-y-1">
-            <Label className="text-xs">Number</Label>
-            <Input type="number" min={1} value={number} onChange={(e) => setNumber(Number(e.target.value))} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Name (HR)</Label>
-            <Input value={nameHr} onChange={(e) => setNameHr(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Name (EN)</Label>
-            <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} />
-          </div>
-	          <div className="flex items-end gap-2 pb-1">
-	            <div className="flex items-center gap-2">
-	              <Switch checked={isDefault} onCheckedChange={setIsDefault} disabled={defaultLocked} />
-	              <Label className="text-xs">Default</Label>
-	            </div>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button type="button" size="sm" onClick={() => onSave({ number, nameHr, nameEn, isDefault })}>
-            Save
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <CompanyNumberedSettingForm {...props} />
   );
 }
