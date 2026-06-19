@@ -29,35 +29,40 @@ export function OfferDocumentActionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" title="Offer actions">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title="Offer actions"
+          aria-label="Offer actions"
+        >
           <DotsThreeIcon className="size-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onOpen(offer)}>
+        <DropdownMenuItem onSelect={() => onOpen(offer)}>
           {offer.status === OFFER_STATUS.DRAFT ? "Edit" : "View"}
         </DropdownMenuItem>
         {offer.status === OFFER_STATUS.FINALIZED && (
           <>
-            <DropdownMenuItem onClick={() => onStatus(offer, OFFER_STATUS.ACCEPTED)}>
+            <DropdownMenuItem onSelect={() => onStatus(offer, OFFER_STATUS.ACCEPTED)}>
               Accept
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onStatus(offer, OFFER_STATUS.REJECTED)}>
+            <DropdownMenuItem onSelect={() => onStatus(offer, OFFER_STATUS.REJECTED)}>
               Reject
             </DropdownMenuItem>
           </>
         )}
         {offer.status === OFFER_STATUS.REJECTED && (
-          <DropdownMenuItem onClick={() => onStatus(offer, OFFER_STATUS.FINALIZED)}>
+          <DropdownMenuItem onSelect={() => onStatus(offer, OFFER_STATUS.FINALIZED)}>
             Reopen
           </DropdownMenuItem>
         )}
         {offer.status === OFFER_STATUS.ACCEPTED && (
-          <DropdownMenuItem onClick={() => onConvert(offer)}>Convert to Invoice</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onConvert(offer)}>Convert to Invoice</DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={() => onDuplicate(offer)}>Duplicate</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onDuplicate(offer)}>Duplicate</DropdownMenuItem>
         {offer.status === OFFER_STATUS.DRAFT && (
-          <DropdownMenuItem onClick={() => onDelete(offer.id)}>Delete</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onDelete(offer.id)}>Delete</DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

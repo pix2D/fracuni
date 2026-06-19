@@ -74,6 +74,10 @@ function createGlobalDocumentFilter<TDocument extends Invoice>(): FilterFn<Docum
   };
 }
 
+function defaultDocumentNumberFormatter(document: Invoice): string {
+  return document.documentNumber ?? "-";
+}
+
 function parseDocumentNumberValue(value: string | null): number {
   if (!value) return 0;
   const match = value.match(/^\d+/);
@@ -142,13 +146,14 @@ export function DocumentDataTable<TDocument extends Invoice = Invoice>({
   statusOptions,
   summary,
   renderActions,
-  numberFormatter = (document) => document.documentNumber ?? "-",
+  numberFormatter = defaultDocumentNumberFormatter,
   showOriginalInvoiceNumber = false,
 }: Props<TDocument>) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "issueDate", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility] = useState<VisibilityState>({ year: false });
   const [globalFilter, setGlobalFilter] = useState("");
+  const globalFilterFn = useMemo(() => createGlobalDocumentFilter<TDocument>(), []);
 
   const clientName = useCallback(
     (id: number | null): string => {
@@ -283,7 +288,7 @@ export function DocumentDataTable<TDocument extends Invoice = Invoice>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: createGlobalDocumentFilter<TDocument>(),
+    globalFilterFn,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),

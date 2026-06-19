@@ -40,27 +40,32 @@ export function InvoiceDocumentActionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" title="Document actions">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title="Document actions"
+          aria-label="Document actions"
+        >
           <DotsThreeIcon className="size-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onOpen(invoice)}>
+        <DropdownMenuItem onSelect={() => onOpen(invoice)}>
           {isDraft ? "Edit" : "View"}
         </DropdownMenuItem>
         {isFinalized && (
           <>
-            <DropdownMenuItem onClick={() => onSend(invoice)}>Send Email</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onMarkSent(invoice.id)}>Mark Sent</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onSend(invoice)}>Send Email</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onMarkSent(invoice.id)}>Mark Sent</DropdownMenuItem>
           </>
         )}
-        {isSent && <DropdownMenuItem onClick={() => onMarkPaid(invoice)}>Mark as Paid</DropdownMenuItem>}
-        <DropdownMenuItem onClick={() => onDuplicate(invoice.id)}>Duplicate</DropdownMenuItem>
-        {isDraft && <DropdownMenuItem onClick={() => onDelete(invoice.id)}>Delete</DropdownMenuItem>}
+        {isSent && <DropdownMenuItem onSelect={() => onMarkPaid(invoice)}>Mark as Paid</DropdownMenuItem>}
+        <DropdownMenuItem onSelect={() => onDuplicate(invoice.id)}>Duplicate</DropdownMenuItem>
+        {isDraft && <DropdownMenuItem onSelect={() => onDelete(invoice.id)}>Delete</DropdownMenuItem>}
         {!isCreditNote && !isDraft && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onCreateCreditNote(invoice.id)}>
+            <DropdownMenuItem onSelect={() => onCreateCreditNote(invoice.id)}>
               Credit Note
             </DropdownMenuItem>
           </>
