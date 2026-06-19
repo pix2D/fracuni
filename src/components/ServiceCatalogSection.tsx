@@ -2,39 +2,22 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ServiceCatalogForm } from "@/components/service-catalog/ServiceCatalogForm";
+import type { CatalogEntry } from "@/lib/service-catalog";
 import { PencilSimpleIcon, TrashIcon, PlusIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
-
-interface CatalogEntry {
-  id: number;
-  descriptionHr: string;
-  descriptionEn: string | null;
-}
-
-type FormData = {
-  descriptionHr: string;
-  descriptionEn: string;
-};
-
-const EMPTY_FORM: FormData = { descriptionHr: "", descriptionEn: "" };
 
 export function ServiceCatalogSection() {
   const [entries, setEntries] = useState<CatalogEntry[]>([]);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<FormData>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [editingEntry, setEditingEntry] = useState<CatalogEntry | null>(null);
 
   const fetchEntries = useCallback(async () => {
     const params = search ? `?search=${encodeURIComponent(search)}` : "";
@@ -47,49 +30,19 @@ export function ServiceCatalogSection() {
   }, [fetchEntries]);
 
   function openCreate() {
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-    setError(null);
+    setEditingEntry(null);
     setDialogOpen(true);
   }
 
   function openEdit(entry: CatalogEntry) {
-    setEditingId(entry.id);
-    setForm({
-      descriptionHr: entry.descriptionHr,
-      descriptionEn: entry.descriptionEn ?? "",
-    });
-    setError(null);
+    setEditingEntry(entry);
     setDialogOpen(true);
   }
 
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
-
-    const body = {
-      descriptionHr: form.descriptionHr,
-      descriptionEn: form.descriptionEn || null,
-    };
-
-    const url = editingId
-      ? `/api/service-catalog/${editingId}`
-      : "/api/service-catalog";
-
-    const res = await fetch(url, {
-      method: editingId ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      setError(err.error || "Failed to save");
-    } else {
-      setDialogOpen(false);
-      await fetchEntries();
-    }
-    setSaving(false);
+  async function handleSaved() {
+    setDialogOpen(false);
+    setEditingEntry(null);
+    await fetchEntries();
   }
 
   async function handleDelete(id: number) {
@@ -149,10 +102,20 @@ export function ServiceCatalogSection() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon-sm" onClick={() => openEdit(entry)}>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Edit ${entry.descriptionHr}`}
+                        onClick={() => openEdit(entry)}
+                      >
                         <PencilSimpleIcon className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(entry.id)}>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Delete ${entry.descriptionHr}`}
+                        onClick={() => handleDelete(entry.id)}
+                      >
                         <TrashIcon className="h-4 w-4" />
                       </Button>
                     </div>
@@ -163,47 +126,23 @@ export function ServiceCatalogSection() {
           </Table>
         )}
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) setEditingEntry(null);
+          }}
+        >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Catalog Entry" : "New Catalog Entry"}</DialogTitle>
+              <DialogTitle>{editingEntry ? "Edit Catalog Entry" : "New Catalog Entry"}</DialogTitle>
             </DialogHeader>
 
-            {error && (
-              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="descriptionHr">Description (Croatian) *</Label>
-                <Textarea
-                  id="descriptionHr"
-                  value={form.descriptionHr}
-                  onChange={(e) => setForm({ ...form, descriptionHr: e.target.value })}
-                  placeholder="e.g. Konzultacije za {month}/{year}"
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="descriptionEn">Description (English)</Label>
-                <Textarea
-                  id="descriptionEn"
-                  value={form.descriptionEn}
-                  onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })}
-                  placeholder="e.g. Consulting for {month}/{year}"
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button onClick={handleSave} disabled={saving || !form.descriptionHr.trim()}>
-                {saving ? "Saving…" : editingId ? "Update" : "Create"}
-              </Button>
-            </DialogFooter>
+            <ServiceCatalogForm
+              key={editingEntry?.id ?? "new"}
+              entry={editingEntry}
+              onSaved={handleSaved}
+            />
           </DialogContent>
         </Dialog>
       </CardContent>

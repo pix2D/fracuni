@@ -3,15 +3,13 @@ import type { Selectable } from "kysely";
 import { sql } from "kysely";
 import type { ServiceCatalog } from "@/lib/db.generated";
 import { notFound } from "@/lib/app-errors";
+import type { CreateCatalogEntryInput } from "@/lib/service-catalog.schema";
 
 type NonNullId<T extends { id: unknown }> = Omit<T, "id"> & { id: number };
 
 export type CatalogEntry = NonNullId<Selectable<ServiceCatalog>>;
 
-export type CatalogEntryInput = {
-  descriptionHr: string;
-  descriptionEn?: string | null;
-};
+export type CatalogEntryInput = CreateCatalogEntryInput;
 
 function toEntry(row: Selectable<ServiceCatalog>): CatalogEntry {
   return { ...row, id: row.id! };

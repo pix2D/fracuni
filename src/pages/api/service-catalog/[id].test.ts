@@ -52,6 +52,41 @@ describe("PUT /api/service-catalog/:id", () => {
     expect(body.descriptionEn).toBe("Old");
   });
 
+  it("stores blank English description updates as null", async () => {
+    const entry = await createCatalogEntry({
+      descriptionHr: "Konzultacije",
+      descriptionEn: "Consulting",
+    });
+
+    const response = await PUT(apiContext({
+      params: { id: String(entry.id) },
+      request: new Request("http://test.local", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ descriptionEn: "   " }),
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.descriptionEn).toBeNull();
+  });
+
+  it("returns 400 for blank Croatian description updates", async () => {
+    const entry = await createCatalogEntry({ descriptionHr: "Konzultacije" });
+
+    const response = await PUT(apiContext({
+      params: { id: String(entry.id) },
+      request: new Request("http://test.local", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ descriptionHr: "   " }),
+      }),
+    }));
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns 404 for non-existent entry", async () => {
     const response = await PUT(apiContext({
       params: { id: "99999" },

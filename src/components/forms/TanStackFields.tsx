@@ -149,11 +149,12 @@ export function RadioField({ label, options, disabled = false }: RadioFieldProps
 
 interface TextareaFieldProps {
   label: string;
+  placeholder?: string;
   rows?: number;
   disabled?: boolean;
 }
 
-export function TextareaField({ label, rows = 3, disabled = false }: TextareaFieldProps) {
+export function TextareaField({ label, placeholder, rows = 3, disabled = false }: TextareaFieldProps) {
   const field = useFieldContext<string | null | undefined>();
 
   return (
@@ -163,6 +164,7 @@ export function TextareaField({ label, rows = 3, disabled = false }: TextareaFie
         id={field.name}
         name={field.name}
         value={String(field.state.value ?? "")}
+        placeholder={placeholder}
         rows={rows}
         disabled={disabled}
         onBlur={field.handleBlur}

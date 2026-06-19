@@ -1,12 +1,7 @@
 import type { APIRoute } from "astro";
 import { getCatalogEntry, updateCatalogEntry, deleteCatalogEntry } from "@/lib/service-catalog";
-import { z } from "zod/v4";
 import { handleApiError, errorResponse, jsonResponse, parseIdParam, parseJsonRequest } from "@/lib/api";
-
-const UpdateCatalogEntrySchema = z.object({
-  descriptionHr: z.string().min(1).optional(),
-  descriptionEn: z.string().nullish(),
-});
+import { UpdateCatalogEntrySchema } from "@/lib/service-catalog.schema";
 
 export const GET: APIRoute = async ({ params }) => {
   try {

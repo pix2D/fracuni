@@ -40,12 +40,42 @@ describe("POST /api/service-catalog", () => {
     expect(body.descriptionEn).toBeNull();
   });
 
+  it("trims descriptions and stores blank English description as null", async () => {
+    const response = await POST(apiContext({
+      request: new Request("http://test.local/api/service-catalog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          descriptionHr: "  Konzultacije  ",
+          descriptionEn: "   ",
+        }),
+      }),
+    }));
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.descriptionHr).toBe("Konzultacije");
+    expect(body.descriptionEn).toBeNull();
+  });
+
   it("returns 400 for missing descriptionHr", async () => {
     const response = await POST(apiContext({
       request: new Request("http://test.local/api/service-catalog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ descriptionEn: "Only English" }),
+      }),
+    }));
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 for blank descriptionHr", async () => {
+    const response = await POST(apiContext({
+      request: new Request("http://test.local/api/service-catalog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ descriptionHr: "   " }),
       }),
     }));
 
