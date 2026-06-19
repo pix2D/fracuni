@@ -6,6 +6,7 @@ import { ArrowUpIcon, ArrowDownIcon, TrashIcon, PlusIcon } from "@phosphor-icons
 import { CatalogPicker } from "@/components/CatalogPicker";
 import { expandPlaceholders } from "@/lib/placeholders";
 import { lineItemAmount, formatMoney, type CurrencyCode } from "@/lib/currency";
+import { parseDecimalInput } from "@/lib/decimal-input";
 import type { CatalogEntry } from "@/lib/service-catalog";
 
 export interface LineItemRow {
@@ -21,13 +22,6 @@ export const EMPTY_LINE_ITEM: LineItemRow = {
   quantity: "1",
   unitPrice: "",
 };
-
-export function parseDecimal(value: string): number | null {
-  const normalized = value.trim().replace(",", ".");
-  if (normalized === "") return null;
-  const n = Number(normalized);
-  return Number.isFinite(n) ? n : null;
-}
 
 interface Props {
   items: LineItemRow[];
@@ -77,8 +71,8 @@ export function LineItemsEditor({
 
   function rowAmount(row: LineItemRow): string {
     if (!currencyCode) return "—";
-    const qty = parseDecimal(row.quantity);
-    const price = parseDecimal(row.unitPrice);
+    const qty = parseDecimalInput(row.quantity);
+    const price = parseDecimalInput(row.unitPrice);
     if (qty === null || price === null) return "—";
     const signedQty = negativeAmounts ? Math.abs(qty) : qty;
     const signedPrice = negativeAmounts ? -Math.abs(price) : price;

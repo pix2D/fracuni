@@ -1,5 +1,4 @@
 import type { APIRoute } from "astro";
-import { z } from "zod/v4";
 import { getInvoice, updateInvoice, deleteInvoice } from "@/lib/invoices";
 import { notFound } from "@/lib/app-errors";
 import {
@@ -9,27 +8,7 @@ import {
   parseIdParam,
   parseJsonRequest,
 } from "@/lib/api";
-
-const LineItemSchema = z.object({
-  descriptionHr: z.string().nullish(),
-  descriptionEn: z.string().nullish(),
-  quantity: z.number().nullish(),
-  unitPrice: z.number().nullish(),
-});
-
-const UpdateInvoiceSchema = z.object({
-  clientId: z.number().int().positive().nullish(),
-  locationId: z.number().int().positive().nullish(),
-  paymentMethodId: z.number().int().positive().nullish(),
-  currency: z.string().nullish(),
-  email: z.string().nullish(),
-  issueDate: z.string().nullish(),
-  deliveryDate: z.string().nullish(),
-  dueDate: z.string().nullish(),
-  notesHr: z.string().nullish(),
-  notesEn: z.string().nullish(),
-  lineItems: z.array(LineItemSchema).optional(),
-});
+import { UpdateInvoiceSchema } from "@/lib/invoices.schema";
 
 export const GET: APIRoute = async ({ params }) => {
   try {

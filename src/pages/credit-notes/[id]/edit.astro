@@ -1,0 +1,38 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { InvoiceEditForm } from "@/components/invoices/InvoiceEditForm";
+import { getCompany } from "@/lib/companies";
+import { listClients } from "@/lib/clients";
+import { getInvoice } from "@/lib/invoices";
+import { listCatalogEntries } from "@/lib/service-catalog";
+import { getSettings } from "@/lib/settings";
+import { DOCUMENT_TYPE } from "@/lib/documents";
+
+const id = Number(Astro.params.id);
+const invoice = Number.isInteger(id) && id > 0 ? await getInvoice(id) : null;
+const creditNote = invoice?.type === DOCUMENT_TYPE.CREDIT_NOTE ? invoice : null;
+const company = creditNote ? await getCompany(creditNote.companyId) : null;
+const [clients, catalog, settings] = await Promise.all([
+  listClients(),
+  listCatalogEntries(),
+  getSettings(),
+]);
+---
+
+<Layout>
+  {creditNote && company ? (
+    <InvoiceEditForm
+      client:load
+      company={company}
+      clients={clients}
+      catalog={catalog}
+      settings={settings}
+      invoice={creditNote}
+      documentType={DOCUMENT_TYPE.CREDIT_NOTE}
+    />
+  ) : (
+    <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+      Credit note not found.
+    </div>
+  )}
+</Layout>

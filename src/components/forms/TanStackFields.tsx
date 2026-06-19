@@ -24,9 +24,10 @@ interface TextFieldProps {
   placeholder?: string;
   maxLength?: number;
   description?: ReactNode;
+  disabled?: boolean;
 }
 
-export function TextField({ label, type = "text", placeholder, maxLength, description }: TextFieldProps) {
+export function TextField({ label, type = "text", placeholder, maxLength, description, disabled = false }: TextFieldProps) {
   const field = useFieldContext<string | null | undefined>();
 
   return (
@@ -39,6 +40,7 @@ export function TextField({ label, type = "text", placeholder, maxLength, descri
         value={String(field.state.value ?? "")}
         placeholder={placeholder}
         maxLength={maxLength}
+        disabled={disabled}
         onBlur={field.handleBlur}
         onChange={(event) => field.handleChange(event.target.value)}
         aria-invalid={!field.state.meta.isValid}
@@ -52,9 +54,10 @@ export function TextField({ label, type = "text", placeholder, maxLength, descri
 interface NumberFieldProps {
   label: string;
   min?: number;
+  disabled?: boolean;
 }
 
-export function NumberField({ label, min }: NumberFieldProps) {
+export function NumberField({ label, min, disabled = false }: NumberFieldProps) {
   const field = useFieldContext<number | null | undefined>();
 
   return (
@@ -65,6 +68,7 @@ export function NumberField({ label, min }: NumberFieldProps) {
         name={field.name}
         type="number"
         min={min}
+        disabled={disabled}
         value={field.state.value != null && Number.isFinite(Number(field.state.value)) ? Number(field.state.value) : ""}
         onBlur={field.handleBlur}
         onChange={(event) => field.handleChange(event.target.value === "" ? undefined : event.target.valueAsNumber)}
@@ -80,11 +84,12 @@ interface SelectFieldProps {
   placeholder?: string;
   options: Array<{ value: string; label: string }>;
   emptyLabel?: string;
+  disabled?: boolean;
 }
 
 const EMPTY_SELECT_VALUE = "__empty__";
 
-export function SelectField({ label, placeholder = "Select an option", options, emptyLabel }: SelectFieldProps) {
+export function SelectField({ label, placeholder = "Select an option", options, emptyLabel, disabled = false }: SelectFieldProps) {
   const field = useFieldContext<string | null | undefined>();
   const value = field.state.value || (emptyLabel ? EMPTY_SELECT_VALUE : "");
 
@@ -94,6 +99,7 @@ export function SelectField({ label, placeholder = "Select an option", options, 
       <Select
         value={value}
         onValueChange={(next) => field.handleChange(next === EMPTY_SELECT_VALUE ? "" : next)}
+        disabled={disabled}
       >
         <SelectTrigger id={field.name} className="w-full" aria-invalid={!field.state.meta.isValid}>
           <SelectValue placeholder={placeholder} />
@@ -115,15 +121,16 @@ export function SelectField({ label, placeholder = "Select an option", options, 
 interface RadioFieldProps {
   label: string;
   options: Array<{ value: string; label: string }>;
+  disabled?: boolean;
 }
 
-export function RadioField({ label, options }: RadioFieldProps) {
+export function RadioField({ label, options, disabled = false }: RadioFieldProps) {
   const field = useFieldContext<string | null | undefined>();
 
   return (
     <Field data-invalid={!field.state.meta.isValid}>
       <FieldLabel>{label}</FieldLabel>
-      <RadioGroup value={field.state.value ?? ""} onValueChange={field.handleChange} className="flex flex-wrap gap-3">
+      <RadioGroup value={field.state.value ?? ""} onValueChange={field.handleChange} className="flex flex-wrap gap-3" disabled={disabled}>
         {options.map((option) => (
           <Field key={option.value} orientation="horizontal" className="w-auto">
             <RadioGroupItem id={`${field.name}-${option.value}`} value={option.value} />
@@ -139,9 +146,10 @@ export function RadioField({ label, options }: RadioFieldProps) {
 interface TextareaFieldProps {
   label: string;
   rows?: number;
+  disabled?: boolean;
 }
 
-export function TextareaField({ label, rows = 3 }: TextareaFieldProps) {
+export function TextareaField({ label, rows = 3, disabled = false }: TextareaFieldProps) {
   const field = useFieldContext<string | null | undefined>();
 
   return (
@@ -152,6 +160,7 @@ export function TextareaField({ label, rows = 3 }: TextareaFieldProps) {
         name={field.name}
         value={String(field.state.value ?? "")}
         rows={rows}
+        disabled={disabled}
         onBlur={field.handleBlur}
         onChange={(event) => field.handleChange(event.target.value)}
         aria-invalid={!field.state.meta.isValid}

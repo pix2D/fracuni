@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildPdfDocumentData, type BuildPdfDataInput } from "@/lib/pdf-document";
+import { DOCUMENT_TYPE, INVOICE_STATUS, OFFER_STATUS } from "@/lib/documents";
 import type { Invoice } from "@/lib/invoices";
 import type { Company, Location, PaymentMethod } from "@/lib/companies";
 import type { Client } from "@/lib/clients";
@@ -50,11 +51,13 @@ const paymentMethod: PaymentMethod = {
   updatedAt: "2026-01-01",
 };
 
-function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
+type InvoiceDocument = Extract<Invoice, { type: typeof DOCUMENT_TYPE.INVOICE | typeof DOCUMENT_TYPE.CREDIT_NOTE }>;
+type OfferDocument = Extract<Invoice, { type: typeof DOCUMENT_TYPE.OFFER }>;
+type SharedDocumentFields = Omit<InvoiceDocument, "type" | "status">;
+
+function sharedDocumentFields(): SharedDocumentFields {
   return {
     id: 10,
-    type: "invoice",
-    status: "finalized",
     companyId: 1,
     clientId: 100,
     locationId: 1,
@@ -88,6 +91,23 @@ function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
         unitPrice: 100,
       },
     ],
+  };
+}
+
+function makeInvoice(overrides: Partial<InvoiceDocument> = {}): InvoiceDocument {
+  return {
+    ...sharedDocumentFields(),
+    type: DOCUMENT_TYPE.INVOICE,
+    status: INVOICE_STATUS.FINALIZED,
+    ...overrides,
+  };
+}
+
+function makeOffer(overrides: Partial<OfferDocument> = {}): OfferDocument {
+  return {
+    ...sharedDocumentFields(),
+    type: DOCUMENT_TYPE.OFFER,
+    status: OFFER_STATUS.FINALIZED,
     ...overrides,
   };
 }
@@ -303,7 +323,7 @@ describe("buildPdfDocumentData — credit note", () => {
 
 describe("buildPdfDocumentData — offer", () => {
   // On an offer row, issue_date is the offer date and due_date is the valid-until.
-  const offer = makeInvoice({ type: "offer", documentNumber: "1" });
+  const offer = makeOffer({ documentNumber: "1" });
 
   it("titles the document Ponuda / Offer and prefixes the number with #", () => {
     const hr = buildPdfDocumentData(input({ invoice: offer, lang: "hr" }));

@@ -16,12 +16,12 @@ import {
 import { DatePicker } from "@/components/DatePicker";
 import {
   LineItemsEditor,
-  parseDecimal,
   EMPTY_LINE_ITEM,
   type LineItemRow,
 } from "@/components/LineItemsEditor";
 import { computeInvoiceTotals } from "@/lib/invoice-totals";
 import { formatMoneyWithCurrency, isCurrencyCode, type CurrencyCode } from "@/lib/currency";
+import { parseDecimalInput } from "@/lib/decimal-input";
 import { isDomestic } from "@/lib/countries";
 import { chargesCroatianPdv, determineTaxTreatment } from "@/lib/tax-engine";
 import type { Client } from "@/lib/clients";
@@ -192,8 +192,8 @@ export function OfferForm({ company, clients, catalog, settings, offer, onSave, 
   }
 
   const totalsItems = state.lineItems.map((li) => ({
-    quantity: parseDecimal(li.quantity) ?? 0,
-    unitPrice: parseDecimal(li.unitPrice) ?? 0,
+    quantity: parseDecimalInput(li.quantity) ?? 0,
+    unitPrice: parseDecimalInput(li.unitPrice) ?? 0,
   }));
   const totals = currencyCode
     ? computeInvoiceTotals(totalsItems, currencyCode, {
@@ -219,14 +219,14 @@ export function OfferForm({ company, clients, catalog, settings, offer, onSave, 
           (li) =>
             li.descriptionHr.trim() ||
             li.descriptionEn.trim() ||
-            parseDecimal(li.quantity) !== null ||
-            parseDecimal(li.unitPrice) !== null,
+            parseDecimalInput(li.quantity) !== null ||
+            parseDecimalInput(li.unitPrice) !== null,
         )
         .map((li) => ({
           descriptionHr: li.descriptionHr.trim() || null,
           descriptionEn: domestic ? null : li.descriptionEn.trim() || null,
-          quantity: parseDecimal(li.quantity),
-          unitPrice: parseDecimal(li.unitPrice),
+          quantity: parseDecimalInput(li.quantity),
+          unitPrice: parseDecimalInput(li.unitPrice),
         })),
     };
   }

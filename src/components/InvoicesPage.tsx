@@ -1,22 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { InvoiceForm } from "@/components/InvoiceForm";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { MarkPaidDialog } from "@/components/MarkPaidDialog";
 import { DocumentDataTable } from "@/components/documents/DocumentDataTable";
 import { InvoiceDocumentActionsMenu } from "@/components/invoices/InvoiceDocumentActionsMenu";
+import { responseEntityId } from "@/lib/api-response";
 import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 import type { Client } from "@/lib/clients";
 import type { CompanyWithRelations } from "@/lib/companies";
-import type { CatalogEntry } from "@/lib/service-catalog";
 import type { Settings } from "@/lib/settings";
-import type { Invoice, InvoiceInput } from "@/lib/invoices";
+import type { Invoice } from "@/lib/invoices";
 
 interface Props {
   company: CompanyWithRelations | null;
   clients: Client[];
-  catalog: CatalogEntry[];
   settings: Settings;
   // Invoices and Credit Notes share this page; the discriminator switches
   // labels, fetched document type, and type-specific actions.
@@ -39,15 +37,13 @@ const COPY = {
 export function InvoicesPage({
   company,
   clients,
-  catalog,
   settings,
   documentType = DOCUMENT_TYPE.INVOICE,
 }: Props) {
   const copy = COPY[documentType];
   const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
+  const basePath = isCreditNote ? "/credit-notes" : "/invoices";
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [view, setView] = useState<"list" | "form">("list");
-  const [editing, setEditing] = useState<Invoice | null>(null);
   const [sending, setSending] = useState<Invoice | null>(null);
   const [paying, setPaying] = useState<Invoice | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -62,52 +58,6 @@ export function InvoicesPage({
     fetchInvoices();
   }, [fetchInvoices]);
 
-  async function handleSave(data: InvoiceInput) {
-    const url = editing ? `/api/invoices/${editing.id}` : "/api/invoices";
-    const method = editing ? "PUT" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error || "Failed to save invoice");
-      return;
-    }
-    setError(null);
-    setView("list");
-    setEditing(null);
-    await fetchInvoices();
-  }
-
-  async function handleFinalize(data: InvoiceInput) {
-    // Persist the in-form edits before finalizing so the assigned Document
-    // Number reflects what the user sees. Finalize only runs on a saved draft.
-    if (!editing) return;
-    const saveRes = await fetch(`/api/invoices/${editing.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!saveRes.ok) {
-      const err = await saveRes.json().catch(() => ({}));
-      setError(err.error || "Failed to save invoice");
-      return;
-    }
-
-    const res = await fetch(`/api/invoices/${editing.id}/finalize`, { method: "POST" });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error || "Failed to finalize invoice");
-      return;
-    }
-    setError(null);
-    setView("list");
-    setEditing(null);
-    await fetchInvoices();
-  }
-
   async function handleDuplicate(id: number) {
     const res = await fetch(`/api/invoices/${id}/duplicate`, { method: "POST" });
     if (!res.ok) {
@@ -116,7 +66,12 @@ export function InvoicesPage({
       return;
     }
     setError(null);
-    await fetchInvoices();
+    const duplicateId = await responseEntityId(res);
+    if (!duplicateId) {
+      setError("The duplicate was created, but the server did not return its ID");
+      return;
+    }
+    window.location.href = `${basePath}/${duplicateId}/edit`;
   }
 
   async function handleDelete(id: number) {
@@ -150,19 +105,17 @@ export function InvoicesPage({
       setError(err.error || "Failed to create credit note");
       return;
     }
-    window.location.href = "/credit-notes";
-  }
-
-  function openCreate() {
-    setEditing(null);
-    setError(null);
-    setView("form");
+    const creditNoteId = await responseEntityId(res);
+    if (!creditNoteId) {
+      setError("The credit note was created, but the server did not return its ID");
+      return;
+    }
+    window.location.href = `/credit-notes/${creditNoteId}/edit`;
   }
 
   function openEdit(invoice: Invoice) {
-    setEditing(invoice);
     setError(null);
-    setView("form");
+    window.location.href = `${basePath}/${invoice.id}/edit`;
   }
 
   function openSend(invoice: Invoice) {
@@ -195,37 +148,13 @@ export function InvoicesPage({
     );
   }
 
-  if (view === "form") {
-    return (
-      <div className="space-y-4">
-        {error && (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-            {error}
-          </div>
-        )}
-        <InvoiceForm
-          company={company}
-          clients={clients}
-          catalog={catalog}
-          settings={settings}
-          documentType={documentType}
-          invoice={editing ?? undefined}
-          onSave={handleSave}
-          onFinalize={editing ? handleFinalize : undefined}
-          onCancel={() => {
-            setView("list");
-            setEditing(null);
-          }}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{copy.heading}</h1>
-        <Button onClick={openCreate}>{copy.newLabel}</Button>
+        <Button asChild>
+          <a href={`${basePath}/new`}>{copy.newLabel}</a>
+        </Button>
       </div>
 
       {error && (

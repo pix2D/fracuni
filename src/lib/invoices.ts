@@ -3,8 +3,8 @@ import type { Selectable, Transaction } from "kysely";
 import { sql } from "kysely";
 import type { DB, Invoices, LineItems } from "@/lib/db.generated";
 import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
-import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
-import type { DocumentType, InvoiceStatus } from "@/lib/documents";
+import { DOCUMENT_TYPE, INVOICE_STATUS, OFFER_STATUS } from "@/lib/documents";
+import type { DocumentType, InvoiceStatus, OfferStatus } from "@/lib/documents";
 
 export type { DocumentType, InvoiceStatus };
 
@@ -20,9 +20,18 @@ export type LineItemInput = {
   unitPrice?: number | null;
 };
 
-export interface Invoice extends NonNullId<Selectable<Invoices>> {
-  lineItems: LineItem[];
-}
+type InvoiceRow = NonNullId<Selectable<Invoices>>;
+type InvoiceBase = Omit<InvoiceRow, "type" | "status"> & { lineItems: LineItem[] };
+
+export type Invoice =
+  | (InvoiceBase & {
+      type: typeof DOCUMENT_TYPE.INVOICE | typeof DOCUMENT_TYPE.CREDIT_NOTE;
+      status: InvoiceStatus;
+    })
+  | (InvoiceBase & {
+      type: typeof DOCUMENT_TYPE.OFFER;
+      status: OfferStatus;
+    });
 
 export type InvoiceInput = {
   type?: DocumentType;
@@ -47,11 +56,61 @@ function toLineItem(row: Selectable<LineItems>): LineItem {
   return { ...row, id: row.id! };
 }
 
+function parseStoredDocumentType(value: string): DocumentType {
+  if (
+    value === DOCUMENT_TYPE.INVOICE ||
+    value === DOCUMENT_TYPE.CREDIT_NOTE ||
+    value === DOCUMENT_TYPE.OFFER
+  ) {
+    return value;
+  }
+  throw new Error(`Invalid document type stored in database: ${value}`);
+}
+
+function parseStoredInvoiceStatus(value: string): InvoiceStatus {
+  if (
+    value === INVOICE_STATUS.DRAFT ||
+    value === INVOICE_STATUS.FINALIZED ||
+    value === INVOICE_STATUS.SENT ||
+    value === INVOICE_STATUS.PAID
+  ) {
+    return value;
+  }
+  throw new Error(`Invalid invoice status stored in database: ${value}`);
+}
+
+function parseStoredOfferStatus(value: string): OfferStatus {
+  if (
+    value === OFFER_STATUS.DRAFT ||
+    value === OFFER_STATUS.FINALIZED ||
+    value === OFFER_STATUS.ACCEPTED ||
+    value === OFFER_STATUS.REJECTED
+  ) {
+    return value;
+  }
+  throw new Error(`Invalid offer status stored in database: ${value}`);
+}
+
 function toInvoice(row: Selectable<Invoices>, lineItemRows: Selectable<LineItems>[]): Invoice {
+  const type = parseStoredDocumentType(row.type);
+  const lineItems = lineItemRows.map(toLineItem);
+
+  if (type === DOCUMENT_TYPE.OFFER) {
+    return {
+      ...row,
+      id: row.id!,
+      type,
+      status: parseStoredOfferStatus(row.status),
+      lineItems,
+    };
+  }
+
   return {
     ...row,
     id: row.id!,
-    lineItems: lineItemRows.map(toLineItem),
+    type,
+    status: parseStoredInvoiceStatus(row.status),
+    lineItems,
   };
 }
 
@@ -157,7 +216,7 @@ export async function createInvoice(input: InvoiceInput): Promise<Invoice> {
       mapForeignKeyError(error);
     }
 
-    await insertLineItems(trx, row.id!, input.lineItems ?? [], row.type as DocumentType);
+    await insertLineItems(trx, row.id!, input.lineItems ?? [], parseStoredDocumentType(row.type));
     const lineItemRows = await loadLineItems(trx, row.id!);
     return toInvoice(row, lineItemRows);
   });
@@ -270,7 +329,7 @@ export async function updateInvoice(
     // Line items are replaced wholesale so positions stay contiguous after reordering.
     if (input.lineItems !== undefined) {
       await trx.deleteFrom("lineItems").where("invoiceId", "=", id).execute();
-      await insertLineItems(trx, id, input.lineItems, (input.type ?? current.type) as DocumentType);
+      await insertLineItems(trx, id, input.lineItems, input.type ?? parseStoredDocumentType(current.type));
     }
 
     const lineItemRows = await loadLineItems(trx, id);

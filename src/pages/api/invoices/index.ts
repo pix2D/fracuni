@@ -1,34 +1,8 @@
 import type { APIRoute } from "astro";
-import { z } from "zod/v4";
 import { createInvoice, listInvoices } from "@/lib/invoices";
 import { DOCUMENT_TYPE, type DocumentType } from "@/lib/documents";
 import { handleApiError, errorResponse, jsonResponse, parseJsonRequest } from "@/lib/api";
-
-const LineItemSchema = z.object({
-  descriptionHr: z.string().nullish(),
-  descriptionEn: z.string().nullish(),
-  quantity: z.number().nullish(),
-  unitPrice: z.number().nullish(),
-});
-
-// Drafts are permissive: only the owning company is required, everything else is optional.
-// `type` lets the same endpoint create a from-scratch Invoice or Credit Note;
-// Credit Notes created from an Invoice go through the dedicated [id]/credit-note route.
-const CreateInvoiceSchema = z.object({
-  type: z.enum([DOCUMENT_TYPE.INVOICE, DOCUMENT_TYPE.CREDIT_NOTE]).optional(),
-  companyId: z.number().int().positive(),
-  clientId: z.number().int().positive().nullish(),
-  locationId: z.number().int().positive().nullish(),
-  paymentMethodId: z.number().int().positive().nullish(),
-  currency: z.string().nullish(),
-  email: z.string().nullish(),
-  issueDate: z.string().nullish(),
-  deliveryDate: z.string().nullish(),
-  dueDate: z.string().nullish(),
-  notesHr: z.string().nullish(),
-  notesEn: z.string().nullish(),
-  lineItems: z.array(LineItemSchema).optional(),
-});
+import { CreateInvoiceSchema } from "@/lib/invoices.schema";
 
 export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
