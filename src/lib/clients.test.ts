@@ -15,7 +15,7 @@ useMigratedDb();
 
 const CLIENT_INPUT: ClientInput = {
   name: "Acme GmbH",
-  country: "Germany",
+  country: "DE",
   address: "Berliner Str. 1, 10115 Berlin",
   vatNumber: "DE123456789",
   defaultCurrency: "EUR",
@@ -33,7 +33,7 @@ describe("clients", () => {
 
     expect(created.id).toBeTypeOf("number");
     expect(created.name).toBe("Acme GmbH");
-    expect(created.country).toBe("Germany");
+    expect(created.country).toBe("DE");
     expect(created.vatNumber).toBe("DE123456789");
     expect(created.archivedAt).toBeNull();
     expect(created.taxIds).toHaveLength(2);
@@ -76,7 +76,7 @@ describe("clients", () => {
     });
 
     expect(updated.name).toBe("Acme AG");
-    expect(updated.country).toBe("Germany");
+    expect(updated.country).toBe("DE");
     expect(updated.taxIds).toHaveLength(1);
     expect(updated.taxIds[0]).toMatchObject({ label: "USt-IdNr", value: "DE999999999" });
   });
@@ -92,10 +92,10 @@ describe("clients", () => {
   });
 
   it("throws conflict for duplicate OIB", async () => {
-    await createClient({ name: "A", country: "Croatia", oib: "12345678901" });
+    await createClient({ name: "A", country: "HR", oib: "12345678901" });
 
     await expect(
-      createClient({ name: "B", country: "Croatia", oib: "12345678901" }),
+      createClient({ name: "B", country: "HR", oib: "12345678901" }),
     ).rejects.toMatchObject({
       code: "conflict",
       status: 409,

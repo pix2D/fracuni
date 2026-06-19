@@ -6,12 +6,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Table,
   TableBody,
   TableCell,
@@ -19,14 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ClientForm } from "@/components/ClientForm";
 import { countryName } from "@/lib/countries";
-import type { Client, ClientInput } from "@/lib/clients";
+import type { Client } from "@/lib/clients";
 
 export function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -42,25 +33,6 @@ export function ClientsPage() {
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
-
-  async function handleSave(data: ClientInput) {
-    const url = editingId ? `/api/clients/${editingId}` : "/api/clients";
-    const method = editingId ? "PUT" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      setError(err.error || "Failed to save");
-      return;
-    }
-    setDialogOpen(false);
-    setEditingId(null);
-    setError(null);
-    await fetchClients();
-  }
 
   async function handleArchive(id: number) {
     const res = await fetch(`/api/clients/${id}/archive`, { method: "POST" });
@@ -82,27 +54,13 @@ export function ClientsPage() {
     await fetchClients();
   }
 
-  function openCreate() {
-    setEditingId(null);
-    setError(null);
-    setDialogOpen(true);
-  }
-
-  function openEdit(id: number) {
-    setEditingId(id);
-    setError(null);
-    setDialogOpen(true);
-  }
-
-  const editingClient = editingId
-    ? clients.find((c) => c.id === editingId)
-    : undefined;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Clients</h1>
-        <Button onClick={openCreate}>New Client</Button>
+        <Button asChild>
+          <a href="/clients/new">New Client</a>
+        </Button>
       </div>
 
       {error && (
@@ -163,8 +121,8 @@ export function ClientsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(client.id)}>
-                        Edit
+                      <Button asChild variant="ghost" size="sm">
+                        <a href={`/clients/${client.id}/edit`}>Edit</a>
                       </Button>
                       {client.archivedAt ? (
                         <Button variant="ghost" size="sm" onClick={() => handleUnarchive(client.id)}>
@@ -183,21 +141,6 @@ export function ClientsPage() {
           </Table>
         </Card>
       )}
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingId ? "Edit Client" : "New Client"}
-            </DialogTitle>
-          </DialogHeader>
-          <ClientForm
-            client={editingClient}
-            onSave={handleSave}
-            onCancel={() => setDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

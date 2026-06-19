@@ -1,25 +1,7 @@
 import type { APIRoute } from "astro";
 import { createClient, listClients } from "@/lib/clients";
-import { z } from "zod/v4";
 import { handleApiError, jsonResponse, parseJsonRequest } from "@/lib/api";
-
-const TaxIdSchema = z.object({
-  label: z.string().min(1),
-  value: z.string().min(1),
-});
-
-const CreateClientSchema = z.object({
-  name: z.string().min(1),
-  country: z.string().min(1),
-  address: z.string().nullish(),
-  oib: z.string().nullish(),
-  vatNumber: z.string().nullish(),
-  defaultCurrency: z.string().nullish(),
-  defaultPaymentTermsDays: z.number().int().positive().nullish(),
-  defaultOfferValidityDays: z.number().int().positive().nullish(),
-  email: z.string().nullish(),
-  taxIds: z.array(TaxIdSchema).optional(),
-});
+import { CreateClientSchema } from "@/lib/clients.schema";
 
 export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);

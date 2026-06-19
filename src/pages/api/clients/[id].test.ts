@@ -11,7 +11,7 @@ useMigratedDb();
 
 const CLIENT_INPUT: ClientInput = {
   name: "Acme GmbH",
-  country: "Germany",
+  country: "DE",
   vatNumber: "DE123456789",
   email: "billing@acme.de",
   taxIds: [{ label: "Tax ID", value: "123" }],

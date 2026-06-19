@@ -1,0 +1,18 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { ClientForm } from "@/components/ClientForm";
+import { getClient } from "@/lib/clients";
+
+const id = Number(Astro.params.id);
+const client = Number.isInteger(id) && id > 0 ? await getClient(id) : null;
+---
+
+<Layout>
+  {client ? (
+    <ClientForm client:load client={client} />
+  ) : (
+    <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+      Client not found.
+    </div>
+  )}
+</Layout>

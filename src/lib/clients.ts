@@ -3,28 +3,17 @@ import type { Selectable } from "kysely";
 import { sql } from "kysely";
 import type { Clients, ClientTaxIds } from "@/lib/db.generated";
 import { conflict, notFound } from "@/lib/app-errors";
+import type { ClientInput } from "@/lib/clients.schema";
+
+export type { ClientInput, ClientTaxIdInput as TaxIdInput } from "@/lib/clients.schema";
 
 type NonNullId<T extends { id: unknown }> = Omit<T, "id"> & { id: number };
 
 export type TaxId = NonNullId<Selectable<ClientTaxIds>>;
-export type TaxIdInput = { label: string; value: string };
 
 export interface Client extends NonNullId<Selectable<Clients>> {
   taxIds: TaxId[];
 }
-
-export type ClientInput = {
-  name: string;
-  country: string;
-  address?: string | null;
-  oib?: string | null;
-  vatNumber?: string | null;
-  defaultCurrency?: string | null;
-  defaultPaymentTermsDays?: number | null;
-  defaultOfferValidityDays?: number | null;
-  email?: string | null;
-  taxIds?: TaxIdInput[];
-};
 
 function toTaxId(row: Selectable<ClientTaxIds>): TaxId {
   return { ...row, id: row.id! };

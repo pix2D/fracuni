@@ -9,7 +9,7 @@ useMigratedDb();
 
 const CLIENT_INPUT: ClientInput = {
   name: "Acme GmbH",
-  country: "Germany",
+  country: "DE",
   address: "Berliner Str. 1",
   vatNumber: "DE123456789",
   email: "billing@acme.de",
@@ -19,7 +19,7 @@ const CLIENT_INPUT: ClientInput = {
 describe("GET /api/clients", () => {
   it("returns active clients by default", async () => {
     await createClient(CLIENT_INPUT);
-    const archived = await createClient({ name: "Old Co", country: "Austria", vatNumber: "AT999" });
+    const archived = await createClient({ name: "Old Co", country: "AT", vatNumber: "AT999" });
     await archiveClient(archived.id);
 
     const response = await GET(apiContext({
@@ -35,7 +35,7 @@ describe("GET /api/clients", () => {
 
   it("returns all clients when archived=true", async () => {
     await createClient(CLIENT_INPUT);
-    const archived = await createClient({ name: "Old Co", country: "Austria", vatNumber: "AT999" });
+    const archived = await createClient({ name: "Old Co", country: "AT", vatNumber: "AT999" });
     await archiveClient(archived.id);
 
     const response = await GET(apiContext({
@@ -48,7 +48,7 @@ describe("GET /api/clients", () => {
 
   it("filters by search param", async () => {
     await createClient(CLIENT_INPUT);
-    await createClient({ name: "Zebra Inc", country: "USA" });
+    await createClient({ name: "Zebra Inc", country: "US" });
 
     const response = await GET(apiContext({
       request: new Request("http://test.local/api/clients?search=acme"),
@@ -68,7 +68,7 @@ describe("POST /api/clients", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: "New Client",
-          country: "Croatia",
+          country: "HR",
           oib: "12345678901",
           taxIds: [{ label: "OIB", value: "12345678901" }],
         }),
@@ -78,7 +78,7 @@ describe("POST /api/clients", () => {
     expect(response.status).toBe(201);
     const body = await response.json();
     expect(body.name).toBe("New Client");
-    expect(body.country).toBe("Croatia");
+    expect(body.country).toBe("HR");
     expect(body.taxIds).toHaveLength(1);
   });
 

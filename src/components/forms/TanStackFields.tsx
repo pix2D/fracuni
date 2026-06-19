@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useFieldContext } from "@/components/forms/app-form-context";
 
@@ -53,7 +54,7 @@ interface NumberFieldProps {
 }
 
 export function NumberField({ label, min }: NumberFieldProps) {
-  const field = useFieldContext<number>();
+  const field = useFieldContext<number | null | undefined>();
 
   return (
     <Field data-invalid={!field.state.meta.isValid}>
@@ -63,11 +64,40 @@ export function NumberField({ label, min }: NumberFieldProps) {
         name={field.name}
         type="number"
         min={min}
-        value={Number.isFinite(Number(field.state.value)) ? Number(field.state.value) : ""}
+        value={field.state.value != null && Number.isFinite(Number(field.state.value)) ? Number(field.state.value) : ""}
         onBlur={field.handleBlur}
-        onChange={(event) => field.handleChange(event.target.valueAsNumber)}
+        onChange={(event) => field.handleChange(event.target.value === "" ? undefined : event.target.valueAsNumber)}
         aria-invalid={!field.state.meta.isValid}
       />
+      <FieldError errors={normalizeErrors(field.state.meta.errors)} />
+    </Field>
+  );
+}
+
+interface SelectFieldProps {
+  label: string;
+  placeholder?: string;
+  options: Array<{ value: string; label: string }>;
+}
+
+export function SelectField({ label, placeholder = "Select an option", options }: SelectFieldProps) {
+  const field = useFieldContext<string | null | undefined>();
+
+  return (
+    <Field data-invalid={!field.state.meta.isValid}>
+      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <Select value={field.state.value ?? ""} onValueChange={field.handleChange}>
+        <SelectTrigger id={field.name} className="w-full" aria-invalid={!field.state.meta.isValid}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <FieldError errors={normalizeErrors(field.state.meta.errors)} />
     </Field>
   );
