@@ -1,5 +1,4 @@
 import type { APIRoute } from "astro";
-import { z } from "zod/v4";
 import { getOffer, updateOffer, deleteOffer } from "@/lib/offers";
 import {
   handleApiError,
@@ -8,31 +7,11 @@ import {
   parseIdParam,
   parseJsonRequest,
 } from "@/lib/api";
-import { DOCUMENT_TYPE } from "@/lib/documents";
-
-const LineItemSchema = z.object({
-  descriptionHr: z.string().nullish(),
-  descriptionEn: z.string().nullish(),
-  quantity: z.number().nullish(),
-  unitPrice: z.number().nullish(),
-});
-
-const UpdateOfferSchema = z.object({
-  clientId: z.number().int().positive().nullish(),
-  locationId: z.number().int().positive().nullish(),
-  paymentMethodId: z.number().int().positive().nullish(),
-  currency: z.string().nullish(),
-  email: z.string().nullish(),
-  issueDate: z.string().nullish(),
-  dueDate: z.string().nullish(),
-  notesHr: z.string().nullish(),
-  notesEn: z.string().nullish(),
-  lineItems: z.array(LineItemSchema).optional(),
-});
+import { UpdateOfferSchema } from "@/lib/offers.schema";
 
 async function loadOfferOr404(id: number): Promise<Response | null> {
   const offer = await getOffer(id);
-  if (!offer || offer.type !== DOCUMENT_TYPE.OFFER) return errorResponse("Not found", 404);
+  if (!offer) return errorResponse("Not found", 404);
   return null;
 }
 
@@ -40,7 +19,7 @@ export const GET: APIRoute = async ({ params }) => {
   try {
     const id = parseIdParam(params.id, "offer");
     const offer = await getOffer(id);
-    if (!offer || offer.type !== DOCUMENT_TYPE.OFFER) {
+    if (!offer) {
       return errorResponse("Not found", 404);
     }
     return jsonResponse(offer);

@@ -4,7 +4,6 @@ import { isCurrencyCode, type CurrencyCode } from "@/lib/currency";
 import { chargesCroatianPdv, determineTaxTreatment, type TaxTreatment } from "@/lib/tax-engine";
 import { computeInvoiceTotals, type InvoiceTotals } from "@/lib/invoice-totals";
 import { parseDecimalInput } from "@/lib/decimal-input";
-import { DOCUMENT_TYPE } from "@/lib/documents";
 import {
   addDaysToDate,
   dateToStr,
@@ -29,96 +28,84 @@ import {
 } from "@/components/documents/document-form-model";
 import type { Client } from "@/lib/clients";
 import type { CompanyWithRelations } from "@/lib/companies";
-import type { Invoice, InvoiceInput } from "@/lib/invoices";
+import type { Offer, OfferInput } from "@/lib/offers";
 import type { Settings } from "@/lib/settings";
 
-export type InvoiceDocumentType = typeof DOCUMENT_TYPE.INVOICE | typeof DOCUMENT_TYPE.CREDIT_NOTE;
-export type InvoiceSubmitIntent = DocumentSubmitIntent;
+export type OfferSubmitIntent = DocumentSubmitIntent;
 
-export interface InvoiceFormValues {
+export interface OfferFormValues {
   clientId: string;
   locationId: string;
   paymentMethodId: string;
   currency: string;
   email: string;
-  issueDate: Date | undefined;
-  deliveryDate: Date | undefined;
-  dueDate: Date | undefined;
-  termsDays: number | undefined;
+  offerDate: Date | undefined;
+  validUntil: Date | undefined;
+  validityDays: number | undefined;
   notesHr: string;
   notesEn: string;
   lineItems: LineItemRow[];
-  dueDateManual: boolean;
+  validUntilManual: boolean;
 }
 
-export type InvoiceDateFieldsInput = Pick<
-  InvoiceFormValues,
-  "issueDate" | "deliveryDate" | "dueDate" | "termsDays" | "dueDateManual"
+export type OfferDateFieldsInput = Pick<
+  OfferFormValues,
+  "offerDate" | "validUntil" | "validityDays" | "validUntilManual"
 >;
+export type OfferLineItemsInput = DocumentLineItemsInput;
+export type OfferNotesInput = DocumentNotesInput;
 
-export type InvoiceLineItemsInput = DocumentLineItemsInput;
-export type InvoiceNotesInput = DocumentNotesInput;
-
-export const invoiceDateDefaults: InvoiceDateFieldsInput = {
-  issueDate: undefined,
-  deliveryDate: undefined,
-  dueDate: undefined,
-  termsDays: undefined,
-  dueDateManual: false,
+export const offerDateDefaults: OfferDateFieldsInput = {
+  offerDate: undefined,
+  validUntil: undefined,
+  validityDays: undefined,
+  validUntilManual: false,
 };
 
-export const invoiceLineItemsDefaults: InvoiceLineItemsInput = documentLineItemsDefaults;
+export const offerLineItemsDefaults: OfferLineItemsInput = documentLineItemsDefaults;
+export const offerNotesDefaults: OfferNotesInput = documentNotesDefaults;
 
-export const invoiceNotesDefaults: InvoiceNotesInput = documentNotesDefaults;
-
-export const invoiceFormDefaults: InvoiceFormValues = {
+export const offerFormDefaults: OfferFormValues = {
   clientId: "",
   locationId: "",
   paymentMethodId: "",
   currency: "",
   email: "",
-  ...invoiceDateDefaults,
-  ...invoiceLineItemsDefaults,
-  ...invoiceNotesDefaults,
+  ...offerDateDefaults,
+  ...offerLineItemsDefaults,
+  ...offerNotesDefaults,
 };
 
-export const invoiceFormFields = {
+export const offerFormFields = {
   clientId: "clientId",
   locationId: "locationId",
   paymentMethodId: "paymentMethodId",
   currency: "currency",
   email: "email",
-  issueDate: "issueDate",
-  deliveryDate: "deliveryDate",
-  dueDate: "dueDate",
-  termsDays: "termsDays",
+  offerDate: "offerDate",
+  validUntil: "validUntil",
+  validityDays: "validityDays",
   notesHr: "notesHr",
   notesEn: "notesEn",
   lineItems: "lineItems",
-  dueDateManual: "dueDateManual",
-} satisfies { [K in keyof InvoiceFormValues]-?: K };
+  validUntilManual: "validUntilManual",
+} satisfies { [K in keyof OfferFormValues]-?: K };
 
-export const invoiceDateFields = {
-  issueDate: "issueDate",
-  deliveryDate: "deliveryDate",
-  dueDate: "dueDate",
-  termsDays: "termsDays",
-  dueDateManual: "dueDateManual",
-} satisfies { [K in keyof InvoiceDateFieldsInput]-?: K };
+export const offerDateFields = {
+  offerDate: "offerDate",
+  validUntil: "validUntil",
+  validityDays: "validityDays",
+  validUntilManual: "validUntilManual",
+} satisfies { [K in keyof OfferDateFieldsInput]-?: K };
 
-export const invoiceLineItemFields = documentLineItemFields;
+export const offerLineItemFields = documentLineItemFields;
+export const offerNoteFields = documentNoteFields;
 
-export const invoiceNoteFields = documentNoteFields;
-
-export function resolvePaymentTerms(
-  company: CompanyWithRelations,
-  settings: Settings,
-  client?: Client,
-): number {
-  return client?.defaultPaymentTermsDays ?? company.defaultPaymentTermsDays ?? settings.defaultPaymentTermsDays;
+export function resolveOfferValidity(settings: Settings, client?: Client): number {
+  return client?.defaultOfferValidityDays ?? settings.defaultOfferValidityDays;
 }
 
-export function defaultCurrency(settings: Settings, client?: Client): string {
+export function defaultOfferCurrency(settings: Settings, client?: Client): string {
   return defaultDocumentCurrency(settings, client);
 }
 
@@ -138,18 +125,18 @@ export function currencyOptions(settings: Settings) {
   return documentCurrencyOptions(settings);
 }
 
-export function selectedClient(values: InvoiceFormValues, clients: Client[]): Client | undefined {
+export function selectedOfferClient(values: OfferFormValues, clients: Client[]): Client | undefined {
   const clientId = parseId(values.clientId);
   return clientId ? clients.find((client) => client.id === clientId) : undefined;
 }
 
-export function isDomesticInvoice(values: InvoiceFormValues, clients: Client[]): boolean {
-  const client = selectedClient(values, clients);
+export function isDomesticOffer(values: OfferFormValues, clients: Client[]): boolean {
+  const client = selectedOfferClient(values, clients);
   return client ? isDomestic(client.country) : true;
 }
 
-export function invoiceTaxTreatment(values: InvoiceFormValues, clients: Client[]): TaxTreatment | null {
-  const client = selectedClient(values, clients);
+export function offerTaxTreatment(values: OfferFormValues, clients: Client[]): TaxTreatment | null {
+  const client = selectedOfferClient(values, clients);
   if (!client) return null;
   return determineTaxTreatment({
     clientType: client.clientType,
@@ -158,31 +145,24 @@ export function invoiceTaxTreatment(values: InvoiceFormValues, clients: Client[]
   });
 }
 
-export function invoiceCurrencyCode(values: InvoiceFormValues): CurrencyCode | null {
+export function offerCurrencyCode(values: OfferFormValues): CurrencyCode | null {
   return isCurrencyCode(values.currency) ? values.currency : null;
 }
 
-export function invoiceTotals(
-  values: InvoiceFormValues,
+export function offerTotals(
+  values: OfferFormValues,
   clients: Client[],
   settings: Settings,
-  documentType: InvoiceDocumentType,
 ): InvoiceTotals | null {
-  const currencyCode = invoiceCurrencyCode(values);
+  const currencyCode = offerCurrencyCode(values);
   if (!currencyCode) return null;
 
-  const treatment = invoiceTaxTreatment(values, clients);
+  const treatment = offerTaxTreatment(values, clients);
   const chargeVat = treatment ? chargesCroatianPdv(treatment) : false;
-  const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
-
-  const items = values.lineItems.map((item) => {
-    const quantity = parseDecimalInput(item.quantity) ?? 0;
-    const unitPrice = parseDecimalInput(item.unitPrice) ?? 0;
-    return {
-      quantity: isCreditNote ? Math.abs(quantity) : quantity,
-      unitPrice: isCreditNote ? -Math.abs(unitPrice) : unitPrice,
-    };
-  });
+  const items = values.lineItems.map((item) => ({
+    quantity: parseDecimalInput(item.quantity) ?? 0,
+    unitPrice: parseDecimalInput(item.unitPrice) ?? 0,
+  }));
 
   return computeInvoiceTotals(items, currencyCode, {
     chargeVat,
@@ -190,50 +170,48 @@ export function invoiceTotals(
   });
 }
 
-export function invoiceDefaults({
+export function offerDefaults({
   company,
   clients,
   settings,
-  documentType,
-  invoice,
+  offer,
 }: {
   company: CompanyWithRelations;
   clients: Client[];
   settings: Settings;
-  documentType: InvoiceDocumentType;
-  invoice?: Invoice;
-}): InvoiceFormValues {
-  const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
-
-  if (invoice) {
-    const client = clients.find((candidate) => candidate.id === invoice.clientId);
-    const issueDate = strToDate(invoice.issueDate);
-    const dueDate = strToDate(invoice.dueDate);
+  offer?: Offer;
+}): OfferFormValues {
+  if (offer) {
+    const client = clients.find((candidate) => candidate.id === offer.clientId);
+    const offerDate = strToDate(offer.issueDate);
+    const validUntil = strToDate(offer.dueDate);
 
     return {
-      clientId: invoice.clientId ? String(invoice.clientId) : "",
-      locationId: invoice.locationId ? String(invoice.locationId) : "",
-      paymentMethodId: invoice.paymentMethodId ? String(invoice.paymentMethodId) : "",
-      currency: invoice.currency ?? defaultCurrency(settings, client),
-      email: invoice.email ?? "",
-      issueDate,
-      deliveryDate: strToDate(invoice.deliveryDate),
-      dueDate,
-      termsDays: daysBetween(issueDate, dueDate) ?? resolvePaymentTerms(company, settings, client),
-      notesHr: invoice.notesHr ?? "",
-      notesEn: invoice.notesEn ?? "",
-      lineItems: invoice.lineItems.map((lineItem) => ({
-        descriptionHr: lineItem.descriptionHr ?? "",
-        descriptionEn: lineItem.descriptionEn ?? "",
-        quantity: lineItem.quantity != null ? String(isCreditNote ? Math.abs(lineItem.quantity) : lineItem.quantity) : "",
-        unitPrice: lineItem.unitPrice != null ? String(isCreditNote ? Math.abs(lineItem.unitPrice) : lineItem.unitPrice) : "",
-      })),
-      dueDateManual: true,
+      clientId: offer.clientId ? String(offer.clientId) : "",
+      locationId: offer.locationId ? String(offer.locationId) : "",
+      paymentMethodId: offer.paymentMethodId ? String(offer.paymentMethodId) : "",
+      currency: offer.currency ?? defaultOfferCurrency(settings, client),
+      email: offer.email ?? "",
+      offerDate,
+      validUntil,
+      validityDays: daysBetween(offerDate, validUntil) ?? resolveOfferValidity(settings, client),
+      notesHr: offer.notesHr ?? "",
+      notesEn: offer.notesEn ?? "",
+      lineItems:
+        offer.lineItems.length > 0
+          ? offer.lineItems.map((lineItem) => ({
+              descriptionHr: lineItem.descriptionHr ?? "",
+              descriptionEn: lineItem.descriptionEn ?? "",
+              quantity: lineItem.quantity != null ? String(lineItem.quantity) : "",
+              unitPrice: lineItem.unitPrice != null ? String(lineItem.unitPrice) : "",
+            }))
+          : documentLineItemsDefaults.lineItems.map((lineItem) => ({ ...lineItem })),
+      validUntilManual: true,
     };
   }
 
   const today = new Date();
-  const terms = resolvePaymentTerms(company, settings);
+  const validity = resolveOfferValidity(settings);
   const defaultLocation = company.locations.find((location) => location.isDefault) ?? company.locations[0];
   const defaultPaymentMethod =
     company.paymentMethods.find((paymentMethod) => paymentMethod.isDefault) ?? company.paymentMethods[0];
@@ -242,64 +220,53 @@ export function invoiceDefaults({
     clientId: "",
     locationId: defaultLocation ? String(defaultLocation.id) : "",
     paymentMethodId: defaultPaymentMethod ? String(defaultPaymentMethod.id) : "",
-    currency: defaultCurrency(settings),
+    currency: defaultOfferCurrency(settings),
     email: "",
-    issueDate: today,
-    deliveryDate: today,
-    dueDate: addTermsToDate(today, terms),
-    termsDays: terms,
+    offerDate: today,
+    validUntil: addValidityToDate(today, validity),
+    validityDays: validity,
     notesHr: "",
     notesEn: "",
     lineItems: documentLineItemsDefaults.lineItems.map((lineItem) => ({ ...lineItem })),
-    dueDateManual: false,
+    validUntilManual: false,
   };
 }
 
-export function invoicePayloadFromValues(
-  values: InvoiceFormValues,
+export function offerPayloadFromValues(
+  values: OfferFormValues,
   companyId: number,
-  documentType: InvoiceDocumentType,
   domestic: boolean,
-): InvoiceInput {
-  const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
-  const payloadNumber = (value: string): number | null => {
-    const parsed = parseDecimalInput(value);
-    if (parsed === null) return null;
-    return isCreditNote ? Math.abs(parsed) : parsed;
-  };
-
+): OfferInput {
   return {
-    type: documentType,
     companyId,
     clientId: parseId(values.clientId),
     locationId: parseId(values.locationId),
     paymentMethodId: parseId(values.paymentMethodId),
     currency: values.currency.trim() || null,
     email: values.email.trim() || null,
-    issueDate: dateToStr(values.issueDate),
-    deliveryDate: dateToStr(values.deliveryDate),
-    dueDate: dateToStr(values.dueDate),
+    issueDate: dateToStr(values.offerDate),
+    dueDate: dateToStr(values.validUntil),
     notesHr: values.notesHr.trim() || null,
     notesEn: domestic ? null : values.notesEn.trim() || null,
     lineItems: values.lineItems.filter(lineItemHasPayload).map((lineItem) => ({
       descriptionHr: lineItem.descriptionHr.trim() || null,
       descriptionEn: domestic ? null : lineItem.descriptionEn.trim() || null,
-      quantity: payloadNumber(lineItem.quantity),
-      unitPrice: payloadNumber(lineItem.unitPrice),
+      quantity: parseDecimalInput(lineItem.quantity),
+      unitPrice: parseDecimalInput(lineItem.unitPrice),
     })),
   };
 }
 
-export function validateInvoiceForm(
-  values: InvoiceFormValues,
-  intent: InvoiceSubmitIntent,
+export function validateOfferForm(
+  values: OfferFormValues,
+  intent: OfferSubmitIntent,
   context: {
     company: CompanyWithRelations;
     clients: Client[];
     settings: Settings;
   },
 ) {
-  const fields: Partial<Record<keyof InvoiceFormValues, string>> = {};
+  const fields: Partial<Record<keyof OfferFormValues, string>> = {};
 
   validateEnteredIds(values, context, fields);
   validateOptionalFields(values, context.settings, fields);
@@ -310,7 +277,8 @@ export function validateInvoiceForm(
     if (!values.locationId) fields.locationId = "Location is required before finalization.";
     if (!values.paymentMethodId) fields.paymentMethodId = "Payment method is required before finalization.";
     if (!values.currency) fields.currency = "Currency is required before finalization.";
-    if (!dateToStr(values.issueDate)) fields.issueDate = "Issue date is required before finalization.";
+    if (!dateToStr(values.offerDate)) fields.offerDate = "Offer date is required before finalization.";
+    if (!dateToStr(values.validUntil)) fields.validUntil = "Valid until date is required before finalization.";
   }
 
   if (Object.keys(fields).length === 0) return undefined;
@@ -321,8 +289,8 @@ export function validateInvoiceForm(
   };
 }
 
-export function addTermsToDate(date: Date | undefined, termsDays: number | undefined): Date | undefined {
-  return addDaysToDate(date, termsDays);
+export function addValidityToDate(date: Date | undefined, validityDays: number | undefined): Date | undefined {
+  return addDaysToDate(date, validityDays);
 }
 
 function parseId(value: string): number | null {
@@ -330,9 +298,9 @@ function parseId(value: string): number | null {
 }
 
 function validateEnteredIds(
-  values: InvoiceFormValues,
+  values: OfferFormValues,
   context: { company: CompanyWithRelations; clients: Client[] },
-  fields: Partial<Record<keyof InvoiceFormValues, string>>,
+  fields: Partial<Record<keyof OfferFormValues, string>>,
 ): void {
   const clientId = parseId(values.clientId);
   const locationId = parseId(values.locationId);
@@ -354,9 +322,9 @@ function validateEnteredIds(
 }
 
 function validateOptionalFields(
-  values: InvoiceFormValues,
+  values: OfferFormValues,
   settings: Settings,
-  fields: Partial<Record<keyof InvoiceFormValues, string>>,
+  fields: Partial<Record<keyof OfferFormValues, string>>,
 ): void {
   if (values.currency && !settings.supportedCurrencies.includes(values.currency)) {
     fields.currency = "Select a supported currency.";
@@ -367,15 +335,15 @@ function validateOptionalFields(
   if (values.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
     fields.email = "Enter a valid email address.";
   }
-  if (values.termsDays != null && (!Number.isInteger(values.termsDays) || values.termsDays < 0)) {
-    fields.termsDays = "Payment terms must be a whole number of days.";
+  if (values.validityDays != null && (!Number.isInteger(values.validityDays) || values.validityDays < 0)) {
+    fields.validityDays = "Validity must be a whole number of days.";
   }
 }
 
 function validateLineItems(
-  values: InvoiceFormValues,
-  intent: InvoiceSubmitIntent,
-  fields: Partial<Record<keyof InvoiceFormValues, string>>,
+  values: OfferFormValues,
+  intent: OfferSubmitIntent,
+  fields: Partial<Record<keyof OfferFormValues, string>>,
 ): void {
   const error = validateDocumentLineItems(values.lineItems, intent);
   if (error) fields.lineItems = error;

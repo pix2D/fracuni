@@ -27,7 +27,17 @@ const COMPANY_INPUT = {
   issuerName: "Ana Anić",
 };
 
-async function setup(overrides: Partial<typeof COMPANY_INPUT> = {}) {
+const today = new Date().toISOString().slice(0, 10);
+const todayPlusDays = (days: number): string => {
+  const d = new Date(`${today}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+async function setup(
+  overrides: Partial<Parameters<typeof createCompany>[0]> = {},
+  clientOverrides: { defaultPaymentTermsDays?: number } = {},
+) {
   const company = await createCompany({ ...COMPANY_INPUT, ...overrides });
   const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
   const paymentMethod = await createPaymentMethod(company.id, {
@@ -35,7 +45,13 @@ async function setup(overrides: Partial<typeof COMPANY_INPUT> = {}) {
     nameHr: "Transakcijski račun",
     isDefault: true,
   });
-  const client = await createClient({ name: "Domaći d.o.o.", clientType: "business", country: "HR", oib: "98765432109" });
+  const client = await createClient({
+    name: "Domaći d.o.o.",
+    clientType: "business",
+    country: "HR",
+    oib: "98765432109",
+    ...clientOverrides,
+  });
   return {
     companyId: company.id,
     clientId: client.id,
@@ -90,7 +106,12 @@ describe("finalizeOffer — numbering", () => {
     const ids = await setup();
 
     const invoice = await finalizeInvoice(
-      (await createInvoice({ ...ids, currency: "EUR", issueDate: "2026-06-15", lineItems: [{ quantity: 1, unitPrice: 10 }] })).id,
+      (await createInvoice({
+        ...ids,
+        currency: "EUR",
+        issueDate: "2026-06-15",
+        lineItems: [{ descriptionHr: "Usluga", quantity: 1, unitPrice: 10 }],
+      })).id,
     );
     const offer = await finalizeOffer((await draftOffer(ids)).id);
 
@@ -102,8 +123,15 @@ describe("finalizeOffer — numbering", () => {
     const { companyId } = await setup();
     const bare = await createOffer({ companyId });
     await expect(finalizeOffer(bare.id)).rejects.toThrow(
-      /missing required fields: Client, Location, Payment Method, Currency, Offer Date, at least one Line Item/,
+      /missing required fields: Client, Location, Payment Method, Currency, Offer Date, Valid Until, at least one complete Line Item/,
     );
+  });
+
+  it("rejects an incomplete included line item", async () => {
+    const ids = await setup();
+    const offer = await draftOffer(ids, { lineItems: [{ quantity: 1, unitPrice: 100 }] });
+    await expect(finalizeOffer(offer.id)).rejects.toThrow(/every included Line Item/);
+    expect((await getOffer(offer.id))!.status).toBe("draft");
   });
 
   it("refuses to finalize a non-draft offer", async () => {
@@ -114,7 +142,12 @@ describe("finalizeOffer — numbering", () => {
 
   it("rejects an invoice id (wrong type) as not found", async () => {
     const ids = await setup();
-    const invoice = await createInvoice({ ...ids, currency: "EUR", issueDate: "2026-06-15", lineItems: [{ quantity: 1, unitPrice: 10 }] });
+    const invoice = await createInvoice({
+      ...ids,
+      currency: "EUR",
+      issueDate: "2026-06-15",
+      lineItems: [{ descriptionHr: "Usluga", quantity: 1, unitPrice: 10 }],
+    });
     await expect(finalizeOffer(invoice.id)).rejects.toThrow(/Offer not found/);
   });
 });
@@ -159,7 +192,7 @@ describe("convertOfferToInvoice", () => {
   it("creates a Draft Invoice copying client, items, currency, notes, location and payment method", async () => {
     const ids = await setup();
     const offer = await finalizeOffer(
-      (await draftOffer(ids, { notesHr: "Hvala", currency: "USD" })).id,
+      (await draftOffer(ids, { notesHr: "Hvala", currency: "USD", email: "client@example.com" })).id,
     );
     await transitionOfferStatus(offer.id, "accepted");
 
@@ -171,9 +204,23 @@ describe("convertOfferToInvoice", () => {
     expect(invoice.locationId).toBe(ids.locationId);
     expect(invoice.paymentMethodId).toBe(ids.paymentMethodId);
     expect(invoice.currency).toBe("USD");
+    expect(invoice.email).toBe("client@example.com");
     expect(invoice.notesHr).toBe("Hvala");
+    expect(invoice.issueDate).toBe(today);
+    expect(invoice.deliveryDate).toBe(today);
+    expect(invoice.dueDate).toBe(todayPlusDays(15));
     expect(invoice.lineItems).toHaveLength(1);
     expect(invoice.lineItems[0]).toMatchObject({ descriptionHr: "Usluga", quantity: 2, unitPrice: 100 });
+  });
+
+  it("uses the client payment terms override when converting to an Invoice", async () => {
+    const ids = await setup({}, { defaultPaymentTermsDays: 7 });
+    const offer = await finalizeOffer((await draftOffer(ids)).id);
+    await transitionOfferStatus(offer.id, "accepted");
+
+    const invoice = await convertOfferToInvoice(offer.id);
+
+    expect(invoice.dueDate).toBe(todayPlusDays(7));
   });
 
   it("does NOT copy the exchange rate (fetched fresh at invoice finalization)", async () => {
@@ -206,13 +253,6 @@ describe("convertOfferToInvoice", () => {
 });
 
 describe("duplicateDocument", () => {
-  const today = new Date().toISOString().slice(0, 10);
-  const todayPlusDays = (days: number): string => {
-    const d = new Date(`${today}T00:00:00.000Z`);
-    d.setUTCDate(d.getUTCDate() + days);
-    return d.toISOString().slice(0, 10);
-  };
-
   it("duplicates an Offer into a fresh Draft of the same type with today's offer date", async () => {
     const ids = await setup();
     const offer = await finalizeOffer((await draftOffer(ids, { notesHr: "x" })).id);

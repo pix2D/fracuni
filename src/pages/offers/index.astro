@@ -3,7 +3,6 @@ import Layout from "@/layouts/Layout.astro";
 import { OffersPage } from "@/components/OffersPage";
 import { getCompany, listCompanies } from "@/lib/companies";
 import { listClients } from "@/lib/clients";
-import { listCatalogEntries } from "@/lib/service-catalog";
 import { getSettings } from "@/lib/settings";
 
 const companies = await listCompanies();
@@ -11,9 +10,8 @@ const cookieCompanyId = Astro.cookies.get("companyId")?.value;
 const selectedId = cookieCompanyId ? Number(cookieCompanyId) : companies[0]?.id;
 
 const company = selectedId ? await getCompany(selectedId) : null;
-const [clients, catalog, settings] = await Promise.all([
+const [clients, settings] = await Promise.all([
   listClients(),
-  listCatalogEntries(),
   getSettings(),
 ]);
 ---
@@ -23,7 +21,6 @@ const [clients, catalog, settings] = await Promise.all([
     client:load
     company={company}
     clients={clients}
-    catalog={catalog}
     settings={settings}
   />
 </Layout>

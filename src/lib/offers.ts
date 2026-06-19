@@ -1,12 +1,9 @@
-// Offers are stored in the `invoices` table discriminated by type='offer', so
-// this module is a thin façade over @/lib/invoices that pins the type and reads
-// the offer-specific column meanings:
+// Offers are stored in the `invoices` table discriminated by type='offer'. This
+// module pins that type and keeps offer lifecycle rules out of generic invoice
+// callers:
 //
 //   issue_date         → offer date ("Datum ponude")
 //   due_date           → valid-until ("Vrijedi do")
-//
-// getOffer / updateOffer / deleteOffer are the (type-agnostic, id-keyed) invoice
-// functions re-exported under offer names so callers read clearly.
 import {
   createInvoice,
   listInvoices,
@@ -16,19 +13,48 @@ import {
   type Invoice,
   type InvoiceInput,
 } from "@/lib/invoices";
-import { DOCUMENT_TYPE } from "@/lib/documents";
+import { invalidOperation, notFound } from "@/lib/app-errors";
+import { DOCUMENT_TYPE, OFFER_STATUS } from "@/lib/documents";
 
-export type Offer = Invoice;
+export type Offer = Extract<Invoice, { type: typeof DOCUMENT_TYPE.OFFER }>;
 export type OfferInput = Omit<InvoiceInput, "type">;
 
+function isOffer(invoice: Invoice): invoice is Offer {
+  return invoice.type === DOCUMENT_TYPE.OFFER;
+}
+
+function requireOffer(invoice: Invoice | null): Offer {
+  if (!invoice || !isOffer(invoice)) throw notFound("Offer not found");
+  return invoice;
+}
+
 export async function createOffer(input: OfferInput): Promise<Offer> {
-  return createInvoice({ ...input, type: DOCUMENT_TYPE.OFFER });
+  return requireOffer(await createInvoice({ ...input, type: DOCUMENT_TYPE.OFFER }));
 }
 
 export async function listOffers(companyId?: number): Promise<Offer[]> {
-  return listInvoices({ companyId, type: DOCUMENT_TYPE.OFFER });
+  return (await listInvoices({ companyId, type: DOCUMENT_TYPE.OFFER })).filter(isOffer);
 }
 
-export const getOffer = getInvoice;
-export const updateOffer = updateInvoice;
-export const deleteOffer = deleteInvoice;
+export async function getOffer(id: number): Promise<Offer | null> {
+  const invoice = await getInvoice(id);
+  return invoice && isOffer(invoice) ? invoice : null;
+}
+
+export async function updateOffer(id: number, input: Partial<OfferInput>): Promise<Offer> {
+  const current = requireOffer(await getInvoice(id));
+  if (current.status !== OFFER_STATUS.DRAFT) {
+    throw invalidOperation(`A ${current.status} offer is immutable and cannot be edited`);
+  }
+
+  return requireOffer(await updateInvoice(id, input));
+}
+
+export async function deleteOffer(id: number): Promise<void> {
+  const current = requireOffer(await getInvoice(id));
+  if (current.status !== OFFER_STATUS.DRAFT) {
+    throw invalidOperation("Only Draft offers can be deleted");
+  }
+
+  await deleteInvoice(id);
+}

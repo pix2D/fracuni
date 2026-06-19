@@ -52,25 +52,27 @@ import type {
   DocumentYearFilter,
 } from "@/components/documents/types";
 
-interface Props {
-  documents: Invoice[];
+interface Props<TDocument extends Invoice> {
+  documents: TDocument[];
   clients: Client[];
   settings: Settings;
   empty: string;
   documentLabel: { singular: string; plural: string };
   dateLabel: string;
   statusOptions: DocumentStatusOption[];
-  summary: DocumentSummaryConfig[];
-  renderActions: (document: Invoice) => ReactNode;
-  numberFormatter?: (document: Invoice) => string;
+  summary: DocumentSummaryConfig<TDocument>[];
+  renderActions: (document: TDocument) => ReactNode;
+  numberFormatter?: (document: TDocument) => string;
   showOriginalInvoiceNumber?: boolean;
 }
 
-const globalDocumentFilter: FilterFn<DocumentTableRow> = (row, _columnId, filterValue) => {
-  const term = String(filterValue ?? "").trim().toLowerCase();
-  if (!term) return true;
-  return row.original.searchText.includes(term);
-};
+function createGlobalDocumentFilter<TDocument extends Invoice>(): FilterFn<DocumentTableRow<TDocument>> {
+  return (row, _columnId, filterValue) => {
+    const term = String(filterValue ?? "").trim().toLowerCase();
+    if (!term) return true;
+    return row.original.searchText.includes(term);
+  };
+}
 
 function parseDocumentNumberValue(value: string | null): number {
   if (!value) return 0;
@@ -82,7 +84,10 @@ function formatAmount(amount: Money | null): string {
   return amount ? formatMoneyWithCurrency(amount) : "-";
 }
 
-function summaryByCurrency(rows: DocumentTableRow[], include: (row: DocumentTableRow) => boolean): string[] {
+function summaryByCurrency<TDocument extends Invoice>(
+  rows: DocumentTableRow<TDocument>[],
+  include: (row: DocumentTableRow<TDocument>) => boolean,
+): string[] {
   const byCurrency = new Map<string, Money[]>();
   for (const row of rows) {
     if (!row.amount || !row.currency || !include(row)) continue;
@@ -127,7 +132,7 @@ function SummaryPill({ label, values }: { label: string; values: string[] }) {
   );
 }
 
-export function DocumentDataTable({
+export function DocumentDataTable<TDocument extends Invoice = Invoice>({
   documents,
   clients,
   settings,
@@ -139,7 +144,7 @@ export function DocumentDataTable({
   renderActions,
   numberFormatter = (document) => document.documentNumber ?? "-",
   showOriginalInvoiceNumber = false,
-}: Props) {
+}: Props<TDocument>) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "issueDate", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility] = useState<VisibilityState>({ year: false });
@@ -153,7 +158,7 @@ export function DocumentDataTable({
     [clients],
   );
 
-  const rows = useMemo<DocumentTableRow[]>(
+  const rows = useMemo<DocumentTableRow<TDocument>[]>(
     () =>
       documents.map((document) => {
         const currency = document.currency && isCurrencyCode(document.currency) ? document.currency : "";
@@ -205,7 +210,7 @@ export function DocumentDataTable({
     [rows],
   );
 
-  const columns = useMemo<ColumnDef<DocumentTableRow>[]>(
+  const columns = useMemo<ColumnDef<DocumentTableRow<TDocument>>[]>(
     () => [
       {
         accessorKey: "numberValue",
@@ -220,7 +225,7 @@ export function DocumentDataTable({
               cell: ({ row }) => (
                 <span className="text-muted-foreground">{row.original.originalInvoiceNumber}</span>
               ),
-            } satisfies ColumnDef<DocumentTableRow>,
+            } satisfies ColumnDef<DocumentTableRow<TDocument>>,
           ]
         : []),
       {
@@ -278,7 +283,7 @@ export function DocumentDataTable({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: globalDocumentFilter,
+    globalFilterFn: createGlobalDocumentFilter<TDocument>(),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),

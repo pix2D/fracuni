@@ -8,9 +8,9 @@ import {
   invoiceRouteBase,
 } from "@/components/invoices/InvoiceFormLayout";
 import { InvoiceHealthStatus } from "@/components/invoices/InvoiceHealthStatus";
-import { InvoiceLineItemsSection } from "@/components/invoices/InvoiceLineItemsSection";
-import { InvoiceNotesTotalsSection } from "@/components/invoices/InvoiceNotesTotalsSection";
 import { InvoicePartySection } from "@/components/invoices/InvoicePartySection";
+import { DocumentLineItemsSection } from "@/components/documents/DocumentLineItemsSection";
+import { DocumentNotesTotalsSection } from "@/components/documents/DocumentNotesTotalsSection";
 import {
   invoiceCurrencyCode,
   invoiceDateFields,
@@ -151,7 +151,7 @@ export function InvoiceEditForm({
 
             return (
               <>
-                <InvoiceLineItemsSection
+                <DocumentLineItemsSection
                   form={form}
                   fields={invoiceLineItemFields}
                   domestic={domestic}
@@ -160,7 +160,7 @@ export function InvoiceEditForm({
                   readOnly={readOnly}
                   negativeAmounts={documentType === DOCUMENT_TYPE.CREDIT_NOTE}
                 />
-                <InvoiceNotesTotalsSection
+                <DocumentNotesTotalsSection
                   form={form}
                   fields={invoiceNoteFields}
                   domestic={domestic}

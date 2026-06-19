@@ -385,7 +385,7 @@ describe("finalizeInvoice — required field validation", () => {
     const drafted = await createInvoice({ companyId: company.id });
 
     await expect(finalizeInvoice(drafted.id)).rejects.toThrow(
-      /missing required fields: Client, Location, Payment Method, Currency, Issue Date, at least one Line Item/,
+      /missing required fields: Client, Location, Payment Method, Currency, Issue Date, at least one complete Line Item/,
     );
   });
 
@@ -393,7 +393,15 @@ describe("finalizeInvoice — required field validation", () => {
     const ids = await setupDomestic();
     const drafted = await draft(ids, { lineItems: [] });
 
-    await expect(finalizeInvoice(drafted.id)).rejects.toThrow(/at least one Line Item/);
+    await expect(finalizeInvoice(drafted.id)).rejects.toThrow(/at least one complete Line Item/);
+    expect((await getInvoice(drafted.id))!.status).toBe("draft");
+  });
+
+  it("rejects an incomplete included line item", async () => {
+    const ids = await setupDomestic();
+    const drafted = await draft(ids, { lineItems: [{ quantity: 1, unitPrice: 100 }] });
+
+    await expect(finalizeInvoice(drafted.id)).rejects.toThrow(/every included Line Item/);
     expect((await getInvoice(drafted.id))!.status).toBe("draft");
   });
 

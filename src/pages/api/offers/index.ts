@@ -1,31 +1,7 @@
 import type { APIRoute } from "astro";
-import { z } from "zod/v4";
 import { createOffer, listOffers } from "@/lib/offers";
 import { handleApiError, errorResponse, jsonResponse, parseJsonRequest } from "@/lib/api";
-
-const LineItemSchema = z.object({
-  descriptionHr: z.string().nullish(),
-  descriptionEn: z.string().nullish(),
-  quantity: z.number().nullish(),
-  unitPrice: z.number().nullish(),
-});
-
-// Drafts are permissive: only the owning company is required. On an offer the
-// date fields carry offer-specific meaning (issueDate = offer date,
-// dueDate = valid-until). Validity days are form/defaulting state only.
-const CreateOfferSchema = z.object({
-  companyId: z.number().int().positive(),
-  clientId: z.number().int().positive().nullish(),
-  locationId: z.number().int().positive().nullish(),
-  paymentMethodId: z.number().int().positive().nullish(),
-  currency: z.string().nullish(),
-  email: z.string().nullish(),
-  issueDate: z.string().nullish(),
-  dueDate: z.string().nullish(),
-  notesHr: z.string().nullish(),
-  notesEn: z.string().nullish(),
-  lineItems: z.array(LineItemSchema).optional(),
-});
+import { CreateOfferSchema } from "@/lib/offers.schema";
 
 export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);

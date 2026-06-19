@@ -1,0 +1,35 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { OfferEditForm } from "@/components/offers/OfferEditForm";
+import { getCompany } from "@/lib/companies";
+import { listClients } from "@/lib/clients";
+import { getOffer } from "@/lib/offers";
+import { listCatalogEntries } from "@/lib/service-catalog";
+import { getSettings } from "@/lib/settings";
+
+const id = Number(Astro.params.id);
+const offer = Number.isInteger(id) && id > 0 ? await getOffer(id) : null;
+const company = offer ? await getCompany(offer.companyId) : null;
+const [clients, catalog, settings] = await Promise.all([
+  listClients(),
+  listCatalogEntries(),
+  getSettings(),
+]);
+---
+
+<Layout>
+  {offer && company ? (
+    <OfferEditForm
+      client:load
+      company={company}
+      clients={clients}
+      catalog={catalog}
+      settings={settings}
+      offer={offer}
+    />
+  ) : (
+    <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+      Offer not found.
+    </div>
+  )}
+</Layout>

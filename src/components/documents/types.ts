@@ -15,13 +15,13 @@ export interface DocumentStatusOption {
   label: string;
 }
 
-export interface DocumentSummaryConfig {
+export interface DocumentSummaryConfig<TDocument extends Invoice = Invoice> {
   label: string;
-  include: (row: DocumentTableRow) => boolean;
+  include: (row: DocumentTableRow<TDocument>) => boolean;
 }
 
-export interface DocumentTableRow {
-  document: Invoice;
+export interface DocumentTableRow<TDocument extends Invoice = Invoice> {
+  document: TDocument;
   number: string;
   numberValue: number;
   originalInvoiceNumber: string;

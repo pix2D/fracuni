@@ -34,7 +34,9 @@ export function OfferDocumentActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onOpen(offer)}>Edit</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onOpen(offer)}>
+          {offer.status === OFFER_STATUS.DRAFT ? "Edit" : "View"}
+        </DropdownMenuItem>
         {offer.status === OFFER_STATUS.FINALIZED && (
           <>
             <DropdownMenuItem onClick={() => onStatus(offer, OFFER_STATUS.ACCEPTED)}>

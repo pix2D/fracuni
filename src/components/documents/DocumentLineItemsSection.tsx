@@ -3,28 +3,28 @@ import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { withFieldGroup } from "@/components/forms/app-form";
 import { FieldError } from "@/components/ui/field";
 import {
-  invoiceLineItemsDefaults,
-  type InvoiceLineItemsInput,
-  type InvoiceSubmitIntent,
-} from "@/components/invoices/invoice-form-model";
+  documentLineItemsDefaults,
+  type DocumentLineItemsInput,
+  type DocumentSubmitIntent,
+} from "@/components/documents/document-form-model";
 import type { CurrencyCode } from "@/lib/currency";
 import type { CatalogEntry } from "@/lib/service-catalog";
 
-interface InvoiceLineItemsSectionProps {
+interface DocumentLineItemsSectionProps {
   domestic: boolean;
   currencyCode: CurrencyCode | null;
   catalog: CatalogEntry[];
   readOnly: boolean;
-  negativeAmounts: boolean;
+  negativeAmounts?: boolean;
 }
 
-export const InvoiceLineItemsSection = withFieldGroup<
-  InvoiceLineItemsInput,
-  InvoiceSubmitIntent,
-  InvoiceLineItemsSectionProps
+export const DocumentLineItemsSection = withFieldGroup<
+  DocumentLineItemsInput,
+  DocumentSubmitIntent,
+  DocumentLineItemsSectionProps
 >({
-  defaultValues: invoiceLineItemsDefaults,
-  render: function Render({ group, domestic, currencyCode, catalog, readOnly, negativeAmounts }) {
+  defaultValues: documentLineItemsDefaults,
+  render: function Render({ group, domestic, currencyCode, catalog, readOnly, negativeAmounts = false }) {
     return (
       <section className="space-y-4 border-t pt-6">
         <group.AppField name="lineItems">

@@ -2,9 +2,9 @@ import { useRef, useState } from "react";
 import { InvoiceDatesSection } from "@/components/invoices/InvoiceDatesSection";
 import { InvoiceFormActions, InvoiceFormShell, invoiceNoun, invoiceRouteBase } from "@/components/invoices/InvoiceFormLayout";
 import { InvoiceHealthStatus } from "@/components/invoices/InvoiceHealthStatus";
-import { InvoiceLineItemsSection } from "@/components/invoices/InvoiceLineItemsSection";
-import { InvoiceNotesTotalsSection } from "@/components/invoices/InvoiceNotesTotalsSection";
 import { InvoicePartySection } from "@/components/invoices/InvoicePartySection";
+import { DocumentLineItemsSection } from "@/components/documents/DocumentLineItemsSection";
+import { DocumentNotesTotalsSection } from "@/components/documents/DocumentNotesTotalsSection";
 import {
   invoiceCurrencyCode,
   invoiceDateFields,
@@ -128,7 +128,7 @@ export function InvoiceCreateForm({
 
             return (
               <>
-                <InvoiceLineItemsSection
+                <DocumentLineItemsSection
                   form={form}
                   fields={invoiceLineItemFields}
                   domestic={domestic}
@@ -137,7 +137,7 @@ export function InvoiceCreateForm({
                   readOnly={false}
                   negativeAmounts={documentType === DOCUMENT_TYPE.CREDIT_NOTE}
                 />
-                <InvoiceNotesTotalsSection
+                <DocumentNotesTotalsSection
                   form={form}
                   fields={invoiceNoteFields}
                   domestic={domestic}

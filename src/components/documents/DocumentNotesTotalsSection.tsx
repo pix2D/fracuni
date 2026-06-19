@@ -1,25 +1,25 @@
 import { formatMoneyWithCurrency } from "@/lib/currency";
 import { withFieldGroup } from "@/components/forms/app-form";
 import {
-  invoiceNotesDefaults,
-  type InvoiceNotesInput,
-  type InvoiceSubmitIntent,
-} from "@/components/invoices/invoice-form-model";
+  documentNotesDefaults,
+  type DocumentNotesInput,
+  type DocumentSubmitIntent,
+} from "@/components/documents/document-form-model";
 import type { InvoiceTotals } from "@/lib/invoice-totals";
 
-interface InvoiceNotesTotalsSectionProps {
+interface DocumentNotesTotalsSectionProps {
   domestic: boolean;
   totals: InvoiceTotals | null;
   vatRate: number;
   readOnly: boolean;
 }
 
-export const InvoiceNotesTotalsSection = withFieldGroup<
-  InvoiceNotesInput,
-  InvoiceSubmitIntent,
-  InvoiceNotesTotalsSectionProps
+export const DocumentNotesTotalsSection = withFieldGroup<
+  DocumentNotesInput,
+  DocumentSubmitIntent,
+  DocumentNotesTotalsSectionProps
 >({
-  defaultValues: invoiceNotesDefaults,
+  defaultValues: documentNotesDefaults,
   render: function Render({ group, domestic, totals, vatRate, readOnly }) {
     return (
       <section className="grid gap-6 border-t pt-6 md:grid-cols-[minmax(0,1fr)_20rem]">

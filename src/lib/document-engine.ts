@@ -29,6 +29,7 @@ import {
   type GenerateDeps,
 } from "@/lib/pdf-generator";
 import { parseClientType } from "@/lib/client-types";
+import { getSettings } from "@/lib/settings";
 
 // Invoices and Credit Notes are priced in EUR by default; only non-EUR documents
 // need an HNB exchange rate captured at finalization.
@@ -51,6 +52,7 @@ interface InvoiceFinalizationPlan {
 }
 
 type PdfArtifactRenderer = (invoice: Invoice) => Promise<GeneratedPdfArtifacts>;
+type OfferDocument = Extract<Invoice, { type: typeof DOCUMENT_TYPE.OFFER }>;
 
 // A Draft must carry these before it can become a legal document. Order here is
 // the order they surface in the error message.
@@ -60,7 +62,6 @@ const REQUIRED_FIELDS: { label: string; present: (invoice: Invoice) => boolean }
   { label: "Payment Method", present: (i) => i.paymentMethodId != null },
   { label: "Currency", present: (i) => !!i.currency },
   { label: "Issue Date", present: (i) => !!i.issueDate },
-  { label: "at least one Line Item", present: (i) => i.lineItems.length > 0 },
 ];
 
 function assertFinalizable(invoice: Invoice): void {
@@ -69,10 +70,17 @@ function assertFinalizable(invoice: Invoice): void {
   }
 
   const missing = REQUIRED_FIELDS.filter((field) => !field.present(invoice)).map((f) => f.label);
+  const lineItemIssue = finalizableLineItemIssue(invoice);
+  if (lineItemIssue === "missing") missing.push("at least one complete Line Item");
+
   if (missing.length > 0) {
     throw invalidRequest(`Cannot finalize: missing required fields: ${missing.join(", ")}`, {
       missingFields: missing,
     });
+  }
+
+  if (lineItemIssue === "incomplete") {
+    throw invalidRequest("Cannot finalize: every included Line Item must have an HR description, quantity, and unit price");
   }
 }
 
@@ -407,25 +415,32 @@ const OFFER_REQUIRED_FIELDS: { label: string; present: (offer: Invoice) => boole
   { label: "Payment Method", present: (o) => o.paymentMethodId != null },
   { label: "Currency", present: (o) => !!o.currency },
   { label: "Offer Date", present: (o) => !!o.issueDate },
-  { label: "at least one Line Item", present: (o) => o.lineItems.length > 0 },
+  { label: "Valid Until", present: (o) => !!o.dueDate },
 ];
 
-async function loadOffer(id: number): Promise<Invoice> {
+async function loadOffer(id: number): Promise<OfferDocument> {
   const offer = await getInvoice(id);
   if (!offer || offer.type !== DOCUMENT_TYPE.OFFER) throw notFound("Offer not found");
   return offer;
 }
 
-function assertOfferFinalizable(offer: Invoice): void {
+function assertOfferFinalizable(offer: OfferDocument): void {
   if (offer.status !== OFFER_STATUS.DRAFT) {
     throw invalidOperation(`Only Draft offers can be finalized (current status: ${offer.status})`);
   }
 
   const missing = OFFER_REQUIRED_FIELDS.filter((f) => !f.present(offer)).map((f) => f.label);
+  const lineItemIssue = finalizableLineItemIssue(offer);
+  if (lineItemIssue === "missing") missing.push("at least one complete Line Item");
+
   if (missing.length > 0) {
     throw invalidRequest(`Cannot finalize: missing required fields: ${missing.join(", ")}`, {
       missingFields: missing,
     });
+  }
+
+  if (lineItemIssue === "incomplete") {
+    throw invalidRequest("Cannot finalize: every included Line Item must have an HR description, quantity, and unit price");
   }
 }
 
@@ -454,7 +469,7 @@ async function assignOfferSequence(
  * assigned number is the bare sequence value (e.g. "1"); display layers render
  * it as "Ponuda #1".
  */
-export async function finalizeOffer(id: number): Promise<Invoice> {
+export async function finalizeOffer(id: number): Promise<OfferDocument> {
   const db = getDb();
   const offer = await loadOffer(id);
 
@@ -479,7 +494,7 @@ export async function finalizeOffer(id: number): Promise<Invoice> {
 export async function finalizeOfferWithPdfs(
   id: number,
   deps: GenerateDeps = {},
-): Promise<Invoice> {
+): Promise<OfferDocument> {
   const db = getDb();
   const offer = await loadOffer(id);
   assertOfferFinalizable(offer);
@@ -521,7 +536,7 @@ export async function finalizeOfferWithPdfs(
  * and Rejected → Finalized (a Client can change their mind). Accepted is
  * terminal — convert it to an Invoice instead.
  */
-export async function transitionOfferStatus(id: number, target: OfferStatus): Promise<Invoice> {
+export async function transitionOfferStatus(id: number, target: OfferStatus): Promise<OfferDocument> {
   const db = getDb();
   const offer = await loadOffer(id);
   const current = offer.status as OfferStatus;
@@ -557,6 +572,68 @@ function dateOffsetDays(start: string | null, end: string | null): number | null
   return differenceInCalendarDays(new Date(`${end}T00:00:00`), new Date(`${start}T00:00:00`));
 }
 
+function lineItemHasPayload(lineItem: Invoice["lineItems"][number]): boolean {
+  const hasHrDescription = lineItem.descriptionHr != null && lineItem.descriptionHr.trim() !== "";
+  const hasEnDescription = lineItem.descriptionEn != null && lineItem.descriptionEn.trim() !== "";
+
+  return (
+    hasHrDescription ||
+    hasEnDescription ||
+    lineItem.quantity != null ||
+    lineItem.unitPrice != null
+  );
+}
+
+function lineItemIsFinalizable(lineItem: Invoice["lineItems"][number]): boolean {
+  return (
+    lineItem.descriptionHr != null &&
+    lineItem.descriptionHr.trim() !== "" &&
+    lineItem.quantity != null &&
+    Number.isFinite(lineItem.quantity) &&
+    lineItem.quantity > 0 &&
+    lineItem.unitPrice != null &&
+    Number.isFinite(lineItem.unitPrice)
+  );
+}
+
+function finalizableLineItemIssue(invoice: Invoice): "missing" | "incomplete" | null {
+  let completeItems = 0;
+
+  for (const lineItem of invoice.lineItems) {
+    if (!lineItemHasPayload(lineItem)) continue;
+    if (!lineItemIsFinalizable(lineItem)) return "incomplete";
+    completeItems += 1;
+  }
+
+  return completeItems > 0 ? null : "missing";
+}
+
+async function dueDateFromPaymentTerms(offer: Invoice, issueDate: Date): Promise<string> {
+  const db = getDb();
+  const [settings, company, client] = await Promise.all([
+    getSettings(),
+    db
+      .selectFrom("companies")
+      .select("defaultPaymentTermsDays")
+      .where("id", "=", offer.companyId)
+      .executeTakeFirst(),
+    offer.clientId
+      ? db
+          .selectFrom("clients")
+          .select("defaultPaymentTermsDays")
+          .where("id", "=", offer.clientId)
+          .executeTakeFirst()
+      : Promise.resolve(null),
+  ]);
+
+  const terms =
+    client?.defaultPaymentTermsDays ??
+    company?.defaultPaymentTermsDays ??
+    settings.defaultPaymentTermsDays;
+
+  return format(addDays(issueDate, terms), "yyyy-MM-dd");
+}
+
 /**
  * Convert an Accepted Offer into a new Draft Invoice, copying Client, Line Items,
  * currency, Notes, Location and Payment Method. The exchange rate is NOT copied —
@@ -570,7 +647,10 @@ export async function convertOfferToInvoice(offerId: number): Promise<Invoice> {
     );
   }
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const now = new Date();
+  const today = format(now, "yyyy-MM-dd");
+  const dueDate = await dueDateFromPaymentTerms(offer, now);
+
   return createInvoice({
     type: DOCUMENT_TYPE.INVOICE,
     companyId: offer.companyId,
@@ -578,9 +658,12 @@ export async function convertOfferToInvoice(offerId: number): Promise<Invoice> {
     locationId: offer.locationId,
     paymentMethodId: offer.paymentMethodId,
     currency: offer.currency,
+    email: offer.email,
     notesHr: offer.notesHr,
     notesEn: offer.notesEn,
     issueDate: today,
+    deliveryDate: today,
+    dueDate,
     lineItems: copyLineItems(offer.lineItems, new Date()),
   });
 }
