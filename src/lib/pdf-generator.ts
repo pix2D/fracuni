@@ -20,6 +20,7 @@ import { renderDocumentHtml } from "@/lib/pdf-template";
 import { renderHtmlToPdf } from "@/lib/pdf-renderer";
 import { DOCUMENT_TYPE, type DocumentType } from "@/lib/documents";
 import { isDomestic } from "@/lib/countries";
+import { getDataDir } from "@/lib/data-dir";
 import { slugify } from "@/lib/slug";
 import { invalidOperation, notFound } from "@/lib/app-errors";
 import type { CompanyWithRelations, Location, PaymentMethod } from "@/lib/companies";
@@ -71,7 +72,7 @@ export function configurePdfGeneration(
 function resolveRuntime(deps: GenerateDeps): { renderer: HtmlRenderer; dataDir: string } {
   return {
     renderer: deps.renderer ?? defaults.renderer ?? renderHtmlToPdf,
-    dataDir: deps.dataDir ?? defaults.dataDir ?? path.resolve("data"),
+    dataDir: deps.dataDir ?? defaults.dataDir ?? getDataDir(),
   };
 }
 

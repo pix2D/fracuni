@@ -1,10 +1,9 @@
 import Database from "better-sqlite3";
 import { CamelCasePlugin, Kysely, SqliteDialect } from "kysely";
 import type { DB } from "@/lib/db.generated";
+import { getDbPath } from "@/lib/data-dir";
 import fs from "node:fs";
 import path from "node:path";
-
-const DEFAULT_DB_PATH = path.resolve(process.env.FIRERACUNI_DB_PATH ?? "data/fireracuni.db");
 
 const global = globalThis as unknown as { __db?: Kysely<DB>; __dbPath?: string };
 
@@ -17,7 +16,7 @@ export function configureDb(newPath: string): void {
 
 export function getDb(): Kysely<DB> {
   if (!global.__db) {
-    const dbPath = global.__dbPath ?? DEFAULT_DB_PATH;
+    const dbPath = global.__dbPath ?? getDbPath();
     if (dbPath !== ":memory:") {
       const dir = path.dirname(dbPath);
       if (!fs.existsSync(dir)) {

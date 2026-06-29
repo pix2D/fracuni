@@ -2,10 +2,11 @@ services:
   app:
     build: .
     ports:
-      - "4321:4321"
+      - "127.0.0.1:4321:4321"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4321
+      FIRERACUNI_DATA_DIR: /data
     volumes:
-      - app-data:/app/data
+      - ../fracuni-data-production:/data
     restart: unless-stopped
-
-volumes:
-  app-data:

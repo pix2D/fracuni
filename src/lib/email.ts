@@ -18,6 +18,7 @@ import { getSettings } from "@/lib/settings";
 import { markInvoiceSent } from "@/lib/document-engine";
 import { INVOICE_STATUS } from "@/lib/documents";
 import { isDomestic } from "@/lib/countries";
+import { getDataDir } from "@/lib/data-dir";
 import { expandEmailTemplate } from "@/lib/placeholders";
 import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
 
@@ -198,7 +199,7 @@ export async function sendInvoiceEmail(
   deps: SendDeps = {},
 ): Promise<SendInvoiceEmailResult> {
   const sender = deps.sender ?? defaults.sender ?? postmarkSender;
-  const dataDir = deps.dataDir ?? defaults.dataDir ?? path.resolve("data");
+  const dataDir = deps.dataDir ?? defaults.dataDir ?? getDataDir();
 
   const { invoice, company, client } = await loadContext(invoiceId);
   if (invoice.status !== INVOICE_STATUS.FINALIZED) {

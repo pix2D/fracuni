@@ -28,7 +28,7 @@ await sql`SELECT * FROM companies WHERE id = ${id}`.execute(db);
 
 **Migration workflow:** Write migration → `pnpm run db:migrate` → `pnpm run db:generate` → commit all three (migration file, updated generated types, code that uses the new tables).
 
-**Testing database:** Always run tests against a test database, never the default application database. Set `FIRERACUNI_DB_PATH` to an obvious test path before any test command that can touch SQLite. The Playwright E2E setup uses `data/fireracuni.e2e.db`; Vitest helpers should use in-memory or another explicit test DB. Do not run migrations or tests against `data/fireracuni.db` unless the human explicitly asks for that exact operation.
+**Testing data directory:** Always run tests against a test data directory, never the default application data directory. Set `FIRERACUNI_DATA_DIR` to an obvious test path before any test command that can touch SQLite or persisted files. The Playwright E2E setup uses `data/e2e`; Vitest helpers should use in-memory SQLite and temporary file directories, or another explicit test data directory. Do not run migrations or tests against `data/` unless the human explicitly asks for that exact operation.
 
 ### Data access modules
 

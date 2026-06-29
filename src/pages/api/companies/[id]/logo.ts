@@ -1,20 +1,21 @@
 import type { APIRoute } from "astro";
 import { getCompany, updateCompany } from "@/lib/companies";
 import { errorResponse, handleApiError, jsonResponse, parseIdParam } from "@/lib/api";
+import { getDataDir, resolveDataPath, resolveDataRelativePath } from "@/lib/data-dir";
 import { LOGO_TYPES, logoFileError, logoTypeForMime } from "@/lib/logo-upload";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const DATA_DIR = path.resolve("data");
-const LOGOS_DIR = path.resolve("data/logos");
+const LOGOS_SUBDIR = "logos";
 
 async function resolveExistingDataPath(relativePath: string): Promise<string | null> {
-  const resolved = path.resolve(DATA_DIR, relativePath);
-  if (resolved !== DATA_DIR && !resolved.startsWith(DATA_DIR + path.sep)) return null;
+  const dataDir = getDataDir();
+  const resolved = resolveDataRelativePath(relativePath);
+  if (!resolved) return null;
 
   try {
     const [realDataDir, realFilePath] = await Promise.all([
-      fs.realpath(DATA_DIR),
+      fs.realpath(dataDir),
       fs.realpath(resolved),
     ]);
     if (realFilePath !== realDataDir && !realFilePath.startsWith(realDataDir + path.sep)) return null;
@@ -84,9 +85,10 @@ export const POST: APIRoute = async ({ params, request }) => {
     if (!logoType) return errorResponse("File must be a PNG, JPEG, or WebP image", 400);
 
     const filename = `${id}${logoType.extension}`;
-    const filepath = path.join(LOGOS_DIR, filename);
+    const logosDir = resolveDataPath(LOGOS_SUBDIR);
+    const filepath = path.join(logosDir, filename);
 
-    await fs.mkdir(LOGOS_DIR, { recursive: true });
+    await fs.mkdir(logosDir, { recursive: true });
 
     const buffer = Buffer.from(await file.arrayBuffer());
     await fs.writeFile(filepath, buffer);

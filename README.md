@@ -1,46 +1,63 @@
-# Astro Starter Kit: Basics
+# FireRacuni
+
+Internal invoicing app for companies, clients, offers, invoices, credit notes, PDFs, and email sending.
+
+## Local Development
 
 ```sh
-pnpm create astro@latest -- --template basics
+pnpm install
+pnpm dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
+By default, local app data is stored in `data/`:
 
 ```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
+data/fireracuni.db
+data/logos/
+data/pdfs/
 ```
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+Use `FIRERACUNI_DATA_DIR` to point the app at another data directory.
 
-## 🧞 Commands
+## Database
 
-All commands are run from the root of the project, from a terminal:
+Run migrations:
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
+```sh
+pnpm run db:migrate
+```
 
-## 👀 Want to learn more?
+After changing migrations, regenerate committed Kysely types:
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+```sh
+pnpm run db:migrate
+pnpm run db:generate
+```
+
+## Production
+
+Docker Compose mounts production data outside the repo:
+
+```text
+../fracuni-data-production:/data
+FIRERACUNI_DATA_DIR=/data
+```
+
+Start:
+
+```sh
+docker compose up -d --build
+```
+
+The container runs migrations before starting the server. Back up `../fracuni-data-production` before deploys that include migrations.
+
+The app binds to `127.0.0.1:4321`; put it behind a reverse proxy, VPN, or other access control.
+
+## Tests
+
+```sh
+pnpm run verify
+pnpm run test:e2e
+```
+
+E2E tests use `data/e2e`, wipe it at startup, and leave it after the run for inspection.

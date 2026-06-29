@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { promises as fs } from "node:fs";
-import path from "node:path";
 import { createCompany, getCompany, updateCompany } from "@/lib/companies";
 import type { CompanyInput } from "@/lib/companies";
+import { resolveDataPath } from "@/lib/data-dir";
 import { GET as getLogo, POST as uploadLogo } from "@/pages/api/companies/[id]/logo";
 import { apiContext } from "@/test/api";
 import { useMigratedDb } from "@/test/db";
@@ -10,7 +10,7 @@ import { useMigratedDb } from "@/test/db";
 useMigratedDb();
 
 afterEach(async () => {
-  await fs.rm(path.resolve("data/logos"), { recursive: true, force: true });
+  await fs.rm(resolveDataPath("logos"), { recursive: true, force: true });
 });
 
 const COMPANY_INPUT: CompanyInput = {
@@ -36,8 +36,8 @@ const COMPANY_INPUT: CompanyInput = {
 describe("GET /api/companies/:id/logo", () => {
   it("serves the Company's stored logo from the data directory", async () => {
     const company = await createCompany(COMPANY_INPUT);
-    await fs.mkdir(path.resolve("data/logos"), { recursive: true });
-    await fs.writeFile(path.resolve("data/logos/1.png"), Buffer.from([1, 2, 3]));
+    await fs.mkdir(resolveDataPath("logos"), { recursive: true });
+    await fs.writeFile(resolveDataPath("logos", "1.png"), Buffer.from([1, 2, 3]));
     await updateCompany(company.id, { logoPath: "logos/1.png" });
 
     const response = await getLogo(apiContext({
@@ -80,7 +80,7 @@ describe("POST /api/companies/:id/logo", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ logoPath: `logos/${company.id}.png` });
-    await expect(fs.readFile(path.resolve(`data/logos/${company.id}.png`))).resolves.toEqual(Buffer.from([1, 2, 3]));
+    await expect(fs.readFile(resolveDataPath("logos", `${company.id}.png`))).resolves.toEqual(Buffer.from([1, 2, 3]));
     await expect(getCompany(company.id)).resolves.toMatchObject({ logoPath: `logos/${company.id}.png` });
   });
 

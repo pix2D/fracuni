@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 4321;
-const TEST_DB_PATH = "data/fireracuni.e2e.db";
+const TEST_DATA_DIR = "data/e2e";
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -22,12 +22,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "node tests/e2e/setup/reset-db.mjs && pnpm run db:migrate && pnpm exec astro dev --host 127.0.0.1 --port 4321",
+    command: "node tests/e2e/setup/reset-data-dir.mjs && pnpm run db:migrate && pnpm exec astro dev --host 127.0.0.1 --port 4321",
     url: `http://127.0.0.1:${PORT}/`,
     timeout: 120_000,
     reuseExistingServer: false,
     env: {
-      FIRERACUNI_DB_PATH: TEST_DB_PATH,
+      FIRERACUNI_DATA_DIR: TEST_DATA_DIR,
     },
   },
 });
