@@ -47,28 +47,24 @@ describe("GET /api/companies", () => {
 });
 
 describe("POST /api/companies", () => {
-  it("creates a Company with initial Locations and Payment Methods", async () => {
+  it("creates a Company without initial Locations or Payment Methods", async () => {
     const response = await createCompanyRoute(apiContext({
       request: new Request("http://test.local/api/companies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...COMPANY_INPUT,
-          locations: [{ number: 1, nameHr: "Zagreb", nameEn: "Zagreb", isDefault: true }],
-          paymentMethods: [{ number: 1, nameHr: "Transakcijski", nameEn: "Bank transfer", isDefault: true }],
-        }),
+        body: JSON.stringify(COMPANY_INPUT),
       }),
     }));
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toMatchObject({
       name: "Firefly One d.o.o.",
-      locations: [{ number: 1, nameHr: "Zagreb", isDefault: true }],
-      paymentMethods: [{ number: 1, nameHr: "Transakcijski", isDefault: true }],
+      locations: [],
+      paymentMethods: [],
     });
   });
 
-  it("returns 400 when setup defaults are missing", async () => {
+  it("ignores setup defaults during validation", async () => {
     const response = await createCompanyRoute(apiContext({
       request: new Request("http://test.local/api/companies", {
         method: "POST",
@@ -82,13 +78,11 @@ describe("POST /api/companies", () => {
       }),
     }));
 
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error).toBe("Validation failed");
-    expect(body.issues).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ message: "Choose exactly one default Location" }),
-      ]),
-    );
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({
+      name: "Firefly One d.o.o.",
+      locations: [],
+      paymentMethods: [],
+    });
   });
 });

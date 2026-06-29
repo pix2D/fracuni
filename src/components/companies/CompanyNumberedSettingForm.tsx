@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { DialogFooter } from "@/components/ui/dialog";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
@@ -97,61 +97,58 @@ export function CompanyNumberedSettingForm({
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-3 py-3">
-        <FormErrorBanner error={error} />
-        <form
-          noValidate
-          className="space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <FieldGroup className="grid gap-3 sm:grid-cols-[5rem_1fr_1fr_auto]">
-            <form.AppField name="number" validators={settingFieldValidators.number}>
-              {(field) => <field.NumberField label="Number" min={1} />}
-            </form.AppField>
+    <form
+      noValidate
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit();
+      }}
+    >
+      <FormErrorBanner error={error} />
 
-            <form.AppField name="nameHr" validators={settingFieldValidators.nameHr}>
-              {(field) => <field.TextField label="Name (HR)" />}
-            </form.AppField>
+      <FieldGroup className="grid gap-3 sm:grid-cols-[7rem_1fr]">
+        <form.AppField name="number" validators={settingFieldValidators.number}>
+          {(field) => <field.NumberField label="Number" min={1} />}
+        </form.AppField>
 
-            <form.AppField name="nameEn" validators={settingFieldValidators.nameEn}>
-              {(field) => <field.TextField label="Name (EN)" />}
-            </form.AppField>
+        <form.AppField name="isDefault">
+          {(field) => (
+            <Field
+              orientation="horizontal"
+              className="items-end justify-start gap-2 pb-2"
+              data-invalid={!field.state.meta.isValid}
+            >
+              <Switch
+                id={field.name}
+                checked={field.state.value === true}
+                onCheckedChange={field.handleChange}
+                disabled={defaultLocked}
+                aria-invalid={!field.state.meta.isValid}
+              />
+              <FieldLabel htmlFor={field.name}>Default</FieldLabel>
+              <FieldError errors={normalizeErrors(field.state.meta.errors)} />
+            </Field>
+          )}
+        </form.AppField>
 
-            <form.AppField name="isDefault">
-              {(field) => (
-                <Field
-                  orientation="horizontal"
-                  className="items-end justify-start gap-2 pb-2 sm:justify-end"
-                  data-invalid={!field.state.meta.isValid}
-                >
-                  <Switch
-                    id={field.name}
-                    checked={field.state.value === true}
-                    onCheckedChange={field.handleChange}
-                    disabled={defaultLocked}
-                    aria-invalid={!field.state.meta.isValid}
-                  />
-                  <FieldLabel htmlFor={field.name}>Default</FieldLabel>
-                  <FieldError errors={normalizeErrors(field.state.meta.errors)} />
-                </Field>
-              )}
-            </form.AppField>
-          </FieldGroup>
+        <form.AppField name="nameHr" validators={settingFieldValidators.nameHr}>
+          {(field) => <field.TextField label="Name (HR)" />}
+        </form.AppField>
 
-          <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={saving}>
-              {saving ? "Saving..." : "Save"}
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={onCancel}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <form.AppField name="nameEn" validators={settingFieldValidators.nameEn}>
+          {(field) => <field.TextField label="Name (EN)" />}
+        </form.AppField>
+      </FieldGroup>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={saving}>
+          {saving ? "Saving..." : "Save"}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

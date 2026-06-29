@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FormSection } from "@/components/forms/FormSection";
 import { CompanyNumberedSettingForm } from "@/components/companies/CompanyNumberedSettingForm";
 import { responseError } from "@/lib/api-response";
 import type { CompanyNumberedSettingInput } from "@/lib/companies.schema";
 import type { PaymentMethod } from "@/lib/companies";
+import { PencilSimpleIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 
 interface Props {
   companyId: number;
@@ -14,9 +17,24 @@ interface Props {
 }
 
 export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: Props) {
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethod | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function openCreate() {
+    setEditingPaymentMethod(null);
+    setDialogOpen(true);
+  }
+
+  function openEdit(paymentMethod: PaymentMethod) {
+    setEditingPaymentMethod(paymentMethod);
+    setDialogOpen(true);
+  }
+
+  function closeDialog() {
+    setDialogOpen(false);
+    setEditingPaymentMethod(null);
+  }
 
   async function handleAdd(data: CompanyNumberedSettingInput) {
     const res = await fetch(`/api/companies/${companyId}/payment-methods`, {
@@ -27,7 +45,7 @@ export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: 
     if (!res.ok) {
       throw new Error(await responseError(res, "Failed to add payment method"));
     }
-    setAdding(false);
+    closeDialog();
     setError(null);
     onUpdated();
   }
@@ -41,7 +59,7 @@ export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: 
     if (!res.ok) {
       throw new Error(await responseError(res, "Failed to update payment method"));
     }
-    setEditingId(null);
+    closeDialog();
     setError(null);
     onUpdated();
   }
@@ -61,7 +79,8 @@ export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: 
       title="Payment Methods"
       description="Each payment method keeps its own document-number sequence. The default is pre-selected on new documents."
       action={
-        <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
+        <Button type="button" variant="outline" size="sm" onClick={openCreate}>
+          <PlusIcon className="size-4" />
           Add Payment Method
         </Button>
       }
@@ -72,53 +91,87 @@ export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: 
         </div>
       )}
 
-      <div className="space-y-2">
-        {paymentMethods.length === 0 && !adding && (
+      <div>
+        {paymentMethods.length === 0 ? (
           <p className="rounded-md border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
             No payment methods yet.
           </p>
-        )}
-        {paymentMethods.map((pm) =>
-          editingId === pm.id ? (
-            <PaymentMethodForm
-              key={pm.id}
-              initial={pm}
-              onSave={(data) => handleUpdate(pm.id, data)}
-              onCancel={() => setEditingId(null)}
-            />
-          ) : (
-            <Card key={pm.id}>
-              <CardContent className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">{pm.number}</span>
-                  <span className="text-sm font-medium">{pm.nameHr}</span>
-                  {pm.nameEn && <span className="text-sm text-muted-foreground">/ {pm.nameEn}</span>}
-                  {pm.isDefault && (
-                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
-                      Default
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-1">
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setEditingId(pm.id)}>
-                    Edit
-                  </Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => handleDelete(pm.id)}>
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-20">Number</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="w-24">Default</TableHead>
+                <TableHead className="w-24" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paymentMethods.map((pm) => (
+                <TableRow key={pm.id}>
+                  <TableCell className="font-mono">{pm.number}</TableCell>
+                  <TableCell>
+                    <div className="space-y-0.5">
+                      <div className="font-medium">{pm.nameHr}</div>
+                      {pm.nameEn && <div className="text-muted-foreground">{pm.nameEn}</div>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {pm.isDefault ? <Badge variant="secondary">Default</Badge> : null}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Edit ${pm.nameHr}`}
+                        onClick={() => openEdit(pm)}
+                      >
+                        <PencilSimpleIcon className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Delete ${pm.nameHr}`}
+                        onClick={() => handleDelete(pm.id)}
+                      >
+                        <TrashIcon className="size-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </div>
 
-      {adding && (
-        <PaymentMethodForm
-          onSave={handleAdd}
-          onCancel={() => setAdding(false)}
-        />
-      )}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+          else setDialogOpen(true);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingPaymentMethod ? "Edit Payment Method" : "Add Payment Method"}</DialogTitle>
+          </DialogHeader>
+
+          <PaymentMethodForm
+            key={editingPaymentMethod?.id ?? "new"}
+            initial={editingPaymentMethod ?? undefined}
+            onSave={(data) =>
+              editingPaymentMethod
+                ? handleUpdate(editingPaymentMethod.id, data)
+                : handleAdd(data)
+            }
+            onCancel={closeDialog}
+          />
+        </DialogContent>
+      </Dialog>
     </FormSection>
   );
 }

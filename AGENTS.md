@@ -58,7 +58,7 @@ When working in a fresh worktree (e.g. tmux workers), run `pnpm install --frozen
 
 ### Sandbox constraints
 
-LLM agents run in a sandboxed container. No watchers, no Docker commands, no long-running processes. Build, test, and one-shot commands work fine.
+LLM agents run in a sandboxed container. No Docker commands. Do not start watchers, dev servers, or other long-running processes manually and leave them running. Build, test, and one-shot commands work fine, including E2E test commands such as `pnpm run test:e2e` that start and stop their own temporary web server.
 
 ## Agent skills
 

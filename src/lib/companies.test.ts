@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   createCompany,
-  createCompanyWithSetup,
   getCompany,
   listCompanies,
   updateCompany,
@@ -57,27 +56,15 @@ describe("companies", () => {
     expect(fetched!.issuerName).toBe("Marko Marković");
   });
 
-  it("creates a company with initial Locations and Payment Methods atomically", async () => {
-    const created = await createCompanyWithSetup({
-      ...COMPANY_INPUT,
-      defaultPaymentTermsDays: 15,
-      locations: [
-        { number: 1, nameHr: "Zagreb", nameEn: "Zagreb", isDefault: true },
-        { number: 2, nameHr: "Split", nameEn: "Split", isDefault: false },
-      ],
-      paymentMethods: [
-        { number: 1, nameHr: "Transakcijski", nameEn: "Bank transfer", isDefault: true },
-      ],
-    });
+  it("creates a company with no Locations or Payment Methods", async () => {
+    const created = await createCompany(COMPANY_INPUT);
 
-    expect(created.name).toBe("Firefly One d.o.o.");
-    expect(created.locations).toMatchObject([
-      { number: 1, nameHr: "Zagreb", isDefault: true },
-      { number: 2, nameHr: "Split", isDefault: false },
-    ]);
-    expect(created.paymentMethods).toMatchObject([
-      { number: 1, nameHr: "Transakcijski", isDefault: true },
-    ]);
+    const fetched = await getCompany(created.id);
+    expect(fetched).toMatchObject({
+      name: "Firefly One d.o.o.",
+      locations: [],
+      paymentMethods: [],
+    });
   });
 
   it("lists companies ordered by name", async () => {

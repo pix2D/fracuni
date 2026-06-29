@@ -32,54 +32,7 @@ export const CompanyNumberedSettingSchema = z.object({
   isDefault: z.boolean().optional(),
 });
 
-const CompanySetupNumberedSettingSchema = CompanyNumberedSettingSchema.extend({
-  isDefault: z.boolean(),
-});
-
-function ensureUniqueNumbers(
-  items: Array<{ number: number }>,
-  ctx: z.RefinementCtx,
-  path: string,
-  label: string,
-) {
-  const seen = new Set<number>();
-  items.forEach((item, index) => {
-    if (seen.has(item.number)) {
-      ctx.addIssue({
-        code: "custom",
-        message: `${label} numbers must be unique`,
-        path: [path, index, "number"],
-      });
-    }
-    seen.add(item.number);
-  });
-}
-
-function ensureExactlyOneDefault(
-  items: Array<{ isDefault: boolean }>,
-  ctx: z.RefinementCtx,
-  path: string,
-  label: string,
-) {
-  const defaultCount = items.filter((item) => item.isDefault).length;
-  if (defaultCount === 1) return;
-
-  ctx.addIssue({
-    code: "custom",
-    message: `Choose exactly one default ${label}`,
-    path: [path],
-  });
-}
-
-export const CreateCompanySchema = CompanyFieldsSchema.extend({
-  locations: z.array(CompanySetupNumberedSettingSchema).min(1, "Add at least one Location"),
-  paymentMethods: z.array(CompanySetupNumberedSettingSchema).min(1, "Add at least one Payment Method"),
-}).superRefine((value, ctx) => {
-  ensureUniqueNumbers(value.locations, ctx, "locations", "Location");
-  ensureUniqueNumbers(value.paymentMethods, ctx, "paymentMethods", "Payment Method");
-  ensureExactlyOneDefault(value.locations, ctx, "locations", "Location");
-  ensureExactlyOneDefault(value.paymentMethods, ctx, "paymentMethods", "Payment Method");
-});
+export const CreateCompanySchema = CompanyFieldsSchema;
 
 export const UpdateCompanySchema = CompanyFieldsSchema.partial();
 

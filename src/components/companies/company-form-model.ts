@@ -2,7 +2,6 @@ import { DEFAULT_PAYMENT_TERMS_DAYS } from "@/lib/defaults";
 import {
   CompanyFieldsSchema,
   type CompanyFieldsInput,
-  type CreateCompanyInput,
 } from "@/lib/companies.schema";
 import type { CompanyWithRelations } from "@/lib/companies";
 
@@ -41,11 +40,9 @@ export const companyDetailDefaults: CompanyDetailFieldsInput = {
   issuerName: "",
 };
 
-export const createCompanyDefaults: CreateCompanyInput = {
+export const createCompanyDefaults: CompanyFieldsInput = {
   ...companyDetailDefaults,
   logoPath: null,
-  locations: [{ number: 1, nameHr: "", nameEn: "", isDefault: true }],
-  paymentMethods: [{ number: 1, nameHr: "", nameEn: "", isDefault: true }],
 };
 
 export const companyDetailFields = {

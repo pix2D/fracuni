@@ -32,17 +32,36 @@ export async function createCompanyViaUi(page: Page, company: CompanyFixture): P
   await page.getByLabel("Subject Template", { exact: true }).fill(company.emailSubjectTemplate);
   await page.getByLabel("Body Template", { exact: true }).fill(company.emailBodyTemplate);
 
+  await page.getByRole("button", { name: "Create Company" }).click();
+  await expect(page).toHaveURL(/\/companies\/\d+$/);
+  await waitForAstroHydration(page);
+  await expect(page.getByRole("heading", { name: company.name })).toBeVisible();
+
+  await page.getByRole("button", { name: "Add Location" }).click();
+  const locationDialog = page.getByRole("dialog", { name: "Add Location" });
+  await expect(locationDialog).toBeVisible();
+  await locationDialog.getByLabel("Number", { exact: true }).fill(String(company.location.number));
+  await locationDialog.getByLabel("Name (HR)", { exact: true }).fill(company.location.nameHr);
+  await locationDialog.getByLabel("Name (EN)", { exact: true }).fill(company.location.nameEn);
+  await locationDialog.getByRole("button", { name: "Save" }).click();
+
   const locations = section(page, "Locations");
-  await locations.getByLabel("Number", { exact: true }).fill(String(company.location.number));
-  await locations.getByLabel("Name (HR)", { exact: true }).fill(company.location.nameHr);
-  await locations.getByLabel("Name (EN)", { exact: true }).fill(company.location.nameEn);
+  await expect(
+    locations.getByRole("row", { name: new RegExp(`${company.location.number}.*${company.location.nameHr}`) }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Add Payment Method" }).click();
+  const paymentMethodDialog = page.getByRole("dialog", { name: "Add Payment Method" });
+  await expect(paymentMethodDialog).toBeVisible();
+  await paymentMethodDialog.getByLabel("Number", { exact: true }).fill(String(company.paymentMethod.number));
+  await paymentMethodDialog.getByLabel("Name (HR)", { exact: true }).fill(company.paymentMethod.nameHr);
+  await paymentMethodDialog.getByLabel("Name (EN)", { exact: true }).fill(company.paymentMethod.nameEn);
+  await paymentMethodDialog.getByRole("button", { name: "Save" }).click();
 
   const paymentMethods = section(page, "Payment Methods");
-  await paymentMethods.getByLabel("Number", { exact: true }).fill(String(company.paymentMethod.number));
-  await paymentMethods.getByLabel("Name (HR)", { exact: true }).fill(company.paymentMethod.nameHr);
-  await paymentMethods.getByLabel("Name (EN)", { exact: true }).fill(company.paymentMethod.nameEn);
-
-  await page.getByRole("button", { name: "Create Company" }).click();
-  await expect(page).toHaveURL(/\/companies\/\d+\/edit$/);
-  await expect(page.getByRole("heading", { name: "Edit Company" })).toBeVisible();
+  await expect(
+    paymentMethods.getByRole("row", {
+      name: new RegExp(`${company.paymentMethod.number}.*${company.paymentMethod.nameHr}`),
+    }),
+  ).toBeVisible();
 }

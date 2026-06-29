@@ -89,30 +89,32 @@ export function LogoUpload({ companyId, currentPath, onUploaded }: LogoUploadPro
       }}
     >
       <FormErrorBanner error={error} />
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         {currentPath && (
           <img src={`/api/companies/${companyId}/logo`} alt="Logo" className="h-12 w-12 rounded object-contain" />
         )}
         <form.AppField name="logo">
           {(field) => (
-            <Field data-invalid={!field.state.meta.isValid} className="flex-1">
+            <Field data-invalid={!field.state.meta.isValid} className="min-w-0 flex-1">
               <FieldLabel htmlFor={field.name}>Logo file</FieldLabel>
-              <Input
-                id={field.name}
-                type="file"
-                accept={LOGO_ACCEPT}
-                disabled={uploading}
-                aria-invalid={!field.state.meta.isValid}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.files?.[0] ?? null)}
-              />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input
+                  id={field.name}
+                  type="file"
+                  accept={LOGO_ACCEPT}
+                  disabled={uploading}
+                  aria-invalid={!field.state.meta.isValid}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.files?.[0] ?? null)}
+                />
+                <Button type="submit" disabled={uploading} className="sm:w-auto">
+                  {uploading ? "Uploading..." : "Upload"}
+                </Button>
+              </div>
               <FieldError errors={normalizeErrors(field.state.meta.errors)} />
             </Field>
           )}
         </form.AppField>
-        <Button type="submit" disabled={uploading}>
-          {uploading ? "Uploading..." : "Upload"}
-        </Button>
       </div>
     </form>
   );

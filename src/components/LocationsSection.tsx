@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FormSection } from "@/components/forms/FormSection";
 import { CompanyNumberedSettingForm } from "@/components/companies/CompanyNumberedSettingForm";
 import { responseError } from "@/lib/api-response";
 import type { CompanyNumberedSettingInput } from "@/lib/companies.schema";
 import type { Location } from "@/lib/companies";
+import { PencilSimpleIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 
 interface Props {
   companyId: number;
@@ -14,9 +17,24 @@ interface Props {
 }
 
 export function LocationsSection({ companyId, locations, onUpdated }: Props) {
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function openCreate() {
+    setEditingLocation(null);
+    setDialogOpen(true);
+  }
+
+  function openEdit(location: Location) {
+    setEditingLocation(location);
+    setDialogOpen(true);
+  }
+
+  function closeDialog() {
+    setDialogOpen(false);
+    setEditingLocation(null);
+  }
 
   async function handleAdd(data: CompanyNumberedSettingInput) {
     const res = await fetch(`/api/companies/${companyId}/locations`, {
@@ -27,7 +45,7 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
     if (!res.ok) {
       throw new Error(await responseError(res, "Failed to add location"));
     }
-    setAdding(false);
+    closeDialog();
     setError(null);
     onUpdated();
   }
@@ -41,7 +59,7 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
     if (!res.ok) {
       throw new Error(await responseError(res, "Failed to update location"));
     }
-    setEditingId(null);
+    closeDialog();
     setError(null);
     onUpdated();
   }
@@ -61,7 +79,8 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
       title="Locations"
       description="Issuing locations. The default is pre-selected on new documents and forms part of the document number."
       action={
-        <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
+        <Button type="button" variant="outline" size="sm" onClick={openCreate}>
+          <PlusIcon className="size-4" />
           Add Location
         </Button>
       }
@@ -72,53 +91,85 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
         </div>
       )}
 
-      <div className="space-y-2">
-        {locations.length === 0 && !adding && (
+      <div>
+        {locations.length === 0 ? (
           <p className="rounded-md border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
             No locations yet.
           </p>
-        )}
-        {locations.map((loc) =>
-          editingId === loc.id ? (
-            <LocationForm
-              key={loc.id}
-              initial={loc}
-              onSave={(data) => handleUpdate(loc.id, data)}
-              onCancel={() => setEditingId(null)}
-            />
-          ) : (
-            <Card key={loc.id}>
-              <CardContent className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">{loc.number}</span>
-                  <span className="text-sm font-medium">{loc.nameHr}</span>
-                  {loc.nameEn && <span className="text-sm text-muted-foreground">/ {loc.nameEn}</span>}
-                  {loc.isDefault && (
-                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
-                      Default
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-1">
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setEditingId(loc.id)}>
-                    Edit
-                  </Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => handleDelete(loc.id)}>
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-20">Number</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="w-24">Default</TableHead>
+                <TableHead className="w-24" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {locations.map((loc) => (
+                <TableRow key={loc.id}>
+                  <TableCell className="font-mono">{loc.number}</TableCell>
+                  <TableCell>
+                    <div className="space-y-0.5">
+                      <div className="font-medium">{loc.nameHr}</div>
+                      {loc.nameEn && <div className="text-muted-foreground">{loc.nameEn}</div>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {loc.isDefault ? <Badge variant="secondary">Default</Badge> : null}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Edit ${loc.nameHr}`}
+                        onClick={() => openEdit(loc)}
+                      >
+                        <PencilSimpleIcon className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Delete ${loc.nameHr}`}
+                        onClick={() => handleDelete(loc.id)}
+                      >
+                        <TrashIcon className="size-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </div>
 
-      {adding && (
-        <LocationForm
-          onSave={handleAdd}
-          onCancel={() => setAdding(false)}
-        />
-      )}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+          else setDialogOpen(true);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingLocation ? "Edit Location" : "Add Location"}</DialogTitle>
+          </DialogHeader>
+
+          <LocationForm
+            key={editingLocation?.id ?? "new"}
+            initial={editingLocation ?? undefined}
+            onSave={(data) =>
+              editingLocation ? handleUpdate(editingLocation.id, data) : handleAdd(data)
+            }
+            onCancel={closeDialog}
+          />
+        </DialogContent>
+      </Dialog>
     </FormSection>
   );
 }

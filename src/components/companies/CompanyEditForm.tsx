@@ -1,29 +1,17 @@
 import { useState } from "react";
 import { CompanyDetailSections } from "@/components/companies/CompanyDetailSections";
 import { CompanyFormShell, FormActions } from "@/components/companies/CompanyFormLayout";
-import { FormSection } from "@/components/forms/FormSection";
-import { LogoUpload } from "@/components/companies/LogoUpload";
 import { companyDefaults, companyDetailFields } from "@/components/companies/company-form-model";
-import { LocationsSection } from "@/components/LocationsSection";
-import { PaymentMethodsSection } from "@/components/PaymentMethodsSection";
 import { useAppForm } from "@/components/forms/app-form";
 import { responseError } from "@/lib/api-response";
 import { CompanyFieldsSchema } from "@/lib/companies.schema";
 import type { CompanyWithRelations } from "@/lib/companies";
 
 export function CompanyEditForm({ company }: { company: CompanyWithRelations }) {
-  const [currentCompany, setCurrentCompany] = useState(company);
   const [error, setError] = useState<string | null>(null);
 
-  async function refreshCompany() {
-    const response = await fetch(`/api/companies/${currentCompany.id}`);
-    if (response.ok) {
-      setCurrentCompany(await response.json());
-    }
-  }
-
   const form = useAppForm({
-    defaultValues: companyDefaults(currentCompany),
+    defaultValues: companyDefaults(company),
     canSubmitWhenInvalid: true,
     validators: {
       onSubmit: CompanyFieldsSchema,
@@ -33,7 +21,7 @@ export function CompanyEditForm({ company }: { company: CompanyWithRelations }) 
     },
     onSubmit: async ({ value }) => {
       setError(null);
-      const response = await fetch(`/api/companies/${currentCompany.id}`, {
+      const response = await fetch(`/api/companies/${company.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(value),
@@ -44,12 +32,17 @@ export function CompanyEditForm({ company }: { company: CompanyWithRelations }) 
         return;
       }
 
-      window.location.href = "/companies";
+      window.location.href = `/companies/${company.id}`;
     },
   });
 
   return (
-    <CompanyFormShell title="Edit Company" error={error}>
+    <CompanyFormShell
+      title="Edit Company"
+      error={error}
+      backHref={`/companies/${company.id}`}
+      backLabel="Back to Company"
+    >
       <form
         noValidate
         className="space-y-6"
@@ -59,18 +52,8 @@ export function CompanyEditForm({ company }: { company: CompanyWithRelations }) 
         }}
       >
         <CompanyDetailSections form={form} fields={companyDetailFields} />
-        <FormActions submitLabel="Save Changes" />
+        <FormActions submitLabel="Save Changes" cancelHref={`/companies/${company.id}`} />
       </form>
-
-      <FormSection title="Logo" description="Shown in the document header. PNG, JPG, or SVG. Saved immediately on upload.">
-        <LogoUpload companyId={currentCompany.id} currentPath={currentCompany.logoPath} onUploaded={refreshCompany} />
-      </FormSection>
-      <LocationsSection companyId={currentCompany.id} locations={currentCompany.locations ?? []} onUpdated={refreshCompany} />
-      <PaymentMethodsSection
-        companyId={currentCompany.id}
-        paymentMethods={currentCompany.paymentMethods ?? []}
-        onUpdated={refreshCompany}
-      />
     </CompanyFormShell>
   );
 }

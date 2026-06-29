@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { CompanyDetailSections } from "@/components/companies/CompanyDetailSections";
-import { CompanySetupEditor, companySetupFields } from "@/components/companies/CompanySetupEditor";
 import { CompanyFormShell, FormActions } from "@/components/companies/CompanyFormLayout";
 import { companyDetailFields, createCompanyDefaults } from "@/components/companies/company-form-model";
 import { useAppForm } from "@/components/forms/app-form";
@@ -35,7 +34,7 @@ export function CompanyCreateForm() {
 
       const company = (await response.json()) as CompanyWithRelations;
       document.cookie = `companyId=${company.id};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
-      window.location.href = `/companies/${company.id}/edit`;
+      window.location.href = `/companies/${company.id}`;
     },
   });
 
@@ -50,22 +49,6 @@ export function CompanyCreateForm() {
         }}
       >
         <CompanyDetailSections form={form} fields={companyDetailFields} />
-        <CompanySetupEditor
-          form={form}
-          fields={companySetupFields}
-          name="locations"
-          title="Locations"
-          description="Issuing locations. The default is pre-selected on new documents and forms part of the document number."
-          addLabel="Add Location"
-        />
-        <CompanySetupEditor
-          form={form}
-          fields={companySetupFields}
-          name="paymentMethods"
-          title="Payment Methods"
-          description="Each payment method keeps its own document-number sequence. The default is pre-selected on new documents."
-          addLabel="Add Payment Method"
-        />
         <FormActions submitLabel="Create Company" />
       </form>
     </CompanyFormShell>
