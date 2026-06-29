@@ -1,7 +1,8 @@
 import { DatePicker } from "@/components/DatePicker";
+import { FormSection } from "@/components/forms/FormSection";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { withFieldGroup } from "@/components/forms/app-form";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   addValidityToDate,
@@ -22,8 +23,10 @@ export const OfferDatesSection = withFieldGroup<
   defaultValues: offerDateDefaults,
   render: function Render({ group, readOnly }) {
     return (
-      <section className="space-y-4 border-t pt-6">
-        <h2 className="text-base font-semibold">Dates</h2>
+      <FormSection
+        title="Dates"
+        description='"Vrijedi do" is calculated from the offer date plus the validity period. Set it manually to override.'
+      >
         <FieldGroup className="grid gap-4 sm:grid-cols-3">
           <group.AppField name="offerDate">
             {(field) => (
@@ -40,6 +43,7 @@ export const OfferDatesSection = withFieldGroup<
                     }
                   }}
                 />
+                <FieldDescription>Offer date.</FieldDescription>
                 <FieldError errors={normalizeErrors(field.state.meta.errors)} />
               </Field>
             )}
@@ -68,6 +72,7 @@ export const OfferDatesSection = withFieldGroup<
                     }
                   }}
                 />
+                <FieldDescription>Recalculates the expiry date.</FieldDescription>
                 <FieldError errors={normalizeErrors(field.state.meta.errors)} />
               </Field>
             )}
@@ -85,12 +90,13 @@ export const OfferDatesSection = withFieldGroup<
                     group.setFieldValue("validUntilManual", true);
                   }}
                 />
+                <FieldDescription>Date the offer expires.</FieldDescription>
                 <FieldError errors={normalizeErrors(field.state.meta.errors)} />
               </Field>
             )}
           </group.AppField>
         </FieldGroup>
-      </section>
+      </FormSection>
     );
   },
 });

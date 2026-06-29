@@ -1,4 +1,5 @@
 import { FieldGroup } from "@/components/ui/field";
+import { FormSection } from "@/components/forms/FormSection";
 import { withFieldGroup } from "@/components/forms/app-form";
 import {
   settingsFieldValidators,
@@ -9,8 +10,7 @@ export const SettingsEmailSection = withFieldGroup({
   defaultValues: settingsFormDefaults,
   render: function Render({ group }) {
     return (
-      <section className="space-y-4 border-t pt-6">
-        <h2 className="text-base font-semibold">Email</h2>
+      <FormSection title="Email" description="Postmark credentials used to deliver documents to clients.">
         <FieldGroup className="max-w-xl">
           <group.AppField name="postmarkApiKey" validators={settingsFieldValidators.postmarkApiKey}>
             {(field) => (
@@ -18,11 +18,12 @@ export const SettingsEmailSection = withFieldGroup({
                 label="Postmark API Key"
                 type="password"
                 placeholder="Not configured"
+                description="Leave blank to disable email sending. Stored securely and never shown again."
               />
             )}
           </group.AppField>
         </FieldGroup>
-      </section>
+      </FormSection>
     );
   },
 });

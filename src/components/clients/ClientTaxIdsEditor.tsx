@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { FieldError, FieldGroup } from "@/components/ui/field";
+import { FormSection } from "@/components/forms/FormSection";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { withFieldGroup } from "@/components/forms/app-form";
 import {
@@ -29,26 +30,31 @@ export const ClientTaxIdsEditor = withFieldGroup({
     }
 
     return (
-      <section className="space-y-4 border-t pt-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold">Additional Tax IDs</h2>
+      <FormSection
+        title="Additional Tax IDs"
+        description="Optional extra identifiers (e.g. a company registration number) printed alongside the OIB or VAT number."
+        action={
           <Button type="button" variant="outline" size="sm" onClick={addTaxId}>
             Add Tax ID
           </Button>
-        </div>
-
+        }
+      >
         <group.AppField name="taxIds" validators={clientFieldValidators.taxIds}>
           {(field) => <FieldError errors={normalizeErrors(field.state.meta.errors)} />}
         </group.AppField>
 
         <group.Subscribe selector={(state) => state.values.taxIds ?? []}>
           {(taxIds) =>
-            taxIds.length > 0 && (
+            taxIds.length === 0 ? (
+              <p className="rounded-md border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
+                No additional tax IDs.
+              </p>
+            ) : (
               <FieldGroup className="gap-3">
                 {taxIds.map((_, index) => (
                   <div key={index} className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-[1fr_1fr_auto]">
                     <group.AppField name={`taxIds[${index}].label`} validators={clientTaxIdFieldValidators.label}>
-                      {(field) => <field.TextField label="Label" placeholder="Tax ID" />}
+                      {(field) => <field.TextField label="Label" placeholder="e.g. Registration no." />}
                     </group.AppField>
                     <group.AppField name={`taxIds[${index}].value`} validators={clientTaxIdFieldValidators.value}>
                       {(field) => <field.TextField label="Value" />}
@@ -64,7 +70,7 @@ export const ClientTaxIdsEditor = withFieldGroup({
             )
           }
         </group.Subscribe>
-      </section>
+      </FormSection>
     );
   },
 });

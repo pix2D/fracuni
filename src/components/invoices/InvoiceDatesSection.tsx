@@ -1,7 +1,8 @@
 import { DatePicker } from "@/components/DatePicker";
+import { FormSection } from "@/components/forms/FormSection";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { withFieldGroup } from "@/components/forms/app-form";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   addTermsToDate,
@@ -22,8 +23,10 @@ export const InvoiceDatesSection = withFieldGroup<
   defaultValues: invoiceDateDefaults,
   render: function Render({ group, readOnly }) {
     return (
-      <section className="space-y-4 border-t pt-6">
-        <h2 className="text-base font-semibold">Dates</h2>
+      <FormSection
+        title="Dates"
+        description="The due date is calculated from the issue date plus payment terms. Holidays are highlighted in the calendar."
+      >
         <FieldGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <group.AppField name="issueDate">
             {(field) => (
@@ -51,6 +54,7 @@ export const InvoiceDatesSection = withFieldGroup<
               <Field data-invalid={!field.state.meta.isValid}>
                 <FieldLabel>Delivery Date</FieldLabel>
                 <DatePicker value={field.state.value} disabled={readOnly} ariaLabel="Delivery Date" onChange={field.handleChange} />
+                <FieldDescription>Date of supply, if different from the issue date.</FieldDescription>
                 <FieldError errors={normalizeErrors(field.state.meta.errors)} />
               </Field>
             )}
@@ -79,6 +83,7 @@ export const InvoiceDatesSection = withFieldGroup<
                     }
                   }}
                 />
+                <FieldDescription>Recalculates the due date.</FieldDescription>
                 <FieldError errors={normalizeErrors(field.state.meta.errors)} />
               </Field>
             )}
@@ -97,12 +102,13 @@ export const InvoiceDatesSection = withFieldGroup<
                     group.setFieldValue("dueDateManual", true);
                   }}
                 />
+                <FieldDescription>Set manually to override the calculated date.</FieldDescription>
                 <FieldError errors={normalizeErrors(field.state.meta.errors)} />
               </Field>
             )}
           </group.AppField>
         </FieldGroup>
-      </section>
+      </FormSection>
     );
   },
 });

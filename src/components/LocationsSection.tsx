@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { FormSection } from "@/components/forms/FormSection";
 import { CompanyNumberedSettingForm } from "@/components/companies/CompanyNumberedSettingForm";
 import { responseError } from "@/lib/api-response";
 import type { CompanyNumberedSettingInput } from "@/lib/companies.schema";
@@ -56,14 +57,15 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Locations</h3>
+    <FormSection
+      title="Locations"
+      description="Issuing locations. The default is pre-selected on new documents and forms part of the document number."
+      action={
         <Button type="button" variant="outline" size="sm" onClick={() => setAdding(true)}>
           Add Location
         </Button>
-      </div>
-
+      }
+    >
       {error && (
         <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
           {error}
@@ -71,6 +73,11 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
       )}
 
       <div className="space-y-2">
+        {locations.length === 0 && !adding && (
+          <p className="rounded-md border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
+            No locations yet.
+          </p>
+        )}
         {locations.map((loc) =>
           editingId === loc.id ? (
             <LocationForm
@@ -112,7 +119,7 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
           onCancel={() => setAdding(false)}
         />
       )}
-    </div>
+    </FormSection>
   );
 }
 

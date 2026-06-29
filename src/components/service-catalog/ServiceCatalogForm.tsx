@@ -81,6 +81,7 @@ export function ServiceCatalogForm({ entry, onSaved }: ServiceCatalogFormProps) 
               label="Description (Croatian)"
               placeholder="e.g. Konzultacije za {month}/{year}"
               rows={3}
+              description="Placeholders {day}, {month}, {year} expand to the current date when added to a document."
             />
           )}
         </form.AppField>
@@ -94,6 +95,7 @@ export function ServiceCatalogForm({ entry, onSaved }: ServiceCatalogFormProps) 
               label="Description (English)"
               placeholder="e.g. Consulting for {month}/{year}"
               rows={3}
+              description="Optional. Used on documents for foreign clients."
             />
           )}
         </form.AppField>

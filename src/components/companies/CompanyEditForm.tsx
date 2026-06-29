@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CompanyDetailSections } from "@/components/companies/CompanyDetailSections";
 import { CompanyFormShell, FormActions } from "@/components/companies/CompanyFormLayout";
+import { FormSection } from "@/components/forms/FormSection";
 import { LogoUpload } from "@/components/companies/LogoUpload";
 import { companyDefaults, companyDetailFields } from "@/components/companies/company-form-model";
 import { LocationsSection } from "@/components/LocationsSection";
@@ -60,20 +61,16 @@ export function CompanyEditForm({ company }: { company: CompanyWithRelations }) 
         <CompanyDetailSections form={form} fields={companyDetailFields} />
         <FormActions submitLabel="Save Changes" />
       </form>
-      <section className="space-y-4 border-t pt-6">
-        <h2 className="text-base font-semibold">Logo</h2>
+
+      <FormSection title="Logo" description="Shown in the document header. PNG, JPG, or SVG. Saved immediately on upload.">
         <LogoUpload companyId={currentCompany.id} currentPath={currentCompany.logoPath} onUploaded={refreshCompany} />
-      </section>
-      <section className="border-t pt-6">
-        <LocationsSection companyId={currentCompany.id} locations={currentCompany.locations ?? []} onUpdated={refreshCompany} />
-      </section>
-      <section className="border-t pt-6">
-        <PaymentMethodsSection
-          companyId={currentCompany.id}
-          paymentMethods={currentCompany.paymentMethods ?? []}
-          onUpdated={refreshCompany}
-        />
-      </section>
+      </FormSection>
+      <LocationsSection companyId={currentCompany.id} locations={currentCompany.locations ?? []} onUpdated={refreshCompany} />
+      <PaymentMethodsSection
+        companyId={currentCompany.id}
+        paymentMethods={currentCompany.paymentMethods ?? []}
+        onUpdated={refreshCompany}
+      />
     </CompanyFormShell>
   );
 }

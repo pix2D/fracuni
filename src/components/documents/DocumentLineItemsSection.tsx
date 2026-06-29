@@ -1,4 +1,5 @@
 import { LineItemsEditor } from "@/components/LineItemsEditor";
+import { FormCard } from "@/components/forms/FormSection";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { withFieldGroup } from "@/components/forms/app-form";
 import { FieldError } from "@/components/ui/field";
@@ -26,7 +27,7 @@ export const DocumentLineItemsSection = withFieldGroup<
   defaultValues: documentLineItemsDefaults,
   render: function Render({ group, domestic, currencyCode, catalog, readOnly, negativeAmounts = false }) {
     return (
-      <section className="space-y-4 border-t pt-6">
+      <FormCard className="space-y-4">
         <group.AppField name="lineItems">
           {(field) => <FieldError errors={normalizeErrors(field.state.meta.errors)} />}
         </group.AppField>
@@ -44,7 +45,7 @@ export const DocumentLineItemsSection = withFieldGroup<
             />
           )}
         </group.Subscribe>
-      </section>
+      </FormCard>
     );
   },
 });

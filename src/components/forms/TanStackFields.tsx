@@ -56,10 +56,11 @@ interface NumberFieldProps {
   min?: number;
   max?: number;
   step?: number;
+  description?: ReactNode;
   disabled?: boolean;
 }
 
-export function NumberField({ label, min, max, step, disabled = false }: NumberFieldProps) {
+export function NumberField({ label, min, max, step, description, disabled = false }: NumberFieldProps) {
   const field = useFieldContext<number | null | undefined>();
 
   return (
@@ -78,6 +79,7 @@ export function NumberField({ label, min, max, step, disabled = false }: NumberF
         onChange={(event) => field.handleChange(event.target.value === "" ? undefined : event.target.valueAsNumber)}
         aria-invalid={!field.state.meta.isValid}
       />
+      {description && <FieldDescription>{description}</FieldDescription>}
       <FieldError errors={normalizeErrors(field.state.meta.errors)} />
     </Field>
   );
@@ -88,12 +90,20 @@ interface SelectFieldProps {
   placeholder?: string;
   options: Array<{ value: string; label: string }>;
   emptyLabel?: string;
+  description?: ReactNode;
   disabled?: boolean;
 }
 
 const EMPTY_SELECT_VALUE = "__empty__";
 
-export function SelectField({ label, placeholder = "Select an option", options, emptyLabel, disabled = false }: SelectFieldProps) {
+export function SelectField({
+  label,
+  placeholder = "Select an option",
+  options,
+  emptyLabel,
+  description,
+  disabled = false,
+}: SelectFieldProps) {
   const field = useFieldContext<string | null | undefined>();
   const value = field.state.value || (emptyLabel ? EMPTY_SELECT_VALUE : "");
 
@@ -117,6 +127,7 @@ export function SelectField({ label, placeholder = "Select an option", options, 
           ))}
         </SelectContent>
       </Select>
+      {description && <FieldDescription>{description}</FieldDescription>}
       <FieldError errors={normalizeErrors(field.state.meta.errors)} />
     </Field>
   );
@@ -125,10 +136,11 @@ export function SelectField({ label, placeholder = "Select an option", options, 
 interface RadioFieldProps {
   label: string;
   options: Array<{ value: string; label: string }>;
+  description?: ReactNode;
   disabled?: boolean;
 }
 
-export function RadioField({ label, options, disabled = false }: RadioFieldProps) {
+export function RadioField({ label, options, description, disabled = false }: RadioFieldProps) {
   const field = useFieldContext<string | null | undefined>();
 
   return (
@@ -142,6 +154,7 @@ export function RadioField({ label, options, disabled = false }: RadioFieldProps
           </Field>
         ))}
       </RadioGroup>
+      {description && <FieldDescription>{description}</FieldDescription>}
       <FieldError errors={normalizeErrors(field.state.meta.errors)} />
     </Field>
   );
@@ -151,10 +164,11 @@ interface TextareaFieldProps {
   label: string;
   placeholder?: string;
   rows?: number;
+  description?: ReactNode;
   disabled?: boolean;
 }
 
-export function TextareaField({ label, placeholder, rows = 3, disabled = false }: TextareaFieldProps) {
+export function TextareaField({ label, placeholder, rows = 3, description, disabled = false }: TextareaFieldProps) {
   const field = useFieldContext<string | null | undefined>();
 
   return (
@@ -171,6 +185,7 @@ export function TextareaField({ label, placeholder, rows = 3, disabled = false }
         onChange={(event) => field.handleChange(event.target.value)}
         aria-invalid={!field.state.meta.isValid}
       />
+      {description && <FieldDescription>{description}</FieldDescription>}
       <FieldError errors={normalizeErrors(field.state.meta.errors)} />
     </Field>
   );

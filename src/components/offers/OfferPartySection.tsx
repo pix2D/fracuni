@@ -1,5 +1,6 @@
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FormSection } from "@/components/forms/FormSection";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { withFieldGroup } from "@/components/forms/app-form";
 import {
@@ -40,14 +41,17 @@ export const OfferPartySection = withFieldGroup<
     const currencyItems = currencyOptions(settings);
 
     return (
-      <section className="space-y-4">
-        <h2 className="text-base font-semibold">Party and Payment</h2>
+      <FormSection
+        title="Party and Payment"
+        description="Who the offer is for and the proposed payment details. Picking a client fills in the currency and email below."
+      >
         <FieldGroup className="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel>Company</FieldLabel>
             <div className="flex h-8 items-center border border-input bg-muted/40 px-2.5 text-xs">
               {company.name}
             </div>
+            <FieldDescription>Set by the company selector in the top navigation.</FieldDescription>
           </Field>
 
           <group.AppField name="clientId">
@@ -85,6 +89,7 @@ export const OfferPartySection = withFieldGroup<
                     ))}
                   </SelectContent>
                 </Select>
+                <FieldDescription>Selecting a client pre-fills currency, validity, and email.</FieldDescription>
                 <FieldError errors={normalizeErrors(field.state.meta.errors)} />
               </Field>
             )}
@@ -98,6 +103,7 @@ export const OfferPartySection = withFieldGroup<
                 emptyLabel="No location"
                 options={locationItems}
                 disabled={readOnly}
+                description="Issuing location — forms part of the offer number."
               />
             )}
           </group.AppField>
@@ -126,10 +132,18 @@ export const OfferPartySection = withFieldGroup<
           </group.AppField>
 
           <group.AppField name="email">
-            {(field) => <field.TextField label="Email" type="email" placeholder="recipient@example.com" disabled={readOnly} />}
+            {(field) => (
+              <field.TextField
+                label="Email"
+                type="email"
+                placeholder="recipient@example.com"
+                disabled={readOnly}
+                description="Stored with the offer; used and overridable when sending."
+              />
+            )}
           </group.AppField>
         </FieldGroup>
-      </section>
+      </FormSection>
     );
   },
 });

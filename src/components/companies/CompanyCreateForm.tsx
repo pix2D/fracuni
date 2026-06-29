@@ -50,12 +50,20 @@ export function CompanyCreateForm() {
         }}
       >
         <CompanyDetailSections form={form} fields={companyDetailFields} />
-        <CompanySetupEditor form={form} fields={companySetupFields} name="locations" title="Locations" addLabel="Add Location" />
+        <CompanySetupEditor
+          form={form}
+          fields={companySetupFields}
+          name="locations"
+          title="Locations"
+          description="Issuing locations. The default is pre-selected on new documents and forms part of the document number."
+          addLabel="Add Location"
+        />
         <CompanySetupEditor
           form={form}
           fields={companySetupFields}
           name="paymentMethods"
           title="Payment Methods"
+          description="Each payment method keeps its own document-number sequence. The default is pre-selected on new documents."
           addLabel="Add Payment Method"
         />
         <FormActions submitLabel="Create Company" />

@@ -81,8 +81,13 @@ export function LineItemsEditor({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <Label>Line Items</Label>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold leading-none">Line Items</h2>
+          <p className="max-w-prose text-xs/relaxed text-muted-foreground">
+            Amounts are calculated automatically. Use the catalog button on a row to insert a saved template.
+          </p>
+        </div>
         {!disabled && (
           <Button type="button" variant="outline" size="sm" onClick={addRow}>
             <PlusIcon className="size-4" />
@@ -93,7 +98,7 @@ export function LineItemsEditor({
 
       {items.length === 0 ? (
         <p className="rounded-md border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-          No line items yet.
+          No line items yet. Click “Add Line Item” to start.
         </p>
       ) : (
         <div className="space-y-3">

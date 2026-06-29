@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { FormSection } from "@/components/forms/FormSection";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { withFieldGroup } from "@/components/forms/app-form";
 import { CompanyNumberedSettingSchema } from "@/lib/companies.schema";
@@ -43,9 +44,10 @@ export const CompanySetupEditor = withFieldGroup({
   props: {
     name: "locations" as SettingCollectionName,
     title: "",
+    description: "",
     addLabel: "",
   },
-  render: function Render({ group, name, title, addLabel }) {
+  render: function Render({ group, name, title, description, addLabel }) {
     function setItems(items: SettingValue[]) {
       group.setFieldValue(name, items);
     }
@@ -79,14 +81,15 @@ export const CompanySetupEditor = withFieldGroup({
     }
 
     return (
-      <section className="space-y-4 border-t pt-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold">{title}</h2>
+      <FormSection
+        title={title}
+        description={description}
+        action={
           <Button type="button" variant="outline" size="sm" onClick={addItem}>
             {addLabel}
           </Button>
-        </div>
-
+        }
+      >
         <group.AppField name={name}>
           {(field) => <FieldError errors={normalizeErrors(field.state.meta.errors)} />}
         </group.AppField>
@@ -129,7 +132,7 @@ export const CompanySetupEditor = withFieldGroup({
             );
           }}
         </group.Subscribe>
-      </section>
+      </FormSection>
     );
   },
 });

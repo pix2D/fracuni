@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { FormSection } from "@/components/forms/FormSection";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { withFieldGroup } from "@/components/forms/app-form";
 import {
@@ -19,8 +20,10 @@ export const SettingsCurrenciesSection = withFieldGroup({
     const [currencyError, setCurrencyError] = useState<string | null>(null);
 
     return (
-      <section className="space-y-4 border-t pt-6">
-        <h2 className="text-base font-semibold">Supported Currencies</h2>
+      <FormSection
+        title="Supported Currencies"
+        description="Currencies you can choose when creating documents. Add 3-letter ISO codes; keep at least one."
+      >
         <FieldGroup>
           <group.AppField name="supportedCurrencies" validators={settingsFieldValidators.supportedCurrencies}>
             {(field) => {
@@ -98,7 +101,7 @@ export const SettingsCurrenciesSection = withFieldGroup({
             }}
           </group.AppField>
         </FieldGroup>
-      </section>
+      </FormSection>
     );
   },
 });
