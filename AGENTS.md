@@ -28,6 +28,8 @@ await sql`SELECT * FROM companies WHERE id = ${id}`.execute(db);
 
 **Migration workflow:** Write migration → `pnpm run db:migrate` → `pnpm run db:generate` → commit all three (migration file, updated generated types, code that uses the new tables).
 
+**Runtime data directory:** The app uses `FIRERACUNI_DATA_DIR` as the single root for SQLite, generated PDFs, uploads, and other persisted files. The local default is `data/`; Docker production mounts `../fracuni-data-production` to `/data` and sets `FIRERACUNI_DATA_DIR=/data`. Do not introduce separate production paths for the DB, PDFs, or uploads.
+
 **Testing data directory:** Always run tests against a test data directory, never the default application data directory. Set `FIRERACUNI_DATA_DIR` to an obvious test path before any test command that can touch SQLite or persisted files. The Playwright E2E setup uses `data/e2e`; Vitest helpers should use in-memory SQLite and temporary file directories, or another explicit test data directory. Do not run migrations or tests against `data/` unless the human explicitly asks for that exact operation.
 
 ### Data access modules
