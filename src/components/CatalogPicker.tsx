@@ -1,8 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { BookOpenIcon, MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { BookOpenIcon } from "@phosphor-icons/react";
 import type { CatalogEntry } from "@/lib/service-catalog";
 
 interface Props {
@@ -16,16 +23,6 @@ export function CatalogPicker({ entries, onSelect }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return entries;
-    return entries.filter(
-      (e) =>
-        e.descriptionHr.toLowerCase().includes(term) ||
-        (e.descriptionEn ?? "").toLowerCase().includes(term),
-    );
-  }, [entries, search]);
-
   function handlePick(entry: CatalogEntry) {
     onSelect(entry);
     setOpen(false);
@@ -34,44 +31,45 @@ export function CatalogPicker({ entries, onSelect }: Props) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" title="Pick from Service Catalog">
-          <BookOpenIcon className="size-4" />
-          Catalog
-        </Button>
-      </PopoverTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <PopoverTrigger asChild>
+            <TooltipTrigger asChild>
+              <Button type="button" variant="outline" size="sm">
+                <BookOpenIcon className="size-4" />
+                Catalog
+              </Button>
+            </TooltipTrigger>
+          </PopoverTrigger>
+          <TooltipContent>Pick from Service Catalog</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <PopoverContent className="w-80 p-0" align="start">
-        <div className="relative border-b border-border p-2">
-          <MagnifyingGlassIcon className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search catalog…"
+        <Command>
+          <CommandInput
+            placeholder="Search catalog..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
+            onValueChange={setSearch}
             autoFocus
           />
-        </div>
-        <div className="max-h-64 overflow-y-auto p-1">
-          {filtered.length === 0 ? (
-            <p className="px-2 py-4 text-center text-sm text-muted-foreground">
-              {entries.length === 0 ? "No catalog entries." : "No matches."}
-            </p>
-          ) : (
-            filtered.map((entry) => (
-              <button
+          <CommandList>
+            <CommandEmpty>{entries.length === 0 ? "No catalog entries." : "No matches."}</CommandEmpty>
+            {entries.map((entry) => (
+              <CommandItem
                 key={entry.id}
-                type="button"
-                onClick={() => handlePick(entry)}
-                className="flex w-full cursor-pointer flex-col px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                value={`${entry.descriptionHr} ${entry.descriptionEn ?? ""}`}
+                onSelect={() => handlePick(entry)}
               >
-                <span>{entry.descriptionHr}</span>
-                {entry.descriptionEn && (
-                  <span className="text-xs text-muted-foreground">{entry.descriptionEn}</span>
-                )}
-              </button>
-            ))
-          )}
-        </div>
+                <div className="flex flex-col">
+                  <span>{entry.descriptionHr}</span>
+                  {entry.descriptionEn ? (
+                    <span className="text-muted-foreground">{entry.descriptionEn}</span>
+                  ) : null}
+                </div>
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
   );

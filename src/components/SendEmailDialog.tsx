@@ -7,6 +7,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { Spinner } from "@/components/ui/spinner";
 import { SendEmailForm, type EmailDefaults } from "@/components/invoices/SendEmailForm";
 import { PaperclipIcon } from "@phosphor-icons/react";
 import type { Invoice } from "@/lib/invoices";
@@ -61,7 +63,10 @@ export function SendEmailDialog({ invoice, onClose, onSent }: Props) {
         ) : null}
 
         {loading ? (
-          <div className="py-6 text-center text-muted-foreground">Loading...</div>
+          <div className="flex items-center justify-center gap-2 py-6 text-muted-foreground">
+            <Spinner />
+            Loading...
+          </div>
         ) : defaults && invoice ? (
           <>
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -77,7 +82,12 @@ export function SendEmailDialog({ invoice, onClose, onSent }: Props) {
             />
           </>
         ) : (
-          <div className="py-6 text-center text-muted-foreground">No email defaults loaded.</div>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>No email defaults loaded</EmptyTitle>
+              <EmptyDescription>Close the dialog and try again.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
       </DialogContent>
     </Dialog>

@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FormSection } from "@/components/forms/FormSection";
 import { CompanyNumberedSettingForm } from "@/components/companies/CompanyNumberedSettingForm";
@@ -94,9 +95,12 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
 
       <div>
         {locations.length === 0 ? (
-          <p className="border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
-            No locations yet.
-          </p>
+          <Empty className="border border-border">
+            <EmptyHeader>
+              <EmptyTitle>No locations yet</EmptyTitle>
+              <EmptyDescription>Add an issuing location for this company.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <Table>
             <TableHeader>

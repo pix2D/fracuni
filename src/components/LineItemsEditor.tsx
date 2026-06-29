@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowUpIcon, ArrowDownIcon, TrashIcon, PlusIcon } from "@phosphor-icons/react";
 import { CatalogPicker } from "@/components/CatalogPicker";
 import { expandPlaceholders } from "@/lib/placeholders";
@@ -97,9 +99,12 @@ export function LineItemsEditor({
       </div>
 
       {items.length === 0 ? (
-        <p className="border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
-          No line items yet. Click “Add Line Item” to start.
-        </p>
+        <Empty className="border border-border">
+          <EmptyHeader>
+            <EmptyTitle>No line items yet</EmptyTitle>
+            <EmptyDescription>Click Add Line Item to start.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="space-y-3">
           {items.map((row, index) => (
@@ -107,38 +112,55 @@ export function LineItemsEditor({
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
                 {!disabled && (
-                  <div className="flex items-center gap-1">
-                    <CatalogPicker entries={catalog} onSelect={(entry) => applyCatalog(index, entry)} />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => move(index, -1)}
-                      disabled={index === 0}
-                      title="Move up"
-                    >
-                      <ArrowUpIcon className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => move(index, 1)}
-                      disabled={index === items.length - 1}
-                      title="Move down"
-                    >
-                      <ArrowDownIcon className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => removeRow(index)}
-                      title="Remove"
-                    >
-                      <TrashIcon className="size-4" />
-                    </Button>
-                  </div>
+                  <TooltipProvider>
+                    <div className="flex items-center gap-1">
+                      <CatalogPicker entries={catalog} onSelect={(entry) => applyCatalog(index, entry)} />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Move line item up"
+                            onClick={() => move(index, -1)}
+                            disabled={index === 0}
+                          >
+                            <ArrowUpIcon className="size-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Move up</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Move line item down"
+                            onClick={() => move(index, 1)}
+                            disabled={index === items.length - 1}
+                          >
+                            <ArrowDownIcon className="size-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Move down</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Remove line item"
+                            onClick={() => removeRow(index)}
+                          >
+                            <TrashIcon className="size-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Remove</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TooltipProvider>
                 )}
               </div>
 

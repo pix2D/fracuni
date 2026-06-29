@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FormSection } from "@/components/forms/FormSection";
 import { CompanyNumberedSettingForm } from "@/components/companies/CompanyNumberedSettingForm";
@@ -94,9 +95,12 @@ export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: 
 
       <div>
         {paymentMethods.length === 0 ? (
-          <p className="border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
-            No payment methods yet.
-          </p>
+          <Empty className="border border-border">
+            <EmptyHeader>
+              <EmptyTitle>No payment methods yet</EmptyTitle>
+              <EmptyDescription>Add a payment method to issue numbered documents.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <Table>
             <TableHeader>

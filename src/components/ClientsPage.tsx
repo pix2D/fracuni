@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -89,11 +90,14 @@ export function ClientsPage() {
       </div>
 
       {clients.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            {search ? "No clients match your search." : "No clients yet. Create your first client to get started."}
-          </CardContent>
-        </Card>
+        <Empty className="border border-border">
+          <EmptyHeader>
+            <EmptyTitle>{search ? "No clients match your search" : "No clients yet"}</EmptyTitle>
+            <EmptyDescription>
+              {search ? "Adjust the search term and try again." : "Create your first client to get started."}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <Card>
           <Table>

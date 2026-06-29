@@ -8,8 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Select,
   SelectContent,
@@ -136,9 +138,12 @@ export function DocumentNumberingSection({ companyId, locations, paymentMethods 
       ) : null}
 
       {paymentMethods.length === 0 ? (
-        <p className="border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
-          No payment methods yet.
-        </p>
+        <Empty className="border border-border">
+          <EmptyHeader>
+            <EmptyTitle>No payment methods yet</EmptyTitle>
+            <EmptyDescription>Add a payment method before configuring document numbering.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <Table>
           <TableHeader>
@@ -178,7 +183,10 @@ export function DocumentNumberingSection({ companyId, locations, paymentMethods 
             {loading && sequences.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                  Loading...
+                  <span className="inline-flex items-center gap-2">
+                    <Spinner />
+                    Loading...
+                  </span>
                 </TableCell>
               </TableRow>
             )}

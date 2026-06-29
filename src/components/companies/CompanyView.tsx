@@ -1,5 +1,16 @@
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { FormSection } from "@/components/forms/FormSection";
 import { LogoUpload } from "@/components/companies/LogoUpload";
@@ -20,8 +31,6 @@ export function CompanyView({ company }: { company: CompanyWithRelations }) {
   }
 
   async function handleDelete() {
-    if (!confirm("Are you sure you want to delete this company?")) return;
-
     const response = await fetch(`/api/companies/${currentCompany.id}`, { method: "DELETE" });
     if (!response.ok) {
       const body = await response.json();
@@ -44,9 +53,25 @@ export function CompanyView({ company }: { company: CompanyWithRelations }) {
           <Button asChild>
             <a href={`/companies/${currentCompany.id}/edit`}>Edit Details</a>
           </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            Delete
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">Delete</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete company?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently deletes {currentCompany.name} and returns you to the companies list.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction variant="destructive" onClick={handleDelete}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 

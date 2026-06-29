@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { INVOICE_STATUS } from "@/lib/documents";
 import type { Invoice } from "@/lib/invoices";
 
@@ -39,16 +40,18 @@ export function InvoiceDocumentActionsMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          title="Document actions"
-          aria-label="Document actions"
-        >
-          <DotsThreeIcon className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <DropdownMenuTrigger asChild>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="Document actions">
+                <DotsThreeIcon className="size-4" />
+              </Button>
+            </TooltipTrigger>
+          </DropdownMenuTrigger>
+          <TooltipContent>Document actions</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={() => onOpen(invoice)}>
           {isDraft ? "Edit" : "View"}

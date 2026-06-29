@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { OFFER_STATUS, type OfferStatus } from "@/lib/documents";
 import type { Offer } from "@/lib/offers";
 
@@ -28,16 +29,18 @@ export function OfferDocumentActionsMenu({
 }: Props) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          title="Offer actions"
-          aria-label="Offer actions"
-        >
-          <DotsThreeIcon className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <DropdownMenuTrigger asChild>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="Offer actions">
+                <DotsThreeIcon className="size-4" />
+              </Button>
+            </TooltipTrigger>
+          </DropdownMenuTrigger>
+          <TooltipContent>Offer actions</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={() => onOpen(offer)}>
           {offer.status === OFFER_STATUS.DRAFT ? "Edit" : "View"}

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface DatePickerProps {
   value?: Date
@@ -86,15 +87,22 @@ function DatePicker({ value, onChange, placeholder = "Pick a date", disabled = f
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
         <div className="flex items-center justify-end border-b border-border px-3 py-1.5">
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            title="Refresh holidays"
-          >
-            <ArrowClockwiseIcon className={cn("size-3", refreshing && "animate-spin")} />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="Refresh holidays"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                >
+                  <ArrowClockwiseIcon className={cn("size-3", refreshing && "animate-spin")} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh holidays</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <Calendar
           mode="single"

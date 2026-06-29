@@ -63,14 +63,16 @@ export const SettingsCurrenciesSection = withFieldGroup({
                     {currencies.map((code) => (
                       <Badge key={code} variant="secondary" className="gap-1 pr-1">
                         {code}
-                        <button
+                        <Button
                           type="button"
-                          className="ml-1 inline-flex size-4 cursor-pointer items-center justify-center hover:bg-muted"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="ml-1 size-4"
                           aria-label={`Remove ${code}`}
                           onClick={() => removeCurrency(code)}
                         >
                           <XIcon className="size-3" />
-                        </button>
+                        </Button>
                       </Badge>
                     ))}
                   </div>

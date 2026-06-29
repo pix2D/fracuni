@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
@@ -70,20 +71,26 @@ export function ServiceCatalogSection() {
           — expanded to current date values when selected during document creation.
         </p>
 
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
+        <InputGroup>
+          <InputGroupAddon>
+            <MagnifyingGlassIcon className="size-4" />
+          </InputGroupAddon>
+          <InputGroupInput
             placeholder="Search catalog…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
           />
-        </div>
+        </InputGroup>
 
         {entries.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            {search ? "No matching entries." : "No catalog entries yet."}
-          </p>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>{search ? "No matching entries" : "No catalog entries yet"}</EmptyTitle>
+              <EmptyDescription>
+                {search ? "Adjust the search term and try again." : "Create reusable line item templates."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <Table>
             <TableHeader>

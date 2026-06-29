@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
   Table,
   TableBody,
@@ -33,11 +34,12 @@ export function CompaniesPage() {
       </div>
 
       {companies.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No companies yet. Create your first company to get started.
-          </CardContent>
-        </Card>
+        <Empty className="border border-border">
+          <EmptyHeader>
+            <EmptyTitle>No companies yet</EmptyTitle>
+            <EmptyDescription>Create your first company to get started.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <Card>
           <Table>

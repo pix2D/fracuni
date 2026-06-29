@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { FieldError, FieldGroup } from "@/components/ui/field";
 import { FormSection } from "@/components/forms/FormSection";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
@@ -46,9 +47,12 @@ export const ClientTaxIdsEditor = withFieldGroup({
         <group.Subscribe selector={(state) => state.values.taxIds ?? []}>
           {(taxIds) =>
             taxIds.length === 0 ? (
-              <p className="border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
-                No additional tax IDs.
-              </p>
+              <Empty className="border border-border">
+                <EmptyHeader>
+                  <EmptyTitle>No additional tax IDs</EmptyTitle>
+                  <EmptyDescription>Add one when the client has extra registration identifiers.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <FieldGroup className="gap-3">
                 {taxIds.map((_, index) => (

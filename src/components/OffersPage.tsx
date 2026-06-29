@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { DocumentDataTable } from "@/components/documents/DocumentDataTable";
 import { OfferDocumentActionsMenu } from "@/components/offers/OfferDocumentActionsMenu";
 import { responseEntityId, responseError } from "@/lib/api-response";
@@ -81,11 +81,12 @@ export function OffersPage({ company, clients, settings }: Props) {
 
   if (!company) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          Select or create a Company first to start making offers.
-        </CardContent>
-      </Card>
+      <Empty className="border border-border">
+        <EmptyHeader>
+          <EmptyTitle>No company selected</EmptyTitle>
+          <EmptyDescription>Select or create a company first to start making offers.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 

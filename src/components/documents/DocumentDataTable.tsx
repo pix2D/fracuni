@@ -15,6 +15,7 @@ import { CaretDownIcon, CaretUpDownIcon, CaretUpIcon } from "@phosphor-icons/rea
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -390,7 +391,14 @@ export function DocumentDataTable<TDocument extends Invoice = Invoice>({
             ) : (
               <TableRow>
                 <TableCell colSpan={table.getAllLeafColumns().length} className="h-24 text-center">
-                  {rows.length === 0 ? empty : "No documents match the current filters."}
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyTitle>{rows.length === 0 ? "No documents yet" : "No matching documents"}</EmptyTitle>
+                      <EmptyDescription>
+                        {rows.length === 0 ? empty : "No documents match the current filters."}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </TableCell>
               </TableRow>
             )}

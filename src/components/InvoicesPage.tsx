@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { MarkPaidDialog } from "@/components/MarkPaidDialog";
 import { DocumentDataTable } from "@/components/documents/DocumentDataTable";
@@ -141,11 +141,12 @@ export function InvoicesPage({
 
   if (!company) {
     return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          Select or create a Company first to start invoicing.
-        </CardContent>
-      </Card>
+      <Empty className="border border-border">
+        <EmptyHeader>
+          <EmptyTitle>No company selected</EmptyTitle>
+          <EmptyDescription>Select or create a company first to start invoicing.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
