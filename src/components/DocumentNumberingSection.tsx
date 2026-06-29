@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
 import { FormSection } from "@/components/forms/FormSection";
 import { responseError } from "@/lib/api-response";
 import type { Location, PaymentMethod } from "@/lib/companies";
@@ -129,10 +129,14 @@ export function DocumentNumberingSection({ companyId, locations, paymentMethods 
         </div>
       }
     >
-      <FormErrorBanner error={error} />
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {paymentMethods.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
+        <p className="border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
           No payment methods yet.
         </p>
       ) : (
@@ -263,7 +267,11 @@ function SequenceDialog({
             void save();
           }}
         >
-          <FormErrorBanner error={error} />
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
 
           <div className="space-y-1">
             <Label htmlFor="document-numbering-next-sequence">Next Sequence</Label>

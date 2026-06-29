@@ -1,6 +1,7 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import { OfferEditForm } from "@/components/offers/OfferEditForm";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCompany } from "@/lib/companies";
 import { listClients } from "@/lib/clients";
 import { getOffer } from "@/lib/offers";
@@ -28,8 +29,8 @@ const [clients, catalog, settings] = await Promise.all([
       offer={offer}
     />
   ) : (
-    <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-      Offer not found.
-    </div>
+    <Alert variant="destructive">
+      <AlertDescription>Offer not found.</AlertDescription>
+    </Alert>
   )}
 </Layout>

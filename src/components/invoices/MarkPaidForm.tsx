@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { format } from "date-fns";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { DatePicker } from "@/components/DatePicker";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { useAppForm } from "@/components/forms/app-form";
 import { responseError } from "@/lib/api-response";
@@ -91,7 +91,11 @@ export function MarkPaidForm({ invoiceId, onCancel, onPaid }: MarkPaidFormProps)
         submit();
       }}
     >
-      <FormErrorBanner error={error} />
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <form.AppField name="paymentDate">
         {(field) => (

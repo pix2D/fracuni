@@ -1,8 +1,8 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { useAppForm } from "@/components/forms/app-form";
 import { responseError } from "@/lib/api-response";
@@ -88,10 +88,14 @@ export function LogoUpload({ companyId, currentPath, onUploaded }: LogoUploadPro
         submit();
       }}
     >
-      <FormErrorBanner error={error} />
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         {currentPath && (
-          <img src={`/api/companies/${companyId}/logo`} alt="Logo" className="h-12 w-12 rounded object-contain" />
+          <img src={`/api/companies/${companyId}/logo`} alt="Logo" className="h-12 w-12 object-contain" />
         )}
         <form.AppField name="logo">
           {(field) => (

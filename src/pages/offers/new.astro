@@ -1,6 +1,7 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import { OfferCreateForm } from "@/components/offers/OfferCreateForm";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { listCompanies, getCompany } from "@/lib/companies";
 import { listClients } from "@/lib/clients";
 import { listCatalogEntries } from "@/lib/service-catalog";
@@ -29,8 +30,8 @@ const [clients, catalog, settings] = await Promise.all([
       settings={settings}
     />
   ) : (
-    <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-      Select or create a Company first to start making offers.
-    </div>
+    <Alert variant="destructive">
+      <AlertDescription>Select or create a Company first to start making offers.</AlertDescription>
+    </Alert>
   )}
 </Layout>

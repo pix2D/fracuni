@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FormSection } from "@/components/forms/FormSection";
 import { LogoUpload } from "@/components/companies/LogoUpload";
@@ -49,11 +50,11 @@ export function CompanyView({ company }: { company: CompanyWithRelations }) {
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <FormSection title="Company Details">
         <dl className="grid gap-x-8 gap-y-3 text-xs sm:grid-cols-2">

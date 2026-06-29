@@ -111,7 +111,7 @@ export const CompanyDetailSections = withFieldGroup({
                   description={
                     <span className="flex flex-wrap gap-2">
                       {PLACEHOLDER_TOKENS.map(({ token, description }) => (
-                        <span key={token} className="rounded bg-muted px-1.5 py-0.5 font-mono">
+                        <span key={token} className="bg-muted px-1.5 py-0.5 font-mono">
                           {token} <span className="text-muted-foreground/70">- {description}</span>
                         </span>
                       ))}

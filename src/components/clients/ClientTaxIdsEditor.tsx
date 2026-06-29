@@ -46,13 +46,13 @@ export const ClientTaxIdsEditor = withFieldGroup({
         <group.Subscribe selector={(state) => state.values.taxIds ?? []}>
           {(taxIds) =>
             taxIds.length === 0 ? (
-              <p className="rounded-md border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
+              <p className="border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
                 No additional tax IDs.
               </p>
             ) : (
               <FieldGroup className="gap-3">
                 {taxIds.map((_, index) => (
-                  <div key={index} className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-[1fr_1fr_auto]">
+                  <div key={index} className="grid gap-3 border border-border p-3 sm:grid-cols-3">
                     <group.AppField name={`taxIds[${index}].label`} validators={clientTaxIdFieldValidators.label}>
                       {(field) => <field.TextField label="Label" placeholder="e.g. Registration no." />}
                     </group.AppField>

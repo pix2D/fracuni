@@ -97,13 +97,13 @@ export function LineItemsEditor({
       </div>
 
       {items.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
+        <p className="border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
           No line items yet. Click “Add Line Item” to start.
         </p>
       ) : (
         <div className="space-y-3">
           {items.map((row, index) => (
-            <div key={index} className="rounded-md border border-border p-3">
+            <div key={index} className="border border-border p-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
                 {!disabled && (
@@ -204,7 +204,7 @@ export function LineItemsEditor({
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Amount</Label>
-                  <div className="flex h-9 items-center justify-end rounded-md border border-input bg-muted/40 px-3 text-sm tabular-nums">
+                  <div className="flex h-9 items-center justify-end border border-input bg-muted/40 px-3 text-sm tabular-nums">
                     {rowAmount(row)}
                   </div>
                 </div>

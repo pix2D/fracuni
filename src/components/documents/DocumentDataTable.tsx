@@ -129,7 +129,7 @@ function SortableHeader({
 
 function SummaryPill({ label, values }: { label: string; values: string[] }) {
   return (
-    <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+    <div className="border border-border bg-muted/30 px-3 py-2">
       <span className="text-muted-foreground">{label}</span>{" "}
       <span className="font-medium">{values.length > 0 ? values.join(" / ") : "-"}</span>
     </div>

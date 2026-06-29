@@ -1,8 +1,8 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FieldGroup } from "@/components/ui/field";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
 import { useAppForm } from "@/components/forms/app-form";
 import {
   serviceCatalogDefaults,
@@ -69,7 +69,11 @@ export function ServiceCatalogForm({ entry, onSaved }: ServiceCatalogFormProps) 
         submitEntry();
       }}
     >
-      <FormErrorBanner error={error} />
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <FieldGroup>
         <form.AppField

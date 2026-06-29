@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DocumentDataTable } from "@/components/documents/DocumentDataTable";
@@ -97,11 +98,11 @@ export function OffersPage({ company, clients, settings }: Props) {
         </Button>
       </div>
 
-      {error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <DocumentDataTable
         documents={offers}

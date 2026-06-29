@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
 import { OFFER_STATUS, type OfferStatus } from "@/lib/documents";
 
 export function OfferFormShell({
@@ -36,7 +36,11 @@ export function OfferFormShell({
         </div>
       </div>
 
-      <FormErrorBanner error={error} />
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
       {children}
     </div>
   );
@@ -44,9 +48,9 @@ export function OfferFormShell({
 
 export function OfferReadOnlyNotice({ status }: { status: OfferStatus }) {
   return (
-    <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-      This offer is {status} and is read-only.
-    </div>
+    <Alert>
+      <AlertDescription>This offer is {status} and is read-only.</AlertDescription>
+    </Alert>
   );
 }
 

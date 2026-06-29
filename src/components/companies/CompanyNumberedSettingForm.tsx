@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
 import { useAppForm } from "@/components/forms/app-form";
 import { CompanyNumberedSettingSchema, type CompanyNumberedSettingInput } from "@/lib/companies.schema";
 
@@ -105,9 +105,13 @@ export function CompanyNumberedSettingForm({
         submit();
       }}
     >
-      <FormErrorBanner error={error} />
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
-      <FieldGroup className="grid gap-3 sm:grid-cols-[7rem_1fr]">
+      <FieldGroup className="grid gap-3 sm:grid-cols-2">
         <form.AppField name="number" validators={settingFieldValidators.number}>
           {(field) => <field.NumberField label="Number" min={1} />}
         </form.AppField>

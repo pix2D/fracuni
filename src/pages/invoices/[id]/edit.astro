@@ -1,6 +1,7 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import { InvoiceEditForm } from "@/components/invoices/InvoiceEditForm";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCompany } from "@/lib/companies";
 import { listClients } from "@/lib/clients";
 import { getInvoice } from "@/lib/invoices";
@@ -31,8 +32,8 @@ const [clients, catalog, settings] = await Promise.all([
       documentType={DOCUMENT_TYPE.INVOICE}
     />
   ) : (
-    <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-      Invoice not found.
-    </div>
+    <Alert variant="destructive">
+      <AlertDescription>Invoice not found.</AlertDescription>
+    </Alert>
   )}
 </Layout>

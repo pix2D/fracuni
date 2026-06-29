@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
 
 export function CompanyFormShell({
   title,
@@ -23,7 +23,11 @@ export function CompanyFormShell({
           <a href={backHref}>{backLabel}</a>
         </Button>
       </div>
-      <FormErrorBanner error={error} />
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
       {children}
     </div>
   );

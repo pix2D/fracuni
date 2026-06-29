@@ -56,7 +56,7 @@ export function ServiceCatalogSection() {
         <div className="flex items-center justify-between">
           <CardTitle>Service Catalog</CardTitle>
           <Button size="sm" onClick={openCreate}>
-            <PlusIcon className="mr-1 h-4 w-4" />
+            <PlusIcon className="size-4" />
             Add Entry
           </Button>
         </div>
@@ -64,9 +64,9 @@ export function ServiceCatalogSection() {
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
           Reusable line item templates. Descriptions support placeholders:{" "}
-          <code className="rounded bg-muted px-1 py-0.5">{"{day}"}</code>,{" "}
-          <code className="rounded bg-muted px-1 py-0.5">{"{month}"}</code>,{" "}
-          <code className="rounded bg-muted px-1 py-0.5">{"{year}"}</code>{" "}
+          <code className="bg-muted px-1 py-0.5">{"{day}"}</code>,{" "}
+          <code className="bg-muted px-1 py-0.5">{"{month}"}</code>,{" "}
+          <code className="bg-muted px-1 py-0.5">{"{year}"}</code>{" "}
           — expanded to current date values when selected during document creation.
         </p>
 
@@ -90,7 +90,7 @@ export function ServiceCatalogSection() {
               <TableRow>
                 <TableHead>Description (HR)</TableHead>
                 <TableHead>Description (EN)</TableHead>
-                <TableHead className="w-[80px]" />
+                <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -108,7 +108,7 @@ export function ServiceCatalogSection() {
                         aria-label={`Edit ${entry.descriptionHr}`}
                         onClick={() => openEdit(entry)}
                       >
-                        <PencilSimpleIcon className="h-4 w-4" />
+                        <PencilSimpleIcon className="size-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -116,7 +116,7 @@ export function ServiceCatalogSection() {
                         aria-label={`Delete ${entry.descriptionHr}`}
                         onClick={() => handleDelete(entry.id)}
                       >
-                        <TrashIcon className="h-4 w-4" />
+                        <TrashIcon className="size-4" />
                       </Button>
                     </div>
                   </TableCell>

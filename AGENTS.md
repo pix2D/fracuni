@@ -10,6 +10,14 @@ Use `@/` for all imports — no relative paths. The `@` alias maps to `src/`.
 
 Never hand-write files that a CLI tool would generate (Shadcn components, Astro integrations, etc.). Use the official CLI/init command. If the command is interactive and can't be run non-interactively, list the exact commands for the human to run and wait — don't try to replicate what the tool does by hand.
 
+### UI components
+
+Use Shadcn primitives wherever possible instead of custom-building common UI. Before writing custom alerts, dialogs, dropdowns, selects, popovers, cards, tables, tabs, form controls, badges, buttons, or toast-like feedback, check `src/components/ui/` and compose the existing primitive.
+
+If a Shadcn primitive is missing, add it with the CLI, for example `pnpm exec shadcn add alert`. Do not hand-write generated component files. Normal `shadcn add` commands read `components.json`; the preset code `b2CRGDgTQ` is only for initializing or applying the project preset, e.g. `pnpm exec shadcn apply b2CRGDgTQ`.
+
+App-specific components should generally wrap or arrange Shadcn primitives, not duplicate their behavior or styling. Avoid ad hoc alert/banner divs, custom menu/listbox behavior, and one-off control styling when a Shadcn component already covers the interaction.
+
 ### Kysely (database)
 
 Use Kysely's **typed query builder** — never raw `sql` template literals for standard CRUD. The typed builder catches column typos at compile time:

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -6,7 +7,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
 import { SendEmailForm, type EmailDefaults } from "@/components/invoices/SendEmailForm";
 import { PaperclipIcon } from "@phosphor-icons/react";
 import type { Invoice } from "@/lib/invoices";
@@ -54,7 +54,11 @@ export function SendEmailDialog({ invoice, onClose, onSent }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <FormErrorBanner error={error} />
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
         {loading ? (
           <div className="py-6 text-center text-muted-foreground">Loading...</div>

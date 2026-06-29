@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
 import { useAppForm } from "@/components/forms/app-form";
 import { responseError } from "@/lib/api-response";
 import { SendEmailSchema, type SendEmailInput } from "@/lib/email.schema";
@@ -94,7 +94,11 @@ export function SendEmailForm({ invoiceId, defaults, onCancel, onSent }: SendEma
         submit();
       }}
     >
-      <FormErrorBanner error={error} />
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <FieldGroup>
         <div className="space-y-1">

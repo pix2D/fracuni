@@ -65,7 +65,7 @@ export const SettingsCurrenciesSection = withFieldGroup({
                         {code}
                         <button
                           type="button"
-                          className="ml-1 inline-flex size-4 cursor-pointer items-center justify-center rounded-none hover:bg-muted"
+                          className="ml-1 inline-flex size-4 cursor-pointer items-center justify-center hover:bg-muted"
                           aria-label={`Remove ${code}`}
                           onClick={() => removeCurrency(code)}
                         >

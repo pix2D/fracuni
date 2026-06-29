@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { FormErrorBanner, FormSuccessBanner } from "@/components/forms/FormErrorBanner";
 import { useAppForm } from "@/components/forms/app-form";
 import { SettingsCurrenciesSection } from "@/components/settings/SettingsCurrenciesSection";
 import { SettingsDefaultsSection } from "@/components/settings/SettingsDefaultsSection";
@@ -73,8 +73,16 @@ export function SettingsForm({ settings, onSaved }: SettingsFormProps) {
         </Button>
       </div>
 
-      <FormErrorBanner error={error} />
-      <FormSuccessBanner message={success ? "Settings saved." : null} />
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+      {success ? (
+        <Alert variant="success">
+          <AlertDescription>Settings saved.</AlertDescription>
+        </Alert>
+      ) : null}
 
       <form
         noValidate

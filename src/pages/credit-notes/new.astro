@@ -1,6 +1,7 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import { InvoiceCreateForm } from "@/components/invoices/InvoiceCreateForm";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { listCompanies, getCompany } from "@/lib/companies";
 import { listClients } from "@/lib/clients";
 import { listCatalogEntries } from "@/lib/service-catalog";
@@ -31,8 +32,8 @@ const [clients, catalog, settings] = await Promise.all([
       documentType={DOCUMENT_TYPE.CREDIT_NOTE}
     />
   ) : (
-    <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-      Select or create a Company first to create credit notes.
-    </div>
+    <Alert variant="destructive">
+      <AlertDescription>Select or create a Company first to create credit notes.</AlertDescription>
+    </Alert>
   )}
 </Layout>

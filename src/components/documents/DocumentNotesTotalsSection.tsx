@@ -31,8 +31,8 @@ export const DocumentNotesTotalsSection = withFieldGroup<
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="space-y-4">
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="space-y-4 md:col-span-2">
             <group.AppField name="notesHr">
               {(field) => <field.TextareaField label="Notes (HR)" rows={3} disabled={readOnly} />}
             </group.AppField>

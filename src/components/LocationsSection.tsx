@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -85,15 +86,15 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
         </Button>
       }
     >
-      {error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <div>
         {locations.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
+          <p className="border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
             No locations yet.
           </p>
         ) : (

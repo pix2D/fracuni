@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 export function ClientFormShell({ title, error, children }: { title: string; error: string | null; children: ReactNode }) {
@@ -10,11 +11,11 @@ export function ClientFormShell({ title, error, children }: { title: string; err
           <a href="/clients">Back to Clients</a>
         </Button>
       </div>
-      {error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
       {children}
     </div>
   );

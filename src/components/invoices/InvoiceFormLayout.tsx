@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
 import { DOCUMENT_TYPE, INVOICE_STATUS, type InvoiceStatus } from "@/lib/documents";
 import type { InvoiceDocumentType } from "@/components/invoices/invoice-form-model";
 
@@ -60,7 +60,11 @@ export function InvoiceFormShell({
         </div>
       </div>
 
-      <FormErrorBanner error={error} />
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
       {children}
     </div>
   );
@@ -68,9 +72,11 @@ export function InvoiceFormShell({
 
 export function InvoiceReadOnlyNotice({ documentType, status }: { documentType: InvoiceDocumentType; status: InvoiceStatus }) {
   return (
-    <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-      This {invoiceNoun(documentType).toLowerCase()} is {status} and is read-only.
-    </div>
+    <Alert>
+      <AlertDescription>
+        This {invoiceNoun(documentType).toLowerCase()} is {status} and is read-only.
+      </AlertDescription>
+    </Alert>
   );
 }
 

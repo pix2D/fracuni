@@ -7,7 +7,7 @@ interface ApiHealth {
 
 function HealthDot({ ok }: { ok: boolean | null }) {
   const color = ok === null ? "bg-muted-foreground/40" : ok ? "bg-green-500" : "bg-destructive";
-  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} aria-hidden="true" />;
+  return <span className={`inline-block size-2 ${color}`} aria-hidden="true" />;
 }
 
 export function InvoiceHealthStatus({ visible }: { visible: boolean }) {
