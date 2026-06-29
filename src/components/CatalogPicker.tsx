@@ -62,7 +62,7 @@ export function CatalogPicker({ entries, onSelect }: Props) {
                 key={entry.id}
                 type="button"
                 onClick={() => handlePick(entry)}
-                className="flex w-full flex-col rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                className="flex w-full cursor-pointer flex-col rounded-none px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
               >
                 <span>{entry.descriptionHr}</span>
                 {entry.descriptionEn && (

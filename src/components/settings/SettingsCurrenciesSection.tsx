@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { FormSection } from "@/components/forms/FormSection";
 import { normalizeErrors } from "@/components/forms/TanStackFields";
 import { withFieldGroup } from "@/components/forms/app-form";
+import { XIcon } from "@phosphor-icons/react";
 import {
   currencyCandidateError,
   normalizeCurrencyCode,
@@ -64,11 +65,11 @@ export const SettingsCurrenciesSection = withFieldGroup({
                         {code}
                         <button
                           type="button"
-                          className="ml-1 rounded-full px-1 hover:bg-muted"
+                          className="ml-1 inline-flex size-4 cursor-pointer items-center justify-center rounded-none hover:bg-muted"
                           aria-label={`Remove ${code}`}
                           onClick={() => removeCurrency(code)}
                         >
-                          x
+                          <XIcon className="size-3" />
                         </button>
                       </Badge>
                     ))}

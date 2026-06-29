@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FormErrorBanner } from "@/components/forms/FormErrorBanner";
+import { FormErrorBanner, FormSuccessBanner } from "@/components/forms/FormErrorBanner";
 import { useAppForm } from "@/components/forms/app-form";
 import { SettingsCurrenciesSection } from "@/components/settings/SettingsCurrenciesSection";
 import { SettingsDefaultsSection } from "@/components/settings/SettingsDefaultsSection";
@@ -74,11 +74,7 @@ export function SettingsForm({ settings, onSaved }: SettingsFormProps) {
       </div>
 
       <FormErrorBanner error={error} />
-      {success && (
-        <div className="rounded-md border border-green-500/50 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400">
-          Settings saved.
-        </div>
-      )}
+      <FormSuccessBanner message={success ? "Settings saved." : null} />
 
       <form
         noValidate
