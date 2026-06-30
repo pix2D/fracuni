@@ -15,7 +15,7 @@ function hrData(overrides: Partial<PdfDocumentData> = {}): PdfDocumentData {
     company: {
       name: "Firefly One d.o.o.",
       address: "Ulica 1\n10000 Zagreb",
-      oib: "12345678901",
+      taxId: { label: "OIB", value: "12345678901" },
       iban: "HR1234567890",
       swift: "ZABAHR2X",
       phone: "+385 1 234 5678",

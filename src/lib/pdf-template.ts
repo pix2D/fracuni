@@ -226,7 +226,7 @@ export function renderDocumentHtml(data: PdfDocumentData): string {
   <div class="bank-bar">
     <span>IBAN: ${escapeHtml(data.company.iban)}</span>
     <span>SWIFT: ${escapeHtml(data.company.swift)}</span>
-    <span>OIB: ${escapeHtml(data.company.oib)}</span>
+    <span>${escapeHtml(data.company.taxId.label)}: ${escapeHtml(data.company.taxId.value)}</span>
     <span>Tel: ${escapeHtml(data.company.phone)}</span>
   </div>
 
@@ -235,7 +235,7 @@ export function renderDocumentHtml(data: PdfDocumentData): string {
       <h3>${escapeHtml(labels.issuer)}</h3>
       <div class="name">${escapeHtml(data.company.name)}</div>
       <div class="line">${multiline(data.company.address)}</div>
-      <div class="line">OIB: ${escapeHtml(data.company.oib)}</div>
+      <div class="line">${escapeHtml(data.company.taxId.label)}: ${escapeHtml(data.company.taxId.value)}</div>
     </div>
     <div class="party">
       <h3>${escapeHtml(labels.client)}</h3>

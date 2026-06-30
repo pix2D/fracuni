@@ -102,7 +102,7 @@ function pdfFilename(
   return lang === "en" ? `${fileNumber}-${clientSlug}-en.pdf` : `${fileNumber}-${clientSlug}.pdf`;
 }
 
-async function readLogoDataUri(
+export async function readLogoDataUri(
   logoPath: string | null,
   dataDir: string,
 ): Promise<string | null> {

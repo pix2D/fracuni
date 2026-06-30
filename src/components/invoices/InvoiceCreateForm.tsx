@@ -60,9 +60,10 @@ export function InvoiceCreateForm({
       setError("Review the highlighted fields and try again.");
       setSubmitting(null);
     },
-    onSubmit: async ({ value }) => {
+    onSubmit: async ({ value, meta }) => {
       setError(null);
       try {
+        const base = invoiceRouteBase(documentType);
         const domestic = isDomesticInvoice(value, clients);
         const response = await fetch("/api/invoices", {
           method: "POST",
@@ -81,7 +82,23 @@ export function InvoiceCreateForm({
           return;
         }
 
-        window.location.href = `${invoiceRouteBase(documentType)}/${invoiceId}/edit`;
+        if (meta === "save") {
+          window.location.href = `${base}/${invoiceId}/edit`;
+          return;
+        }
+
+        const finalizeResponse = await fetch(`/api/invoices/${invoiceId}/finalize`, { method: "POST" });
+        if (!finalizeResponse.ok) {
+          const message = await responseError(
+            finalizeResponse,
+            `The draft was created, but finalization failed.`,
+          );
+          window.sessionStorage.setItem(`invoice-form-error:${invoiceId}`, message);
+          window.location.href = `${base}/${invoiceId}/edit`;
+          return;
+        }
+
+        window.location.href = `${base}/${invoiceId}`;
       } finally {
         setSubmitting(null);
       }
@@ -92,6 +109,12 @@ export function InvoiceCreateForm({
     submitIntent.current = "save";
     setSubmitting("save");
     void form.handleSubmit("save").catch(() => setSubmitting(null));
+  }
+
+  function submitFinalize() {
+    submitIntent.current = "finalize";
+    setSubmitting("finalize");
+    void form.handleSubmit("finalize").catch(() => setSubmitting(null));
   }
 
   return (
@@ -153,10 +176,12 @@ export function InvoiceCreateForm({
         <InvoiceFormActions
           documentType={documentType}
           readOnly={false}
-          canFinalize={false}
+          canFinalize
           saveLabel="Save Draft"
+          finalizeLabel={`Finalize ${invoiceNoun(documentType)}`}
           submitting={submitting}
           onSave={submitSave}
+          onFinalize={submitFinalize}
         />
       </form>
     </InvoiceFormShell>

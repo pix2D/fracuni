@@ -14,7 +14,8 @@ import type { Invoice } from "@/lib/invoices";
 interface Props {
   invoice: Invoice;
   isCreditNote: boolean;
-  onOpen: (invoice: Invoice) => void;
+  onView: (invoice: Invoice) => void;
+  onEdit: (invoice: Invoice) => void;
   onSend: (invoice: Invoice) => void;
   onMarkSent: (id: number) => void;
   onMarkPaid: (invoice: Invoice) => void;
@@ -26,7 +27,8 @@ interface Props {
 export function InvoiceDocumentActionsMenu({
   invoice,
   isCreditNote,
-  onOpen,
+  onView,
+  onEdit,
   onSend,
   onMarkSent,
   onMarkPaid,
@@ -53,9 +55,8 @@ export function InvoiceDocumentActionsMenu({
         </Tooltip>
       </TooltipProvider>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => onOpen(invoice)}>
-          {isDraft ? "Edit" : "View"}
-        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onView(invoice)}>View</DropdownMenuItem>
+        {isDraft && <DropdownMenuItem onSelect={() => onEdit(invoice)}>Edit</DropdownMenuItem>}
         {isFinalized && (
           <>
             <DropdownMenuItem onSelect={() => onSend(invoice)}>Send Email</DropdownMenuItem>

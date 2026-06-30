@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { InvoiceDatesSection } from "@/components/invoices/InvoiceDatesSection";
 import {
   InvoiceFormActions,
@@ -62,6 +62,14 @@ export function InvoiceEditForm({
   const readOnly = invoice.status !== INVOICE_STATUS.DRAFT;
   const title = readOnly ? `View ${invoiceNoun(documentType)}` : `Edit ${invoiceNoun(documentType)}`;
 
+  useEffect(() => {
+    const key = `invoice-form-error:${invoice.id}`;
+    const stored = window.sessionStorage.getItem(key);
+    if (!stored) return;
+    window.sessionStorage.removeItem(key);
+    setError(stored);
+  }, [invoice.id]);
+
   const form = useAppForm({
     defaultValues: invoiceDefaults({ company, clients, settings, documentType, invoice }),
     onSubmitMeta: DEFAULT_SUBMIT_INTENT,
@@ -100,7 +108,7 @@ export function InvoiceEditForm({
           return;
         }
 
-        window.location.href = base;
+        window.location.href = `${base}/${invoice.id}`;
       } finally {
         setSubmitting(null);
       }

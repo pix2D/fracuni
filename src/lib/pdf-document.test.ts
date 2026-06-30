@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildPdfDocumentData, type BuildPdfDataInput } from "@/lib/pdf-document";
+import {
+  buildPdfDocumentData,
+  buildPdfPreviewDocumentData,
+  type BuildPdfDataInput,
+} from "@/lib/pdf-document";
 import { DOCUMENT_TYPE, INVOICE_STATUS, OFFER_STATUS } from "@/lib/documents";
 import type { Invoice } from "@/lib/invoices";
 import type { Company, Location, PaymentMethod } from "@/lib/companies";
@@ -206,6 +210,7 @@ describe("buildPdfDocumentData — foreign reverse-charge invoice", () => {
     const data = buildPdfDocumentData(input({ lang: "en", client: foreign }));
     expect(data.title).toBe("Invoice");
     expect(data.dates.issue).toBe("2026-06-15");
+    expect(data.company.taxId).toEqual({ label: "VAT", value: "HR12345678901" });
     expect(data.company.tagline).toBe("Software on fire");
     expect(data.lineItems[0]!.description).toBe("Consulting");
   });
@@ -226,7 +231,7 @@ describe("buildPdfDocumentData — foreign reverse-charge invoice", () => {
   it("renders the VAT number plus additional tax ids", () => {
     const data = buildPdfDocumentData(input({ lang: "en", client: foreign }));
     expect(data.client.taxIds).toEqual([
-      { label: "VAT No.", value: "DE123456789" },
+      { label: "VAT", value: "DE123456789" },
       { label: "EORI", value: "DE999" },
     ]);
   });
@@ -284,7 +289,7 @@ describe("buildPdfDocumentData — non-EUR invoice", () => {
     // 250 USD domestic total -> /1.0823 EUR
     expect(data.totals.eurEquivalent).toBe("230,99");
     expect(data.exchangeRateText).toBe(
-      "Tečaj na dan izdavanja računa iznosi 1 EUR = 1,082300 USD",
+      "Tečaj na dan 13.06.2026. (zadnji dostupni prije datuma izdavanja 15.06.2026.) iznosi 1 EUR = 1,082300 USD",
     );
   });
 });
@@ -340,5 +345,51 @@ describe("buildPdfDocumentData — offer", () => {
     const data = buildPdfDocumentData(input({ invoice: offer, lang: "hr" }));
     expect(data.dates.issue).toBe("15.06.2026.");
     expect(data.dates.due).toBe("30.06.2026.");
+  });
+});
+
+describe("buildPdfPreviewDocumentData", () => {
+  it("renders draft placeholders and derives English issuer VAT from OIB", () => {
+    const draft = makeInvoice({
+      status: INVOICE_STATUS.DRAFT,
+      clientId: null,
+      locationId: null,
+      paymentMethodId: null,
+      currency: null,
+      issueDate: null,
+      deliveryDate: null,
+      dueDate: null,
+      documentNumber: null,
+      lineItems: [],
+    });
+
+    const data = buildPdfPreviewDocumentData({
+      lang: "en",
+      invoice: draft,
+      company,
+      client: null,
+      location: null,
+      paymentMethod: null,
+      vatRate: 25,
+      logoDataUri: null,
+    });
+
+    expect(data.documentNumber).toBe("-");
+    expect(data.company.taxId).toEqual({ label: "VAT", value: "HR12345678901" });
+    expect(data.client.name).toBe("-");
+    expect(data.dates.issue).toBe("-");
+    expect(data.location).toBe("-");
+    expect(data.paymentMethod).toBe("-");
+    expect(data.lineItems).toEqual([
+      {
+        position: 1,
+        description: "-",
+        quantity: "-",
+        vatPercent: "-",
+        unitPrice: "-",
+        amount: "-",
+      },
+    ]);
+    expect(data.totals.total).toBe("-");
   });
 });

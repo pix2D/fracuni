@@ -85,6 +85,7 @@ export function InvoiceFormActions({
   readOnly,
   canFinalize,
   saveLabel,
+  finalizeLabel = "Finalize",
   submitting,
   onSave,
   onFinalize,
@@ -93,6 +94,7 @@ export function InvoiceFormActions({
   readOnly: boolean;
   canFinalize: boolean;
   saveLabel: string;
+  finalizeLabel?: string;
   submitting: "save" | "finalize" | null;
   onSave: () => void;
   onFinalize?: () => void;
@@ -120,7 +122,7 @@ export function InvoiceFormActions({
       </Button>
       {canFinalize && (
         <Button type="button" onClick={onFinalize} disabled={busy}>
-          {submitting === "finalize" ? "Finalizing..." : "Finalize"}
+          {submitting === "finalize" ? "Finalizing..." : finalizeLabel}
         </Button>
       )}
     </div>

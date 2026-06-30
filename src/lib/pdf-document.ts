@@ -61,7 +61,7 @@ export interface PdfDocumentData {
   company: {
     name: string;
     address: string;
-    oib: string;
+    taxId: { label: string; value: string };
     iban: string;
     swift: string;
     phone: string;
@@ -107,9 +107,20 @@ function pick(lang: PdfLang, hr: string | null, en: string | null): string | nul
   return lang === "hr" ? hr : (en ?? hr);
 }
 
+function placeholder(value: string | null | undefined): string {
+  return value && value.trim() ? value : "-";
+}
+
 function requireCurrency(currency: string | null): CurrencyCode {
   if (currency && isCurrencyCode(currency)) return currency;
   throw invalidOperation(`Unsupported or missing currency: ${currency ?? "none"}`);
+}
+
+function buildCompanyTaxId(company: Company, lang: PdfLang): { label: string; value: string } {
+  if (lang === "en") {
+    return { label: "VAT", value: `HR${company.oib}` };
+  }
+  return { label: "OIB", value: company.oib };
 }
 
 function buildTaxIds(client: Client, lang: PdfLang): { label: string; value: string }[] {
@@ -118,12 +129,36 @@ function buildTaxIds(client: Client, lang: PdfLang): { label: string; value: str
     ids.push({ label: "OIB", value: client.oib });
   }
   if (client.vatNumber) {
-    ids.push({ label: lang === "hr" ? "PDV ID" : "VAT No.", value: client.vatNumber });
+    ids.push({ label: lang === "hr" ? "PDV ID" : "VAT", value: client.vatNumber });
   }
   for (const extra of client.taxIds) {
     ids.push({ label: extra.label, value: extra.value });
   }
   return ids;
+}
+
+function buildPlaceholderLineItems(): PdfLineRow[] {
+  return [
+    {
+      position: 1,
+      description: "-",
+      quantity: "-",
+      vatPercent: "-",
+      unitPrice: "-",
+      amount: "-",
+    },
+  ];
+}
+
+export interface BuildPdfPreviewDataInput {
+  lang: PdfLang;
+  invoice: Invoice;
+  company: Company;
+  client?: Client | null;
+  location?: Location | null;
+  paymentMethod?: PaymentMethod | null;
+  vatRate: number;
+  logoDataUri?: string | null;
 }
 
 export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData {
@@ -184,7 +219,7 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
     company: {
       name: company.name,
       address: company.address,
-      oib: company.oib,
+      taxId: buildCompanyTaxId(company, lang),
       iban: company.iban,
       swift: company.swift,
       phone: company.phone,
@@ -216,8 +251,117 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
         : null,
     },
     exchangeRateText: isForeignCurrency
-      ? exchangeRateText(invoice.exchangeRate!, currency, lang)
+      ? exchangeRateText(invoice.exchangeRate!, currency, lang, invoice.issueDate, invoice.exchangeRateDate)
       : null,
+    legalText: legalText ?? null,
+    notes: pick(lang, invoice.notesHr, invoice.notesEn),
+  };
+}
+
+export function buildPdfPreviewDocumentData(input: BuildPdfPreviewDataInput): PdfDocumentData {
+  const { lang, invoice, company, client, location, paymentMethod, vatRate } = input;
+  const currency = invoice.currency && isCurrencyCode(invoice.currency) ? invoice.currency : null;
+  const treatment = client
+    ? determineTaxTreatment({
+        clientType: client.clientType,
+        clientCountry: client.country,
+        clientVatNumber: client.vatNumber,
+      })
+    : null;
+  const chargeVat = treatment ? chargesCroatianPdv(treatment) : false;
+
+  const lineItems =
+    invoice.lineItems.length > 0
+      ? invoice.lineItems.map((li) => {
+          const quantity = li.quantity ?? null;
+          const unitPrice = li.unitPrice ?? null;
+          const canPrice = currency && quantity != null && unitPrice != null;
+          return {
+            position: li.position,
+            description: placeholder(pick(lang, li.descriptionHr, li.descriptionEn)),
+            quantity: quantity != null ? formatEuDecimal(quantity, 2) : "-",
+            vatPercent: chargeVat ? String(vatRate) : "0",
+            unitPrice:
+              currency && unitPrice != null
+                ? formatMoney(lineItemAmount(1, unitPrice, currency))
+                : "-",
+            amount: canPrice ? formatMoney(lineItemAmount(quantity, unitPrice, currency)) : "-",
+          };
+        })
+      : buildPlaceholderLineItems();
+
+  const totals = currency
+    ? computeInvoiceTotals(
+        invoice.lineItems.map((li) => ({
+          quantity: li.quantity ?? 0,
+          unitPrice: li.unitPrice ?? 0,
+        })),
+        currency,
+        { chargeVat, vatRate },
+      )
+    : null;
+  const isOffer = invoice.type === DOCUMENT_TYPE.OFFER;
+  const isForeignCurrency = currency !== null && currency !== BASE_CURRENCY && invoice.exchangeRate != null;
+
+  let legalText: string | null = null;
+  if (treatment === "croatian-pdv") {
+    legalText = company.legalTextDomestic;
+  } else if (treatment === "reverse-charge") {
+    legalText = pick(lang, company.legalTextForeignHr, company.legalTextForeignEn);
+  }
+
+  return {
+    lang,
+    title: TITLES[invoice.type as DocumentType][lang],
+    isOffer,
+    documentNumber: invoice.documentNumber
+      ? isOffer
+        ? `#${invoice.documentNumber}`
+        : invoice.documentNumber
+      : "-",
+    company: {
+      name: company.name,
+      address: company.address,
+      taxId: buildCompanyTaxId(company, lang),
+      iban: company.iban,
+      swift: company.swift,
+      phone: company.phone,
+      tagline: pick(lang, company.taglineHr, company.taglineEn),
+      logoDataUri: input.logoDataUri ?? null,
+      issuerName: company.issuerName,
+    },
+    client: {
+      name: placeholder(client?.name),
+      address: client?.address ?? null,
+      taxIds: client ? buildTaxIds(client, lang) : [],
+    },
+    dates: {
+      issue: formatDate(invoice.issueDate, lang) ?? "-",
+      delivery: formatDate(invoice.deliveryDate, lang) ?? "-",
+      due: formatDate(invoice.dueDate, lang) ?? "-",
+    },
+    location: location ? (pick(lang, location.nameHr, location.nameEn) ?? location.nameHr) : "-",
+    paymentMethod: paymentMethod
+      ? (pick(lang, paymentMethod.nameHr, paymentMethod.nameEn) ?? paymentMethod.nameHr)
+      : "-",
+    lineItems,
+    totals: {
+      subtotal: totals ? formatMoney(totals.subtotal) : "-",
+      vat:
+        totals?.pdv != null
+          ? { rate: String(vatRate), amount: formatMoney(totals.pdv) }
+          : null,
+      total: totals ? formatMoney(totals.total) : "-",
+      currency: currency ?? "",
+      eurEquivalent:
+        isForeignCurrency && totals
+          ? formatMoney(eurEquivalent(totals.total, invoice.exchangeRate!))
+          : null,
+    },
+    exchangeRateText:
+      isForeignCurrency && currency
+        ? exchangeRateText(invoice.exchangeRate!, currency, lang, invoice.issueDate, invoice.exchangeRateDate)
+        : null,
     legalText: legalText ?? null,
     notes: pick(lang, invoice.notesHr, invoice.notesEn),
   };

@@ -7,11 +7,14 @@ import { listClients } from "@/lib/clients";
 import { getInvoice } from "@/lib/invoices";
 import { listCatalogEntries } from "@/lib/service-catalog";
 import { getSettings } from "@/lib/settings";
-import { DOCUMENT_TYPE } from "@/lib/documents";
+import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 
 const id = Number(Astro.params.id);
 const invoice = Number.isInteger(id) && id > 0 ? await getInvoice(id) : null;
 const creditNote = invoice?.type === DOCUMENT_TYPE.CREDIT_NOTE ? invoice : null;
+if (creditNote && creditNote.status !== INVOICE_STATUS.DRAFT) {
+  return Astro.redirect(`/credit-notes/${creditNote.id}`);
+}
 const company = creditNote ? await getCompany(creditNote.companyId) : null;
 const [clients, catalog, settings] = await Promise.all([
   listClients(),

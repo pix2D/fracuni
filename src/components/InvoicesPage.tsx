@@ -114,6 +114,11 @@ export function InvoicesPage({
     window.location.href = `/credit-notes/${creditNoteId}/edit`;
   }
 
+  function openView(invoice: Invoice) {
+    setError(null);
+    window.location.href = `${basePath}/${invoice.id}`;
+  }
+
   function openEdit(invoice: Invoice) {
     setError(null);
     window.location.href = `${basePath}/${invoice.id}/edit`;
@@ -198,7 +203,8 @@ export function InvoicesPage({
           <InvoiceDocumentActionsMenu
             invoice={invoice}
             isCreditNote={isCreditNote}
-            onOpen={openEdit}
+            onView={openView}
+            onEdit={openEdit}
             onSend={openSend}
             onMarkSent={handleMarkSent}
             onMarkPaid={openPay}

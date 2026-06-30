@@ -126,16 +126,41 @@ export function exchangeRateText(
   rate: number,
   currency: CurrencyCode,
   lang: "hr" | "en",
+  issueDate?: string | null,
+  effectiveDate?: string | null,
 ): string {
   const formattedRate = formatRateEu(rate);
+  const effective = effectiveDate ?? issueDate ?? null;
+  const sameDate = !issueDate || !effective || issueDate === effective;
+
   if (lang === "hr") {
-    return `Tečaj na dan izdavanja računa iznosi 1 EUR = ${formattedRate} ${currency}`;
+    if (!effective) {
+      return `Tečaj na dan izdavanja računa iznosi 1 EUR = ${formattedRate} ${currency}`;
+    }
+    if (sameDate) {
+      return `Tečaj na dan izdavanja računa (${formatExchangeDate(effective, lang)}) iznosi 1 EUR = ${formattedRate} ${currency}`;
+    }
+    return `Tečaj na dan ${formatExchangeDate(effective, lang)} (zadnji dostupni prije datuma izdavanja ${formatExchangeDate(issueDate, lang)}) iznosi 1 EUR = ${formattedRate} ${currency}`;
   }
-  return `The exchange rate on the issue date is 1 EUR = ${formattedRate} ${currency}`;
+  if (!effective) {
+    return `The exchange rate on the issue date is 1 EUR = ${formattedRate} ${currency}`;
+  }
+  if (sameDate) {
+    return `The exchange rate on the issue date (${formatExchangeDate(effective, lang)}) is 1 EUR = ${formattedRate} ${currency}`;
+  }
+  return `The exchange rate on ${formatExchangeDate(effective, lang)} (latest available before the issue date ${formatExchangeDate(issueDate, lang)}) is 1 EUR = ${formattedRate} ${currency}`;
 }
 
 function formatRateEu(rate: number): string {
   return rate.toFixed(6).replace(".", ",");
+}
+
+function formatExchangeDate(date: string | null | undefined, lang: "hr" | "en"): string {
+  if (!date) return "";
+  if (lang === "en") return date;
+  const [year, month, day] = date.split("-");
+  if (!year || !month || !day) return date;
+  return `${day}.${month}.${year}.`;
 }
 
 function roundToScale(amount: Money): Money {

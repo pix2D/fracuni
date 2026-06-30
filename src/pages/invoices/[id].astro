@@ -1,0 +1,52 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { InvoiceView } from "@/components/invoices/InvoiceView";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getClient } from "@/lib/clients";
+import { getCompany } from "@/lib/companies";
+import { isDomestic } from "@/lib/countries";
+import { DOCUMENT_TYPE } from "@/lib/documents";
+import { listEmailLogs } from "@/lib/email";
+import { getInvoice } from "@/lib/invoices";
+import { determineTaxTreatment } from "@/lib/tax-engine";
+import { getLatestViesVerification } from "@/lib/vies-verifications";
+
+const id = Number(Astro.params.id);
+const invoice = Number.isInteger(id) && id > 0 ? await getInvoice(id) : null;
+const validInvoice = invoice?.type === DOCUMENT_TYPE.INVOICE ? invoice : null;
+const company = validInvoice ? await getCompany(validInvoice.companyId) : null;
+const client =
+  validInvoice?.clientId != null ? await getClient(validInvoice.clientId) : null;
+const [emailLogs, viesVerification] = validInvoice
+  ? await Promise.all([
+      listEmailLogs(validInvoice.id),
+      getLatestViesVerification(validInvoice.id),
+    ])
+  : [[], null];
+const defaultLang = client && !isDomestic(client.country) ? "en" : "hr";
+const viesRequired = client
+  ? determineTaxTreatment({
+      clientType: client.clientType,
+      clientCountry: client.country,
+      clientVatNumber: client.vatNumber,
+    }) === "reverse-charge"
+  : false;
+---
+
+<Layout>
+  {validInvoice && company ? (
+    <InvoiceView
+      client:load
+      invoice={validInvoice}
+      documentType={DOCUMENT_TYPE.INVOICE}
+      defaultLang={defaultLang}
+      viesRequired={viesRequired}
+      viesVerification={viesVerification}
+      emailLogs={emailLogs}
+    />
+  ) : (
+    <Alert variant="destructive">
+      <AlertDescription>Invoice not found.</AlertDescription>
+    </Alert>
+  )}
+</Layout>
