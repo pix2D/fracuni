@@ -93,7 +93,6 @@ export interface Invoices {
   documentNumber: string | null;
   dueDate: string | null;
   email: string | null;
-  exchangeRate: number | null;
   exchangeRateDate: string | null;
   exchangeRateText: string | null;
   id: Generated<number | null>;

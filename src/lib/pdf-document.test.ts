@@ -75,7 +75,6 @@ function sharedDocumentFields(): SharedDocumentFields {
     notesEn: null,
     documentNumber: "1/1/1",
     originalInvoiceNumber: null,
-    exchangeRate: null,
     exchangeRateText: null,
     exchangeRateDate: null,
     pdfPathHr: null,
@@ -281,7 +280,6 @@ describe("buildPdfDocumentData — non-EUR invoice", () => {
   it("shows the exchange-rate text and the EUR equivalent total", () => {
     const invoice = makeInvoice({
       currency: "USD",
-      exchangeRate: 1.0823,
       exchangeRateText: "1,0823",
       exchangeRateDate: "2026-06-13",
     });
@@ -292,6 +290,14 @@ describe("buildPdfDocumentData — non-EUR invoice", () => {
     expect(data.totals.eurEquivalent).toBe("230,99");
     expect(data.exchangeRateText).toBe(
       "Tečaj na dan 13.06.2026. (zadnji dostupni prije datuma izdavanja 15.06.2026.) iznosi 1 EUR = 1,0823 USD",
+    );
+  });
+
+  it("requires stored HNB proof for finalized non-EUR documents", () => {
+    const invoice = makeInvoice({ currency: "USD" });
+
+    expect(() => buildPdfDocumentData(input({ invoice }))).toThrow(
+      /Non-EUR exchange rate display requires/,
     );
   });
 });
@@ -400,7 +406,6 @@ describe("buildPdfPreviewDocumentData", () => {
       status: INVOICE_STATUS.DRAFT,
       currency: "USD",
       issueDate: null,
-      exchangeRate: null,
       exchangeRateDate: null,
     });
 
@@ -415,7 +420,6 @@ describe("buildPdfPreviewDocumentData", () => {
       logoDataUri: null,
       previewExchangeRate: {
         ok: true,
-        rate: 1.0823,
         rateText: "1,0823",
         currency: "USD",
         unit: 1,

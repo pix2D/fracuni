@@ -84,8 +84,7 @@ function ExchangeStatus({
 }) {
   const currency = invoice.currency;
   const needsRate = currency != null && currency !== "EUR";
-  const previewRate = invoice.exchangeRate == null ? previewExchangeRate : null;
-  const rate = invoice.exchangeRate ?? previewRate?.rate ?? null;
+  const previewRate = invoice.exchangeRateText == null ? previewExchangeRate : null;
   const rateText = invoice.exchangeRateText ?? previewRate?.rateText ?? null;
   const issueDate = invoice.issueDate ?? previewRate?.issueDate ?? null;
   const rateDate = invoice.exchangeRateDate ?? previewRate?.effectiveDate ?? null;
@@ -107,7 +106,7 @@ function ExchangeStatus({
           <p className="text-muted-foreground">No currency selected.</p>
         ) : !needsRate ? (
           <p className="text-muted-foreground">Not required for EUR documents.</p>
-        ) : rate == null ? (
+        ) : rateText == null ? (
           <p className="text-muted-foreground">Preview rate unavailable. Finalization will try again.</p>
         ) : (
           <dl className="space-y-2">

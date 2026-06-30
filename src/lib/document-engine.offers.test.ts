@@ -229,7 +229,7 @@ describe("convertOfferToInvoice", () => {
     await transitionOfferStatus(offer.id, "accepted");
 
     const invoice = await convertOfferToInvoice(offer.id);
-    expect(invoice.exchangeRate).toBeNull();
+    expect(invoice.exchangeRateText).toBeNull();
     expect(invoice.exchangeRateDate).toBeNull();
     expect(invoice.documentNumber).toBeNull();
   });

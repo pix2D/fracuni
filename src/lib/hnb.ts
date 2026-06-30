@@ -5,7 +5,6 @@ const FALLBACK_DAYS = 10;
 
 export type HnbSuccess = {
   ok: true;
-  rate: number;
   rateText: string;
   effectiveDate: string;
   currency: string;
@@ -30,10 +29,6 @@ interface HnbRateEntry {
   valuta: string;
   jedinica?: number;
   srednji_tecaj: string;
-}
-
-function parseRate(value: string): number {
-  return parseFloat(value.replace(",", "."));
 }
 
 function subtractDays(dateStr: string, days: number): string {
@@ -85,7 +80,6 @@ export async function getExchangeRate(
 
   return {
     ok: true,
-    rate: parseRate(latest.srednji_tecaj),
     rateText: latest.srednji_tecaj,
     effectiveDate: latest.datum_primjene,
     currency: latest.valuta,

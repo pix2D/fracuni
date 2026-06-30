@@ -114,12 +114,61 @@ export function subtractMoney(a: Money, b: Money): Money {
   return subtract(a, b);
 }
 
-export function eurEquivalent(amount: Money, rate: number): Money {
-  const decimal = toDecimal(roundToScale(amount));
-  const amountNum = parseFloat(decimal);
-  const eurValue = amountNum / rate;
-  const eurSmallestUnit = Math.round(eurValue * 100);
-  return dinero({ amount: eurSmallestUnit, currency: EUR });
+export function eurEquivalent(amount: Money, hnbRateText: string): Money {
+  const rounded = roundToScale(amount);
+  const snapshot = toSnapshot(rounded);
+  const foreignMinorUnits = BigInt(snapshot.amount);
+  const foreignScale = pow10(snapshot.currency.exponent);
+  const rate = parseHnbRateText(hnbRateText);
+
+  const numerator = foreignMinorUnits * rate.scale * 100n;
+  const denominator = foreignScale * rate.amount;
+  const eurSmallestUnit = roundHalfUpQuotient(numerator, denominator);
+  const amountNumber = Number(eurSmallestUnit);
+
+  if (!Number.isSafeInteger(amountNumber)) {
+    throw new Error("EUR equivalent exceeds safe integer range");
+  }
+
+  return dinero({ amount: amountNumber, currency: EUR });
+}
+
+function parseHnbRateText(value: string): { amount: bigint; scale: bigint } {
+  const normalized = value.trim().replace(",", ".");
+  const match = normalized.match(/^(\d+)(?:\.(\d+))?$/);
+  if (!match) throw new Error(`Invalid HNB exchange rate: ${value}`);
+
+  const whole = match[1]!;
+  const fractional = match[2] ?? "";
+  const amount = BigInt(`${whole}${fractional}`);
+  if (amount <= 0n) throw new Error(`Invalid HNB exchange rate: ${value}`);
+
+  return {
+    amount,
+    scale: pow10(fractional.length),
+  };
+}
+
+function pow10(exponent: number): bigint {
+  return 10n ** BigInt(exponent);
+}
+
+function roundHalfUpQuotient(numerator: bigint, denominator: bigint): bigint {
+  if (denominator <= 0n) throw new Error("Cannot divide by a non-positive denominator");
+
+  const quotient = numerator / denominator;
+  const remainder = absBigInt(numerator % denominator);
+  const twiceRemainder = remainder * 2n;
+
+  if (numerator >= 0n) {
+    return twiceRemainder >= denominator ? quotient + 1n : quotient;
+  }
+
+  return twiceRemainder > denominator ? quotient - 1n : quotient;
+}
+
+function absBigInt(value: bigint): bigint {
+  return value < 0n ? -value : value;
 }
 
 export function exchangeRateText(

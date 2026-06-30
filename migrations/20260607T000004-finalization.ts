@@ -2,12 +2,9 @@ import { type Kysely, sql } from "kysely";
 
 export async function up(db: Kysely<unknown>): Promise<void> {
   // Captured at finalization (non-EUR invoices only). The source currency is the
-  // invoice's own currency; we store the rate and the HNB effective date so the
-  // tax-relevant conversion is auditable. Null on EUR / Draft invoices.
-  await db.schema
-    .alterTable("invoices")
-    .addColumn("exchange_rate", "real")
-    .execute();
+  // invoice's own currency; exchange_rate_text stores HNB's published
+  // srednji_tecaj verbatim and exchange_rate_date stores the HNB effective date.
+  // Null on EUR / Draft invoices.
   await db.schema
     .alterTable("invoices")
     .addColumn("exchange_rate_text", "text")
@@ -74,5 +71,4 @@ export async function down(db: Kysely<unknown>): Promise<void> {
   await db.schema.dropTable("vies_verifications").execute();
   await db.schema.alterTable("invoices").dropColumn("exchange_rate_date").execute();
   await db.schema.alterTable("invoices").dropColumn("exchange_rate_text").execute();
-  await db.schema.alterTable("invoices").dropColumn("exchange_rate").execute();
 }

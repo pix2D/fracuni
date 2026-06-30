@@ -12,7 +12,7 @@ import { type Kysely } from "kysely";
 //     final due date; validity days remain form/defaulting state only.
 //
 // Column reuse on `invoices` for an offer row: issue_date = offer date,
-// due_date = valid-until, delivery_date and exchange_rate* stay null.
+// due_date = valid-until, delivery_date and exchange-rate fields stay null.
 export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .alterTable("clients")

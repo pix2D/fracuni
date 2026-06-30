@@ -53,7 +53,6 @@ describe("getExchangeRate", () => {
 
     expect(result).toEqual({
       ok: true,
-      rate: 0.925,
       rateText: "0,925000",
       effectiveDate: "2026-06-06",
       currency: "USD",
@@ -66,7 +65,6 @@ describe("getExchangeRate", () => {
 
     expect(result).toEqual({
       ok: true,
-      rate: 0.925,
       rateText: "0,925000",
       effectiveDate: "2026-06-06",
       currency: "USD",
@@ -131,7 +129,6 @@ describe("getExchangeRatePreview", () => {
     const result = await getExchangeRatePreview("USD", "2026-06-07", mockFetch(MULTI_RATE_RESPONSE));
     expect(result).toMatchObject({
       ok: true,
-      rate: 0.925,
       rateText: "0,925000",
       issueDate: "2026-06-07",
       effectiveDate: "2026-06-06",

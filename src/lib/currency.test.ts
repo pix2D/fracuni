@@ -64,19 +64,33 @@ describe("total", () => {
 });
 
 describe("eurEquivalent", () => {
-  it("converts USD amount to EUR using exchange rate", () => {
+  it("converts USD amount to EUR using the HNB-published rate text", () => {
     const amount = lineItemAmount(1, 1000, "USD");
     // rate: 1 EUR = 0.925 USD → to get EUR, divide by 0.925
     // 1000 USD / 0.925 = 1081.08 EUR
-    const eur = eurEquivalent(amount, 0.925);
+    const eur = eurEquivalent(amount, "0,925000");
     expect(formatMoney(eur)).toBe("1.081,08");
   });
 
   it("converts HUF amount to EUR", () => {
     const amount = lineItemAmount(1, 40000, "HUF");
     // rate: 1 EUR = 395.5 HUF → 40000 / 395.5 = 101.14 EUR
-    const eur = eurEquivalent(amount, 395.5);
+    const eur = eurEquivalent(amount, "395,500000");
     expect(formatMoney(eur)).toBe("101,14");
+  });
+
+  it("rounds exact half cents the same way as the money engine", () => {
+    const amount = moneyFromSmallestUnit(1, "USD");
+    // 0.01 USD / 2.000000 = 0.005 EUR, rounded half-up to 0.01 EUR.
+    const eur = eurEquivalent(amount, "2,000000");
+    expect(formatMoney(eur)).toBe("0,01");
+  });
+
+  it("rounds negative half cents toward positive infinity", () => {
+    const amount = moneyFromSmallestUnit(-1, "USD");
+    // -0.01 USD / 2.000000 = -0.005 EUR, matching dinero.js halfUp behavior.
+    const eur = eurEquivalent(amount, "2,000000");
+    expect(formatMoney(eur)).toBe("0,00");
   });
 });
 

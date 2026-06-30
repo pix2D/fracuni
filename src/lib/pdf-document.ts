@@ -164,23 +164,29 @@ export interface BuildPdfPreviewDataInput {
 }
 
 type ExchangeRateForDisplay = {
-  rate: number;
   rateText: string;
   issueDate: string;
   effectiveDate: string;
 };
 
 function storedExchangeRateForDisplay(invoice: Invoice): ExchangeRateForDisplay | null {
-  if (invoice.exchangeRate == null) return null;
-  if (!invoice.exchangeRateText || !invoice.issueDate || !invoice.exchangeRateDate) {
+  if (!invoice.exchangeRateText) return null;
+  if (!invoice.issueDate || !invoice.exchangeRateDate) {
     throw invalidOperation("Non-EUR exchange rate display requires the published HNB rate, issue date, and exchange-rate effective date");
   }
   return {
-    rate: invoice.exchangeRate,
     rateText: invoice.exchangeRateText,
     issueDate: invoice.issueDate,
     effectiveDate: invoice.exchangeRateDate,
   };
+}
+
+function requireStoredExchangeRateForDisplay(invoice: Invoice): ExchangeRateForDisplay {
+  const exchangeRate = storedExchangeRateForDisplay(invoice);
+  if (!exchangeRate) {
+    throw invalidOperation("Non-EUR exchange rate display requires the published HNB rate, issue date, and exchange-rate effective date");
+  }
+  return exchangeRate;
 }
 
 export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData {
@@ -214,8 +220,7 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
   });
 
   const isOffer = invoice.type === DOCUMENT_TYPE.OFFER;
-  const isForeignCurrency = currency !== BASE_CURRENCY && invoice.exchangeRate != null;
-  const exchangeRate = isForeignCurrency ? storedExchangeRateForDisplay(invoice) : null;
+  const exchangeRate = currency !== BASE_CURRENCY ? requireStoredExchangeRateForDisplay(invoice) : null;
 
   // Croatian PDV → domestic legal text; reverse charge → configured foreign
   // (reverse-charge) text; non-EU outside scope → no text until the product has
@@ -270,7 +275,7 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
       total: formatMoney(totals.total),
       currency,
       eurEquivalent: exchangeRate
-        ? formatMoney(eurEquivalent(totals.total, exchangeRate.rate))
+        ? formatMoney(eurEquivalent(totals.total, exchangeRate.rateText))
         : null,
     },
     exchangeRateText: exchangeRate
@@ -379,7 +384,7 @@ export function buildPdfPreviewDocumentData(input: BuildPdfPreviewDataInput): Pd
           : null,
       total: totals ? formatMoney(totals.total) : "-",
       currency: currency ?? "",
-      eurEquivalent: exchangeRate && totals ? formatMoney(eurEquivalent(totals.total, exchangeRate.rate)) : null,
+      eurEquivalent: exchangeRate && totals ? formatMoney(eurEquivalent(totals.total, exchangeRate.rateText)) : null,
     },
     exchangeRateText:
       exchangeRate && currency
