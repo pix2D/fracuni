@@ -3,7 +3,8 @@ import { getClient } from "@/lib/clients";
 import { getCompany } from "@/lib/companies";
 import { isDomestic } from "@/lib/countries";
 import { getDataDir } from "@/lib/data-dir";
-import { DOCUMENT_TYPE } from "@/lib/documents";
+import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
+import { getExchangeRatePreview } from "@/lib/hnb";
 import { getInvoice } from "@/lib/invoices";
 import { buildPdfPreviewDocumentData, type PdfLang } from "@/lib/pdf-document";
 import { readLogoDataUri } from "@/lib/pdf-generator";
@@ -49,7 +50,12 @@ export const GET: APIRoute = async ({ params, request }) => {
         : null;
 
     const lang = requestedLang ?? (client && !isDomestic(client.country) ? "en" : "hr");
-    const logoDataUri = await readLogoDataUri(company.logoPath, getDataDir());
+    const [logoDataUri, previewExchangeRate] = await Promise.all([
+      readLogoDataUri(company.logoPath, getDataDir()),
+      invoice.status === INVOICE_STATUS.DRAFT
+        ? getExchangeRatePreview(invoice.currency, invoice.issueDate)
+        : Promise.resolve(null),
+    ]);
     const data = buildPdfPreviewDocumentData({
       lang,
       invoice,
@@ -59,6 +65,7 @@ export const GET: APIRoute = async ({ params, request }) => {
       paymentMethod,
       vatRate: settings.defaultVatRate,
       logoDataUri,
+      previewExchangeRate,
     });
 
     return new Response(renderDocumentHtml(data), {

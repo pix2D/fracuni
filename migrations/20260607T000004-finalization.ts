@@ -10,6 +10,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .execute();
   await db.schema
     .alterTable("invoices")
+    .addColumn("exchange_rate_text", "text")
+    .execute();
+  await db.schema
+    .alterTable("invoices")
     .addColumn("exchange_rate_date", "text")
     .execute();
 
@@ -69,5 +73,6 @@ export async function down(db: Kysely<unknown>): Promise<void> {
   await db.schema.dropTable("document_number_sequences").execute();
   await db.schema.dropTable("vies_verifications").execute();
   await db.schema.alterTable("invoices").dropColumn("exchange_rate_date").execute();
+  await db.schema.alterTable("invoices").dropColumn("exchange_rate_text").execute();
   await db.schema.alterTable("invoices").dropColumn("exchange_rate").execute();
 }

@@ -117,30 +117,30 @@ describe("zero-decimal currencies", () => {
 
 describe("exchangeRateText", () => {
   it("generates Croatian text", () => {
-    const text = exchangeRateText(0.925, "USD", "hr", "2026-06-06", "2026-06-06");
+    const text = exchangeRateText("0,925000", "USD", "hr", "2026-06-06", "2026-06-06");
     expect(text).toBe(
       "Tečaj na dan izdavanja računa (06.06.2026.) iznosi 1 EUR = 0,925000 USD",
     );
   });
 
   it("generates English text", () => {
-    const text = exchangeRateText(0.925, "USD", "en", "2026-06-06", "2026-06-06");
+    const text = exchangeRateText("0,925000", "USD", "en", "2026-06-06", "2026-06-06");
     expect(text).toBe(
       "The exchange rate on the issue date (2026-06-06) is 1 EUR = 0,925000 USD",
     );
   });
 
   it("mentions fallback date when the effective date differs from the issue date", () => {
-    const text = exchangeRateText(0.925, "USD", "en", "2026-06-07", "2026-06-06");
+    const text = exchangeRateText("0,925000", "USD", "en", "2026-06-07", "2026-06-06");
     expect(text).toBe(
       "The exchange rate on 2026-06-06 (latest available before the issue date 2026-06-07) is 1 EUR = 0,925000 USD",
     );
   });
 
-  it("formats rate with 6 decimals for HUF", () => {
-    const text = exchangeRateText(395.5, "HUF", "hr");
+  it("uses the published HNB rate string without reformatting", () => {
+    const text = exchangeRateText("395,5", "HUF", "hr", "2026-06-06", "2026-06-06");
     expect(text).toBe(
-      "Tečaj na dan izdavanja računa iznosi 1 EUR = 395,500000 HUF",
+      "Tečaj na dan izdavanja računa (06.06.2026.) iznosi 1 EUR = 395,5 HUF",
     );
   });
 });

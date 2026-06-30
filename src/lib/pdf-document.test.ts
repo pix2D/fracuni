@@ -76,6 +76,7 @@ function sharedDocumentFields(): SharedDocumentFields {
     documentNumber: "1/1/1",
     originalInvoiceNumber: null,
     exchangeRate: null,
+    exchangeRateText: null,
     exchangeRateDate: null,
     pdfPathHr: null,
     pdfHashHr: null,
@@ -281,6 +282,7 @@ describe("buildPdfDocumentData — non-EUR invoice", () => {
     const invoice = makeInvoice({
       currency: "USD",
       exchangeRate: 1.0823,
+      exchangeRateText: "1,0823",
       exchangeRateDate: "2026-06-13",
     });
     const data = buildPdfDocumentData(input({ invoice }));
@@ -289,7 +291,7 @@ describe("buildPdfDocumentData — non-EUR invoice", () => {
     // 250 USD domestic total -> /1.0823 EUR
     expect(data.totals.eurEquivalent).toBe("230,99");
     expect(data.exchangeRateText).toBe(
-      "Tečaj na dan 13.06.2026. (zadnji dostupni prije datuma izdavanja 15.06.2026.) iznosi 1 EUR = 1,082300 USD",
+      "Tečaj na dan 13.06.2026. (zadnji dostupni prije datuma izdavanja 15.06.2026.) iznosi 1 EUR = 1,0823 USD",
     );
   });
 });
@@ -391,5 +393,40 @@ describe("buildPdfPreviewDocumentData", () => {
       },
     ]);
     expect(data.totals.total).toBe("-");
+  });
+
+  it("uses a transient preview exchange rate for draft non-EUR documents", () => {
+    const draft = makeInvoice({
+      status: INVOICE_STATUS.DRAFT,
+      currency: "USD",
+      issueDate: null,
+      exchangeRate: null,
+      exchangeRateDate: null,
+    });
+
+    const data = buildPdfPreviewDocumentData({
+      lang: "en",
+      invoice: draft,
+      company,
+      client: makeClient(),
+      location,
+      paymentMethod,
+      vatRate: 25,
+      logoDataUri: null,
+      previewExchangeRate: {
+        ok: true,
+        rate: 1.0823,
+        rateText: "1,0823",
+        currency: "USD",
+        unit: 1,
+        issueDate: "2026-06-30",
+        effectiveDate: "2026-06-29",
+      },
+    });
+
+    expect(data.totals.eurEquivalent).toBe("230,99");
+    expect(data.exchangeRateText).toBe(
+      "The exchange rate on 2026-06-29 (latest available before the issue date 2026-06-30) is 1 EUR = 1,0823 USD",
+    );
   });
 });

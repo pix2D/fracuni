@@ -357,6 +357,7 @@ describe("finalizeInvoice — HNB gate", () => {
 
     expect(finalized.status).toBe("finalized");
     expect(finalized.exchangeRate).toBe(1.0823);
+    expect(finalized.exchangeRateText).toBe("1,0823");
     expect(finalized.exchangeRateDate).toBe("2026-06-13");
   });
 
@@ -364,6 +365,7 @@ describe("finalizeInvoice — HNB gate", () => {
     const ids = await setupDomestic();
     const finalized = await finalizeInvoice((await draft(ids, { currency: "EUR" })).id);
     expect(finalized.exchangeRate).toBeNull();
+    expect(finalized.exchangeRateText).toBeNull();
     expect(finalized.exchangeRateDate).toBeNull();
   });
 

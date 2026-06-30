@@ -11,6 +11,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 import type { EmailLog } from "@/lib/email";
+import type { HnbPreview } from "@/lib/hnb";
 import type { Invoice } from "@/lib/invoices";
 import type { ViesVerification } from "@/lib/vies-verifications";
 import type { InvoiceDocumentType } from "@/components/invoices/invoice-form-model";
@@ -23,6 +24,7 @@ interface Props {
   viesRequired: boolean;
   viesVerification: ViesVerification | null;
   emailLogs: EmailLog[];
+  previewExchangeRate?: HnbPreview | null;
 }
 
 function routeBase(documentType: InvoiceDocumentType): "/invoices" | "/credit-notes" {
@@ -54,10 +56,6 @@ function FieldRow({
   );
 }
 
-function formatRate(rate: number, currency: string | null): string {
-  return currency ? `1 EUR = ${rate.toFixed(6)} ${currency}` : rate.toFixed(6);
-}
-
 function PdfStatus({ invoice }: { invoice: Invoice }) {
   return (
     <Card size="sm">
@@ -77,32 +75,45 @@ function PdfStatus({ invoice }: { invoice: Invoice }) {
   );
 }
 
-function ExchangeStatus({ invoice }: { invoice: Invoice }) {
+function ExchangeStatus({
+  invoice,
+  previewExchangeRate,
+}: {
+  invoice: Invoice;
+  previewExchangeRate?: HnbPreview | null;
+}) {
   const currency = invoice.currency;
   const needsRate = currency != null && currency !== "EUR";
+  const previewRate = invoice.exchangeRate == null ? previewExchangeRate : null;
+  const rate = invoice.exchangeRate ?? previewRate?.rate ?? null;
+  const rateText = invoice.exchangeRateText ?? previewRate?.rateText ?? null;
+  const issueDate = invoice.issueDate ?? previewRate?.issueDate ?? null;
+  const rateDate = invoice.exchangeRateDate ?? previewRate?.effectiveDate ?? null;
   const fallback =
-    invoice.issueDate != null &&
-    invoice.exchangeRateDate != null &&
-    invoice.issueDate !== invoice.exchangeRateDate;
+    issueDate != null &&
+    rateDate != null &&
+    issueDate !== rateDate;
 
   return (
     <Card size="sm">
       <CardHeader>
         <CardTitle>Exchange Rate</CardTitle>
-        <CardDescription>HNB rate captured during finalization.</CardDescription>
+        <CardDescription>
+          {previewRate ? "HNB preview rate. Finalization will capture and store it." : "HNB rate captured during finalization."}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {!currency ? (
           <p className="text-muted-foreground">No currency selected.</p>
         ) : !needsRate ? (
           <p className="text-muted-foreground">Not required for EUR documents.</p>
-        ) : invoice.exchangeRate == null ? (
-          <p className="text-muted-foreground">Will be captured during finalization.</p>
+        ) : rate == null ? (
+          <p className="text-muted-foreground">Preview rate unavailable. Finalization will try again.</p>
         ) : (
           <dl className="space-y-2">
-            <FieldRow label="Rate" value={formatRate(invoice.exchangeRate, currency)} />
-            <FieldRow label="Issue date" value={invoice.issueDate} />
-            <FieldRow label="Rate date" value={invoice.exchangeRateDate} />
+            <FieldRow label="Rate" value={rateText ? `1 EUR = ${rateText} ${currency}` : "-"} />
+            <FieldRow label="Issue date" value={issueDate} />
+            <FieldRow label="Rate date" value={rateDate} />
             <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3">
               <dt className="text-muted-foreground">Source</dt>
               <dd>
@@ -111,6 +122,7 @@ function ExchangeStatus({ invoice }: { invoice: Invoice }) {
                 </Badge>
               </dd>
             </div>
+            {previewRate && <FieldRow label="Storage" value="Preview only" />}
           </dl>
         )}
       </CardContent>
@@ -210,6 +222,7 @@ export function InvoiceView({
   viesRequired,
   viesVerification,
   emailLogs,
+  previewExchangeRate,
 }: Props) {
   const [lang, setLang] = useState<PdfLang>(defaultLang);
   const base = routeBase(documentType);
@@ -255,7 +268,7 @@ export function InvoiceView({
         </div>
 
         <aside className="space-y-4">
-          <ExchangeStatus invoice={invoice} />
+          <ExchangeStatus invoice={invoice} previewExchangeRate={previewExchangeRate} />
           <ViesStatus required={viesRequired} verification={viesVerification} invoice={invoice} />
           <EmailStatus invoice={invoice} logs={emailLogs} />
           <PdfStatus invoice={invoice} />

@@ -11,6 +11,7 @@ import type { DocumentType } from "@/lib/documents";
 import { DOCUMENT_TYPE } from "@/lib/documents";
 import { determineTaxTreatment, chargesCroatianPdv } from "@/lib/tax-engine";
 import { computeInvoiceTotals } from "@/lib/invoice-totals";
+import type { HnbPreview } from "@/lib/hnb";
 import {
   eurEquivalent,
   exchangeRateText,
@@ -159,6 +160,27 @@ export interface BuildPdfPreviewDataInput {
   paymentMethod?: PaymentMethod | null;
   vatRate: number;
   logoDataUri?: string | null;
+  previewExchangeRate?: HnbPreview | null;
+}
+
+type ExchangeRateForDisplay = {
+  rate: number;
+  rateText: string;
+  issueDate: string;
+  effectiveDate: string;
+};
+
+function storedExchangeRateForDisplay(invoice: Invoice): ExchangeRateForDisplay | null {
+  if (invoice.exchangeRate == null) return null;
+  if (!invoice.exchangeRateText || !invoice.issueDate || !invoice.exchangeRateDate) {
+    throw invalidOperation("Non-EUR exchange rate display requires the published HNB rate, issue date, and exchange-rate effective date");
+  }
+  return {
+    rate: invoice.exchangeRate,
+    rateText: invoice.exchangeRateText,
+    issueDate: invoice.issueDate,
+    effectiveDate: invoice.exchangeRateDate,
+  };
 }
 
 export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData {
@@ -193,6 +215,7 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
 
   const isOffer = invoice.type === DOCUMENT_TYPE.OFFER;
   const isForeignCurrency = currency !== BASE_CURRENCY && invoice.exchangeRate != null;
+  const exchangeRate = isForeignCurrency ? storedExchangeRateForDisplay(invoice) : null;
 
   // Croatian PDV → domestic legal text; reverse charge → configured foreign
   // (reverse-charge) text; non-EU outside scope → no text until the product has
@@ -246,12 +269,12 @@ export function buildPdfDocumentData(input: BuildPdfDataInput): PdfDocumentData 
         totals.pdv != null ? { rate: String(vatRate), amount: formatMoney(totals.pdv) } : null,
       total: formatMoney(totals.total),
       currency,
-      eurEquivalent: isForeignCurrency
-        ? formatMoney(eurEquivalent(totals.total, invoice.exchangeRate!))
+      eurEquivalent: exchangeRate
+        ? formatMoney(eurEquivalent(totals.total, exchangeRate.rate))
         : null,
     },
-    exchangeRateText: isForeignCurrency
-      ? exchangeRateText(invoice.exchangeRate!, currency, lang, invoice.issueDate, invoice.exchangeRateDate)
+    exchangeRateText: exchangeRate
+      ? exchangeRateText(exchangeRate.rateText, currency, lang, exchangeRate.issueDate, exchangeRate.effectiveDate)
       : null,
     legalText: legalText ?? null,
     notes: pick(lang, invoice.notesHr, invoice.notesEn),
@@ -301,7 +324,10 @@ export function buildPdfPreviewDocumentData(input: BuildPdfPreviewDataInput): Pd
       )
     : null;
   const isOffer = invoice.type === DOCUMENT_TYPE.OFFER;
-  const isForeignCurrency = currency !== null && currency !== BASE_CURRENCY && invoice.exchangeRate != null;
+  const exchangeRate =
+    currency !== null && currency !== BASE_CURRENCY
+      ? (storedExchangeRateForDisplay(invoice) ?? input.previewExchangeRate ?? null)
+      : null;
 
   let legalText: string | null = null;
   if (treatment === "croatian-pdv") {
@@ -353,14 +379,11 @@ export function buildPdfPreviewDocumentData(input: BuildPdfPreviewDataInput): Pd
           : null,
       total: totals ? formatMoney(totals.total) : "-",
       currency: currency ?? "",
-      eurEquivalent:
-        isForeignCurrency && totals
-          ? formatMoney(eurEquivalent(totals.total, invoice.exchangeRate!))
-          : null,
+      eurEquivalent: exchangeRate && totals ? formatMoney(eurEquivalent(totals.total, exchangeRate.rate)) : null,
     },
     exchangeRateText:
-      isForeignCurrency && currency
-        ? exchangeRateText(invoice.exchangeRate!, currency, lang, invoice.issueDate, invoice.exchangeRateDate)
+      exchangeRate && currency
+        ? exchangeRateText(exchangeRate.rateText, currency, lang, exchangeRate.issueDate, exchangeRate.effectiveDate)
         : null,
     legalText: legalText ?? null,
     notes: pick(lang, invoice.notesHr, invoice.notesEn),

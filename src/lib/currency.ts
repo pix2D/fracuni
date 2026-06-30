@@ -123,40 +123,25 @@ export function eurEquivalent(amount: Money, rate: number): Money {
 }
 
 export function exchangeRateText(
-  rate: number,
+  rateText: string,
   currency: CurrencyCode,
   lang: "hr" | "en",
-  issueDate?: string | null,
-  effectiveDate?: string | null,
+  issueDate: string,
+  effectiveDate: string,
 ): string {
-  const formattedRate = formatRateEu(rate);
-  const effective = effectiveDate ?? issueDate ?? null;
-  const sameDate = !issueDate || !effective || issueDate === effective;
-
   if (lang === "hr") {
-    if (!effective) {
-      return `Tečaj na dan izdavanja računa iznosi 1 EUR = ${formattedRate} ${currency}`;
+    if (issueDate === effectiveDate) {
+      return `Tečaj na dan izdavanja računa (${formatExchangeDate(effectiveDate, lang)}) iznosi 1 EUR = ${rateText} ${currency}`;
     }
-    if (sameDate) {
-      return `Tečaj na dan izdavanja računa (${formatExchangeDate(effective, lang)}) iznosi 1 EUR = ${formattedRate} ${currency}`;
-    }
-    return `Tečaj na dan ${formatExchangeDate(effective, lang)} (zadnji dostupni prije datuma izdavanja ${formatExchangeDate(issueDate, lang)}) iznosi 1 EUR = ${formattedRate} ${currency}`;
+    return `Tečaj na dan ${formatExchangeDate(effectiveDate, lang)} (zadnji dostupni prije datuma izdavanja ${formatExchangeDate(issueDate, lang)}) iznosi 1 EUR = ${rateText} ${currency}`;
   }
-  if (!effective) {
-    return `The exchange rate on the issue date is 1 EUR = ${formattedRate} ${currency}`;
+  if (issueDate === effectiveDate) {
+    return `The exchange rate on the issue date (${formatExchangeDate(effectiveDate, lang)}) is 1 EUR = ${rateText} ${currency}`;
   }
-  if (sameDate) {
-    return `The exchange rate on the issue date (${formatExchangeDate(effective, lang)}) is 1 EUR = ${formattedRate} ${currency}`;
-  }
-  return `The exchange rate on ${formatExchangeDate(effective, lang)} (latest available before the issue date ${formatExchangeDate(issueDate, lang)}) is 1 EUR = ${formattedRate} ${currency}`;
+  return `The exchange rate on ${formatExchangeDate(effectiveDate, lang)} (latest available before the issue date ${formatExchangeDate(issueDate, lang)}) is 1 EUR = ${rateText} ${currency}`;
 }
 
-function formatRateEu(rate: number): string {
-  return rate.toFixed(6).replace(".", ",");
-}
-
-function formatExchangeDate(date: string | null | undefined, lang: "hr" | "en"): string {
-  if (!date) return "";
+function formatExchangeDate(date: string, lang: "hr" | "en"): string {
   if (lang === "en") return date;
   const [year, month, day] = date.split("-");
   if (!year || !month || !day) return date;

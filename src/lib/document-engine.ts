@@ -101,6 +101,7 @@ function finalizedInvoiceSnapshot(
     status: INVOICE_STATUS.FINALIZED,
     documentNumber,
     exchangeRate: exchangeRate?.rate ?? null,
+    exchangeRateText: exchangeRate?.rateText ?? null,
     exchangeRateDate: exchangeRate?.effectiveDate ?? null,
     pdfPathHr: pdfs?.pdfPathHr ?? invoice.pdfPathHr,
     pdfHashHr: pdfs?.pdfHashHr ?? invoice.pdfHashHr,
@@ -250,6 +251,7 @@ async function commitInvoiceFinalization(
         status: INVOICE_STATUS.FINALIZED,
         documentNumber,
         exchangeRate: exchangeRate?.rate ?? null,
+        exchangeRateText: exchangeRate?.rateText ?? null,
         exchangeRateDate: exchangeRate?.effectiveDate ?? null,
         ...(pdfs
           ? {

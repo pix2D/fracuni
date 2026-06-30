@@ -6,9 +6,14 @@ const FALLBACK_DAYS = 10;
 export type HnbSuccess = {
   ok: true;
   rate: number;
+  rateText: string;
   effectiveDate: string;
   currency: string;
   unit: number;
+};
+
+export type HnbPreview = HnbSuccess & {
+  issueDate: string;
 };
 
 export type HnbError = {
@@ -23,7 +28,7 @@ export type HealthStatus = { reachable: boolean };
 interface HnbRateEntry {
   datum_primjene: string;
   valuta: string;
-  jedinica: number;
+  jedinica?: number;
   srednji_tecaj: string;
 }
 
@@ -37,14 +42,20 @@ function subtractDays(dateStr: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export async function getExchangeRate(
   currency: string,
   date: string,
   fetcher: Fetcher = fetch,
 ): Promise<HnbResult> {
   const from = subtractDays(date, FALLBACK_DAYS);
+  // HNB documents date range and currency filters as separate request forms.
+  // Combining them currently returns the latest currency row, ignoring the
+  // requested range, so fetch the range and filter the currency locally.
   const params = new URLSearchParams({
-    valuta: currency,
     "datum-primjene-od": from,
     "datum-primjene-do": date,
   });
@@ -62,21 +73,37 @@ export async function getExchangeRate(
 
   const entries: HnbRateEntry[] = await response.json();
 
-  if (entries.length === 0) {
+  const matchingEntries = entries.filter((entry) => entry.valuta === currency);
+
+  if (matchingEntries.length === 0) {
     return { ok: false, error: `No exchange rate found for ${currency} on or before ${date}` };
   }
 
-  const latest = entries.reduce((a, b) =>
+  const latest = matchingEntries.reduce((a, b) =>
     a.datum_primjene > b.datum_primjene ? a : b,
   );
 
   return {
     ok: true,
     rate: parseRate(latest.srednji_tecaj),
+    rateText: latest.srednji_tecaj,
     effectiveDate: latest.datum_primjene,
     currency: latest.valuta,
-    unit: latest.jedinica,
+    unit: latest.jedinica ?? 1,
   };
+}
+
+export async function getExchangeRatePreview(
+  currency: string | null | undefined,
+  issueDate: string | null | undefined,
+  fetcher: Fetcher = fetch,
+): Promise<HnbPreview | null> {
+  if (!currency || currency === "EUR") return null;
+
+  const date = issueDate ?? todayIso();
+  const result = await getExchangeRate(currency, date, fetcher);
+  if (!result.ok) return null;
+  return { ...result, issueDate: date };
 }
 
 export async function checkHnbHealth(fetcher: Fetcher = fetch): Promise<HealthStatus> {
