@@ -3,7 +3,8 @@
 // the logo is embedded as a data URI,
 // so the renderer needs no network access or asset resolution. Pure string
 // building — unit-tested without a browser.
-import type { PdfDocumentData, PdfLang } from "@/lib/pdf-document";
+import type { PdfDocumentData } from "@/lib/pdf-document";
+import type { DocumentLanguage } from "@/lib/language";
 
 interface Labels {
   issuer: string;
@@ -20,6 +21,7 @@ interface Labels {
   colPrice: string;
   colAmount: string;
   subtotal: string;
+  vat: string;
   total: string;
   eurEquiv: string;
   place: string;
@@ -28,7 +30,7 @@ interface Labels {
   notes: string;
 }
 
-const LABELS: Record<PdfLang, Labels> = {
+const LABELS: Record<DocumentLanguage, Labels> = {
   hr: {
     issuer: "Izdavatelj",
     client: "Kupac",
@@ -44,6 +46,7 @@ const LABELS: Record<PdfLang, Labels> = {
     colPrice: "Cijena",
     colAmount: "Iznos",
     subtotal: "Osnovica",
+    vat: "PDV",
     total: "UKUPNO ZA PLATITI",
     eurEquiv: "Protuvrijednost u EUR",
     place: "Mjesto izdavanja",
@@ -62,10 +65,11 @@ const LABELS: Record<PdfLang, Labels> = {
     colNo: "ID",
     colDesc: "Service Description",
     colQty: "Qty.",
-    colVat: "",
+    colVat: "VAT %",
     colPrice: "Price",
     colAmount: "Amount",
     subtotal: "Subtotal",
+    vat: "VAT",
     total: "TOTAL",
     eurEquiv: "EUR equivalent",
     place: "Place of issue",
@@ -145,7 +149,7 @@ function dateRow(label: string, value: string | null): string {
 function lineItemRows(data: PdfDocumentData, showVat: boolean): string {
   return data.lineItems
     .map((item) => {
-      const vatCell = showVat ? `<td class="num">${escapeHtml(item.vatPercent)}</td>` : "";
+      const vatCell = showVat ? `<td class="num">${escapeHtml(item.vatPercent ?? "")}</td>` : "";
       return `<tr>
         <td class="num">${escapeHtml(String(item.position))}</td>
         <td>${escapeHtml(item.description)}</td>
@@ -160,7 +164,7 @@ function lineItemRows(data: PdfDocumentData, showVat: boolean): string {
 
 export function renderDocumentHtml(data: PdfDocumentData): string {
   const labels = LABELS[data.lang];
-  const showVat = data.lang === "hr";
+  const showVat = data.showVatColumn;
 
   const logo = data.company.logoDataUri
     ? `<img src="${escapeHtml(data.company.logoDataUri)}" alt="">`
@@ -185,7 +189,7 @@ export function renderDocumentHtml(data: PdfDocumentData): string {
 
   const vatRow = data.totals.vat
     ? `<div class="row"><span>${labels.subtotal}</span><span>${escapeHtml(data.totals.subtotal)} ${escapeHtml(data.totals.currency)}</span></div>
-       <div class="row"><span>PDV (${escapeHtml(data.totals.vat.rate)}%)</span><span>${escapeHtml(data.totals.vat.amount)} ${escapeHtml(data.totals.currency)}</span></div>`
+       <div class="row"><span>${escapeHtml(labels.vat)} (${escapeHtml(data.totals.vat.rate)}%)</span><span>${escapeHtml(data.totals.vat.amount)} ${escapeHtml(data.totals.currency)}</span></div>`
     : "";
 
   const eurRow = data.totals.eurEquivalent

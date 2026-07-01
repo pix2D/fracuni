@@ -11,6 +11,7 @@ import {
 } from "dinero.js";
 import { EUR, USD, CZK, DKK, ISK, NOK, PLN, RON, SEK } from "dinero.js";
 import type { DineroCurrency } from "dinero.js";
+import type { DocumentLanguage } from "@/lib/language";
 
 const HUF: DineroCurrency<number> = { code: "HUF", base: 10, exponent: 0 };
 
@@ -174,7 +175,7 @@ function absBigInt(value: bigint): bigint {
 export function exchangeRateText(
   rateText: string,
   currency: CurrencyCode,
-  lang: "hr" | "en",
+  lang: DocumentLanguage,
   issueDate: string,
   effectiveDate: string,
 ): string {
@@ -190,7 +191,7 @@ export function exchangeRateText(
   return `The exchange rate on ${formatExchangeDate(effectiveDate, lang)} (latest available before the issue date ${formatExchangeDate(issueDate, lang)}) is 1 EUR = ${rateText} ${currency}`;
 }
 
-function formatExchangeDate(date: string, lang: "hr" | "en"): string {
+function formatExchangeDate(date: string, lang: DocumentLanguage): string {
   if (lang === "en") return date;
   const [year, month, day] = date.split("-");
   if (!year || !month || !day) return date;

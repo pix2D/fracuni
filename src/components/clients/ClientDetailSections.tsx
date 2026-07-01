@@ -29,7 +29,7 @@ export const ClientDetailSections = withFieldGroup({
                 <field.RadioField
                   label="Client Type"
                   options={clientTypeOptions}
-                  description="Drives VAT treatment and which tax identifier is required."
+                  description="Drives service VAT treatment and which tax identifier is required."
                 />
               )}
             </group.AppField>
@@ -65,7 +65,7 @@ export const ClientDetailSections = withFieldGroup({
                 title="Tax Details"
                 description={
                   showVat
-                    ? "A valid EU VAT number (checked via VIES at finalization) means invoices use reverse charge with no Croatian PDV."
+                    ? "EU B2B service clients with a VAT ID use reverse charge after VIES validation; without a VAT ID, VAT is charged."
                     : "Tax identifier required for this client."
                 }
               >
@@ -76,7 +76,7 @@ export const ClientDetailSections = withFieldGroup({
                         <field.TextField
                           label="OIB"
                           maxLength={11}
-                          description="11 digits. Required for Croatian business clients."
+                          description="11 digits. Required for Croatian B2B clients."
                         />
                       )}
                     </group.AppField>
@@ -84,7 +84,7 @@ export const ClientDetailSections = withFieldGroup({
                   {showVat && (
                     <group.AppField name="vatNumber" validators={clientFieldValidators.vatNumber}>
                       {(field) => (
-                        <field.TextField label="VAT Number" description="Leave empty to charge Croatian PDV instead of reverse charge." />
+                        <field.TextField label="VAT Number" description="Leave empty to charge VAT for EU B2B service documents." />
                       )}
                     </group.AppField>
                   )}

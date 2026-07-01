@@ -17,8 +17,8 @@ export const clientCountryOptions = COUNTRIES.map((country) => ({
 }));
 
 export const clientTypeOptions = [
-  { value: CLIENT_TYPE.BUSINESS, label: "Business" },
-  { value: CLIENT_TYPE.PERSON, label: "Person" },
+  { value: CLIENT_TYPE.BUSINESS, label: "B2B" },
+  { value: CLIENT_TYPE.PERSON, label: "B2C" },
 ];
 
 export const clientCurrencyOptions = CURRENCY_CODES.map((code) => ({

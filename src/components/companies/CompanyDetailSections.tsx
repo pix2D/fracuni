@@ -69,30 +69,59 @@ export const CompanyDetailSections = withFieldGroup({
 
         <FormSection
           title="Legal Texts"
-          description="Compliance notes printed on documents. Domestic is for Croatian clients; the foreign texts appear on reverse-charge invoices to EU businesses."
+          description="Compliance notes printed on service documents. Each pair is selected by the centralized service VAT decision."
         >
-          <FieldGroup className="grid gap-4">
-            <group.AppField name="legalTextDomestic">
+          <FieldGroup className="grid gap-5">
+            <group.AppField name="legalTextServiceDomesticHr">
               {(field) => (
-                <field.TextareaField label="Legal Text - Domestic (HR)" description="Shown on invoices to Croatian clients." />
+                <field.TextareaField label="Service - Domestic (HR)" description="Shown on service documents to Croatian clients." />
               )}
             </group.AppField>
-            <group.AppField name="legalTextForeignHr">
-              {(field) => (
-                <field.TextareaField
-                  label="Legal Text - Foreign (HR)"
-                  description="Croatian copy for reverse-charge invoices to foreign businesses."
-                />
-              )}
-            </group.AppField>
-            <group.AppField name="legalTextForeignEn">
-              {(field) => (
-                <field.TextareaField
-                  label="Legal Text - Foreign (EN)"
-                  description="English copy sent to foreign clients."
-                />
-              )}
-            </group.AppField>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <group.AppField name="legalTextServiceEuB2cHr">
+                {(field) => <field.TextareaField label="Service - EU B2C (HR)" />}
+              </group.AppField>
+              <group.AppField name="legalTextServiceEuB2cEn">
+                {(field) => <field.TextareaField label="Service - EU B2C (EN)" />}
+              </group.AppField>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <group.AppField name="legalTextServiceEuB2bReverseChargeHr">
+                {(field) => <field.TextareaField label="Service - EU B2B Reverse Charge (HR)" />}
+              </group.AppField>
+              <group.AppField name="legalTextServiceEuB2bReverseChargeEn">
+                {(field) => <field.TextareaField label="Service - EU B2B Reverse Charge (EN)" />}
+              </group.AppField>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <group.AppField name="legalTextServiceEuB2bWithoutVatIdHr">
+                {(field) => <field.TextareaField label="Service - EU B2B Without VAT ID (HR)" />}
+              </group.AppField>
+              <group.AppField name="legalTextServiceEuB2bWithoutVatIdEn">
+                {(field) => <field.TextareaField label="Service - EU B2B Without VAT ID (EN)" />}
+              </group.AppField>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <group.AppField name="legalTextServiceNonEuB2cHr">
+                {(field) => <field.TextareaField label="Service - Non-EU B2C (HR)" />}
+              </group.AppField>
+              <group.AppField name="legalTextServiceNonEuB2cEn">
+                {(field) => <field.TextareaField label="Service - Non-EU B2C (EN)" />}
+              </group.AppField>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <group.AppField name="legalTextServiceNonEuB2bHr">
+                {(field) => <field.TextareaField label="Service - Non-EU B2B (HR)" />}
+              </group.AppField>
+              <group.AppField name="legalTextServiceNonEuB2bEn">
+                {(field) => <field.TextareaField label="Service - Non-EU B2B (EN)" />}
+              </group.AppField>
+            </div>
           </FieldGroup>
         </FormSection>
 

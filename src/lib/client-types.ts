@@ -15,5 +15,5 @@ export function parseClientType(value: string): ClientType {
 }
 
 export function clientTypeLabel(type: ClientType): string {
-  return type === CLIENT_TYPE.BUSINESS ? "Business" : "Person";
+  return type === CLIENT_TYPE.BUSINESS ? "B2B" : "B2C";
 }

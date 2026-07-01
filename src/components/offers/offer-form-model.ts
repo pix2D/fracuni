@@ -1,7 +1,7 @@
 import type { LineItemRow } from "@/components/LineItemsEditor";
 import { isDomestic } from "@/lib/countries";
 import { isCurrencyCode, type CurrencyCode } from "@/lib/currency";
-import { chargesCroatianPdv, determineTaxTreatment, type TaxTreatment } from "@/lib/tax-engine";
+import { decideServiceVat, type ServiceVatDecision } from "@/lib/tax-engine";
 import { computeInvoiceTotals, type InvoiceTotals } from "@/lib/invoice-totals";
 import { parseDecimalInput } from "@/lib/decimal-input";
 import {
@@ -135,10 +135,10 @@ export function isDomesticOffer(values: OfferFormValues, clients: Client[]): boo
   return client ? isDomestic(client.country) : true;
 }
 
-export function offerTaxTreatment(values: OfferFormValues, clients: Client[]): TaxTreatment | null {
+export function offerVatDecision(values: OfferFormValues, clients: Client[]): ServiceVatDecision | null {
   const client = selectedOfferClient(values, clients);
   if (!client) return null;
-  return determineTaxTreatment({
+  return decideServiceVat({
     clientType: client.clientType,
     clientCountry: client.country,
     clientVatNumber: client.vatNumber,
@@ -157,8 +157,8 @@ export function offerTotals(
   const currencyCode = offerCurrencyCode(values);
   if (!currencyCode) return null;
 
-  const treatment = offerTaxTreatment(values, clients);
-  const chargeVat = treatment ? chargesCroatianPdv(treatment) : false;
+  const decision = offerVatDecision(values, clients);
+  const chargeVat = decision?.chargesVat ?? false;
   const items = values.lineItems.map((item) => ({
     quantity: parseDecimalInput(item.quantity) ?? 0,
     unitPrice: parseDecimalInput(item.unitPrice) ?? 0,

@@ -40,7 +40,7 @@ import {
   toSmallestUnit,
   type Money,
 } from "@/lib/currency";
-import { chargesCroatianPdv, determineTaxTreatment } from "@/lib/tax-engine";
+import { decideServiceVat } from "@/lib/tax-engine";
 import { cn } from "@/lib/utils";
 import type { Client } from "@/lib/clients";
 import type { Invoice } from "@/lib/invoices";
@@ -170,13 +170,11 @@ export function DocumentDataTable<TDocument extends Invoice = Invoice>({
         const currency = document.currency && isCurrencyCode(document.currency) ? document.currency : "";
         const clientRecord = clients.find((c) => c.id === document.clientId);
         const chargeVat = clientRecord
-          ? chargesCroatianPdv(
-              determineTaxTreatment({
-                clientType: clientRecord.clientType,
-                clientCountry: clientRecord.country,
-                clientVatNumber: clientRecord.vatNumber,
-              }),
-            )
+          ? decideServiceVat({
+              clientType: clientRecord.clientType,
+              clientCountry: clientRecord.country,
+              clientVatNumber: clientRecord.vatNumber,
+            }).chargesVat
           : false;
         const amount = currency
           ? computeInvoiceTotals(

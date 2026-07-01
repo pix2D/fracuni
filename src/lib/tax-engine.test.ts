@@ -1,73 +1,108 @@
 import { describe, it, expect } from "vitest";
 import { CLIENT_TYPE } from "@/lib/client-types";
-import { determineTaxTreatment, calculateTaxBreakdown, verifyAndDetermine } from "@/lib/tax-engine";
+import { calculateTaxBreakdown, decideServiceVat, verifyAndDetermine } from "@/lib/tax-engine";
 import type { TaxInput } from "@/lib/tax-engine";
 
-describe("determineTaxTreatment", () => {
-  it("charges Croatian PDV for Croatian clients", () => {
+describe("decideServiceVat", () => {
+  it("charges VAT for domestic service clients", () => {
     expect(
-      determineTaxTreatment({
+      decideServiceVat({
         clientType: CLIENT_TYPE.BUSINESS,
         clientCountry: "HR",
         clientVatNumber: null,
       }),
-    ).toBe("croatian-pdv");
+    ).toMatchObject({
+      scenario: "service-domestic",
+      chargesVat: true,
+      requiresVies: false,
+      legalTextKey: "serviceDomestic",
+    });
 
     expect(
-      determineTaxTreatment({
+      decideServiceVat({
         clientType: CLIENT_TYPE.PERSON,
         clientCountry: "HR",
         clientVatNumber: null,
       }),
-    ).toBe("croatian-pdv");
-  });
-
-  it("reverse-charges EU business clients with a VAT number", () => {
-    const result = determineTaxTreatment({
-      clientType: CLIENT_TYPE.BUSINESS,
-      clientCountry: "DE",
-      clientVatNumber: "DE123456789",
+    ).toMatchObject({
+      scenario: "service-domestic",
+      chargesVat: true,
+      requiresVies: false,
+      legalTextKey: "serviceDomestic",
     });
-
-    expect(result).toBe("reverse-charge");
   });
 
-  it("charges Croatian PDV for EU business clients without a VAT number", () => {
-    const result = determineTaxTreatment({
-      clientType: CLIENT_TYPE.BUSINESS,
-      clientCountry: "DE",
-      clientVatNumber: null,
-    });
-
-    expect(result).toBe("croatian-pdv");
-  });
-
-  it("charges Croatian PDV for EU person clients", () => {
-    const result = determineTaxTreatment({
-      clientType: CLIENT_TYPE.PERSON,
-      clientCountry: "DE",
-      clientVatNumber: null,
-    });
-
-    expect(result).toBe("croatian-pdv");
-  });
-
-  it("treats non-EU business and person clients as outside scope", () => {
+  it("charges VAT for EU B2C service clients", () => {
     expect(
-      determineTaxTreatment({
+      decideServiceVat({
+        clientType: CLIENT_TYPE.PERSON,
+        clientCountry: "DE",
+        clientVatNumber: null,
+      }),
+    ).toMatchObject({
+      scenario: "service-eu-b2c",
+      chargesVat: true,
+      requiresVies: false,
+      legalTextKey: "serviceEuB2c",
+    });
+  });
+
+  it("uses reverse charge for EU B2B service clients with a VAT ID", () => {
+    expect(
+      decideServiceVat({
+        clientType: CLIENT_TYPE.BUSINESS,
+        clientCountry: "DE",
+        clientVatNumber: "DE123456789",
+      }),
+    ).toMatchObject({
+      scenario: "service-eu-b2b-reverse-charge",
+      chargesVat: false,
+      requiresVies: true,
+      legalTextKey: "serviceEuB2bReverseCharge",
+    });
+  });
+
+  it("charges VAT for EU B2B service clients without a VAT ID", () => {
+    expect(
+      decideServiceVat({
+        clientType: CLIENT_TYPE.BUSINESS,
+        clientCountry: "DE",
+        clientVatNumber: null,
+      }),
+    ).toMatchObject({
+      scenario: "service-eu-b2b-without-vat-id",
+      chargesVat: true,
+      requiresVies: false,
+      legalTextKey: "serviceEuB2bWithoutVatId",
+    });
+  });
+
+  it("does not charge VAT for non-EU service clients", () => {
+    expect(
+      decideServiceVat({
         clientType: CLIENT_TYPE.BUSINESS,
         clientCountry: "US",
         clientVatNumber: null,
       }),
-    ).toBe("outside-scope");
+    ).toMatchObject({
+      scenario: "service-non-eu-b2b",
+      chargesVat: false,
+      requiresVies: false,
+      legalTextKey: "serviceNonEuB2b",
+    });
 
     expect(
-      determineTaxTreatment({
+      decideServiceVat({
         clientType: CLIENT_TYPE.PERSON,
         clientCountry: "US",
         clientVatNumber: null,
       }),
-    ).toBe("outside-scope");
+    ).toMatchObject({
+      scenario: "service-non-eu-b2c",
+      chargesVat: false,
+      requiresVies: false,
+      legalTextKey: "serviceNonEuB2c",
+    });
   });
 });
 
@@ -84,9 +119,17 @@ describe("calculateTaxBreakdown", () => {
 });
 
 const COMPANY_LEGAL_TEXTS = {
-  domestic: "Obračun prema članku 79.",
-  foreignHr: "Prijenos porezne obveze",
-  foreignEn: "Reverse charge",
+  legalTextServiceDomesticHr: "Domestic service VAT",
+  legalTextServiceEuB2cHr: "EU B2C HR",
+  legalTextServiceEuB2cEn: "EU B2C EN",
+  legalTextServiceEuB2bReverseChargeHr: "EU B2B reverse HR",
+  legalTextServiceEuB2bReverseChargeEn: "EU B2B reverse EN",
+  legalTextServiceEuB2bWithoutVatIdHr: "EU B2B no VAT ID HR",
+  legalTextServiceEuB2bWithoutVatIdEn: "EU B2B no VAT ID EN",
+  legalTextServiceNonEuB2cHr: "Non-EU B2C HR",
+  legalTextServiceNonEuB2cEn: "Non-EU B2C EN",
+  legalTextServiceNonEuB2bHr: "Non-EU B2B HR",
+  legalTextServiceNonEuB2bEn: "Non-EU B2B EN",
 };
 
 function taxInput(overrides: Partial<TaxInput> = {}): TaxInput {
@@ -129,18 +172,19 @@ const failIfCalled: typeof fetch = async () => {
 };
 
 describe("verifyAndDetermine", () => {
-  it("returns Croatian PDV result with breakdown and legal text", async () => {
+  it("returns domestic service VAT result with breakdown and legal text", async () => {
     const result = await verifyAndDetermine(taxInput());
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: true,
-      type: "croatian-pdv",
+      decision: { scenario: "service-domestic", chargesVat: true, legalTextKey: "serviceDomestic" },
       breakdown: { base: 1000, pdv: 250, total: 1250 },
-      legalTexts: { domestic: "Obračun prema članku 79." },
+      legalTexts: { hr: "Domestic service VAT", en: null },
+      viesResult: null,
     });
   });
 
-  it("returns reverse charge for EU business client with valid VAT", async () => {
+  it("returns reverse charge for EU B2B service client with valid VAT ID", async () => {
     const result = await verifyAndDetermine(
       taxInput({
         clientCountry: "DE",
@@ -151,22 +195,27 @@ describe("verifyAndDetermine", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      type: "reverse-charge",
+      decision: {
+        scenario: "service-eu-b2b-reverse-charge",
+        chargesVat: false,
+        requiresVies: true,
+        legalTextKey: "serviceEuB2bReverseCharge",
+      },
       breakdown: { base: 1000, pdv: 0, total: 1000 },
       legalTexts: {
-        foreignHr: "Prijenos porezne obveze",
-        foreignEn: "Reverse charge",
+        hr: "EU B2B reverse HR",
+        en: "EU B2B reverse EN",
       },
     });
 
-    if (result.ok && result.type === "reverse-charge") {
-      expect(result.viesResult.valid).toBe(true);
-      expect(result.viesResult.countryCode).toBe("DE");
-      expect(result.viesResult.rawResponse).toBeDefined();
+    if (result.ok) {
+      expect(result.viesResult?.valid).toBe(true);
+      expect(result.viesResult?.countryCode).toBe("DE");
+      expect(result.viesResult?.rawResponse).toBeDefined();
     }
   });
 
-  it("returns error for EU business client with invalid VAT", async () => {
+  it("returns error for EU B2B service client with invalid VAT ID", async () => {
     const result = await verifyAndDetermine(
       taxInput({
         clientCountry: "DE",
@@ -202,7 +251,7 @@ describe("verifyAndDetermine", () => {
     });
   });
 
-  it("charges Croatian PDV for EU business clients without VAT and does not call VIES", async () => {
+  it("charges VAT for EU B2B service clients without VAT ID and does not call VIES", async () => {
     const result = await verifyAndDetermine(
       taxInput({
         clientCountry: "DE",
@@ -211,15 +260,16 @@ describe("verifyAndDetermine", () => {
       failIfCalled,
     );
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: true,
-      type: "croatian-pdv",
+      decision: { scenario: "service-eu-b2b-without-vat-id", chargesVat: true, requiresVies: false },
       breakdown: { base: 1000, pdv: 250, total: 1250 },
-      legalTexts: { domestic: "Obračun prema članku 79." },
+      legalTexts: { hr: "EU B2B no VAT ID HR", en: "EU B2B no VAT ID EN" },
+      viesResult: null,
     });
   });
 
-  it("charges Croatian PDV for EU person clients and does not call VIES", async () => {
+  it("charges VAT for EU B2C service clients and does not call VIES", async () => {
     const result = await verifyAndDetermine(
       taxInput({
         clientType: CLIENT_TYPE.PERSON,
@@ -229,15 +279,16 @@ describe("verifyAndDetermine", () => {
       failIfCalled,
     );
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: true,
-      type: "croatian-pdv",
+      decision: { scenario: "service-eu-b2c", chargesVat: true, requiresVies: false },
       breakdown: { base: 1000, pdv: 250, total: 1250 },
-      legalTexts: { domestic: "Obračun prema članku 79." },
+      legalTexts: { hr: "EU B2C HR", en: "EU B2C EN" },
+      viesResult: null,
     });
   });
 
-  it("returns outside-scope result for non-EU business and person clients", async () => {
+  it("does not charge VAT for non-EU service clients", async () => {
     const business = await verifyAndDetermine(
       taxInput({
         clientCountry: "US",
@@ -252,28 +303,28 @@ describe("verifyAndDetermine", () => {
       failIfCalled,
     );
 
-    expect(business).toEqual({
+    expect(business).toMatchObject({
       ok: true,
-      type: "outside-scope",
+      decision: { scenario: "service-non-eu-b2b", chargesVat: false },
       breakdown: { base: 1000, pdv: 0, total: 1000 },
-      legalTexts: {},
+      legalTexts: { hr: "Non-EU B2B HR", en: "Non-EU B2B EN" },
     });
-    expect(person).toEqual({
+    expect(person).toMatchObject({
       ok: true,
-      type: "outside-scope",
+      decision: { scenario: "service-non-eu-b2c", chargesVat: false },
       breakdown: { base: 1000, pdv: 0, total: 1000 },
-      legalTexts: {},
+      legalTexts: { hr: "Non-EU B2C HR", en: "Non-EU B2C EN" },
     });
   });
 
-  it("uses parameterized VAT rate for Croatian PDV invoices", async () => {
+  it("uses parameterized VAT rate for VAT-charged service invoices", async () => {
     const result = await verifyAndDetermine(taxInput({ vatRate: 13 }));
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: true,
-      type: "croatian-pdv",
+      decision: { scenario: "service-domestic", chargesVat: true },
       breakdown: { base: 1000, pdv: 130, total: 1130 },
-      legalTexts: { domestic: "Obračun prema članku 79." },
+      legalTexts: { hr: "Domestic service VAT", en: null },
     });
   });
 });

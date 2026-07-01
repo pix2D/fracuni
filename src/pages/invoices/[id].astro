@@ -4,12 +4,12 @@ import { InvoiceView } from "@/components/invoices/InvoiceView";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getClient } from "@/lib/clients";
 import { getCompany } from "@/lib/companies";
-import { isDomestic } from "@/lib/countries";
 import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 import { listEmailLogs } from "@/lib/email";
 import { getExchangeRatePreview } from "@/lib/hnb";
 import { getInvoice } from "@/lib/invoices";
-import { determineTaxTreatment } from "@/lib/tax-engine";
+import { defaultDocumentLanguageForCountry } from "@/lib/language";
+import { decideServiceVat } from "@/lib/tax-engine";
 import { getLatestViesVerification } from "@/lib/vies-verifications";
 
 const id = Number(Astro.params.id);
@@ -24,13 +24,13 @@ const [emailLogs, viesVerification] = validInvoice
       getLatestViesVerification(validInvoice.id),
     ])
   : [[], null];
-const defaultLang = client && !isDomestic(client.country) ? "en" : "hr";
+const defaultLang = defaultDocumentLanguageForCountry(client?.country);
 const viesRequired = client
-  ? determineTaxTreatment({
+  ? decideServiceVat({
       clientType: client.clientType,
       clientCountry: client.country,
       clientVatNumber: client.vatNumber,
-    }) === "reverse-charge"
+    }).requiresVies
   : false;
 const previewExchangeRate =
   validInvoice?.status === INVOICE_STATUS.DRAFT

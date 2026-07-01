@@ -12,6 +12,7 @@ function hrData(overrides: Partial<PdfDocumentData> = {}): PdfDocumentData {
     title: "Račun",
     isOffer: false,
     documentNumber: "1/1/1",
+    showVatColumn: true,
     company: {
       name: "Firefly One d.o.o.",
       address: "Ulica 1\n10000 Zagreb",
@@ -92,14 +93,15 @@ describe("PDF template (rendered in Chromium)", () => {
     expect(headers).toContain("Naziv robe/usluge");
   });
 
-  it("omits the PDV % column on the English copy", async () => {
+  it("omits the VAT column when VAT is not charged", async () => {
     const doc = await render(
       hrData({
         lang: "en",
         title: "Invoice",
         lineItems: [
-          { position: 1, description: "Consulting", quantity: "2,00", vatPercent: "0", unitPrice: "100,00", amount: "200,00" },
+          { position: 1, description: "Consulting", quantity: "2,00", vatPercent: null, unitPrice: "100,00", amount: "200,00" },
         ],
+        showVatColumn: false,
         totals: { subtotal: "200,00", vat: null, total: "200,00", currency: "EUR", eurEquivalent: null },
         legalText: "Reverse charge.",
       }),
@@ -107,7 +109,22 @@ describe("PDF template (rendered in Chromium)", () => {
     const headers = [...doc.querySelectorAll("table.items thead th")].map((th) => th.textContent);
     expect(headers).toContain("Service Description");
     expect(headers).not.toContain("PDV %");
-    // Reverse-charge English copy shows no PDV breakdown row.
-    expect(doc.body.textContent).not.toContain("PDV (");
+    expect(doc.body.textContent).not.toContain("VAT (");
+  });
+
+  it("shows a VAT column on an English copy when VAT is charged", async () => {
+    const doc = await render(
+      hrData({
+        lang: "en",
+        title: "Invoice",
+        lineItems: [
+          { position: 1, description: "Consulting", quantity: "2,00", vatPercent: "25", unitPrice: "100,00", amount: "200,00" },
+        ],
+      }),
+    );
+
+    const headers = [...doc.querySelectorAll("table.items thead th")].map((th) => th.textContent);
+    expect(headers).toContain("VAT %");
+    expect(headers).toContain("Service Description");
   });
 });

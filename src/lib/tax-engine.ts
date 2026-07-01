@@ -1,23 +1,173 @@
 import { validateVat, type ViesSuccess } from "@/lib/vies";
 import { CLIENT_TYPE, type ClientType } from "@/lib/client-types";
 import { isDomestic, isEuCountry } from "@/lib/countries";
+import type { DocumentLanguage } from "@/lib/language";
 
-export type TaxTreatment = "croatian-pdv" | "reverse-charge" | "outside-scope";
+export type SupplyKind = "service";
 
-export function determineTaxTreatment(input: {
+export type ServiceVatScenario =
+  | "service-domestic"
+  | "service-eu-b2c"
+  | "service-eu-b2b-reverse-charge"
+  | "service-eu-b2b-without-vat-id"
+  | "service-non-eu-b2c"
+  | "service-non-eu-b2b";
+
+export type ServiceLegalTextKey =
+  | "serviceDomestic"
+  | "serviceEuB2c"
+  | "serviceEuB2bReverseCharge"
+  | "serviceEuB2bWithoutVatId"
+  | "serviceNonEuB2c"
+  | "serviceNonEuB2b";
+
+export type ServiceVatDecisionReason =
+  | "domestic-service"
+  | "eu-b2c-service"
+  | "eu-b2b-service-with-vat-id"
+  | "eu-b2b-service-without-vat-id"
+  | "non-eu-b2c-service"
+  | "non-eu-b2b-service";
+
+export type ServiceVatDecision = {
+  supplyKind: SupplyKind;
+  scenario: ServiceVatScenario;
+  chargesVat: boolean;
+  requiresVies: boolean;
+  legalTextKey: ServiceLegalTextKey;
+  reason: ServiceVatDecisionReason;
+};
+
+export type ServiceVatInput = {
   clientType: ClientType;
   clientCountry: string;
   clientVatNumber: string | null;
-}): TaxTreatment {
-  if (!isEuCountry(input.clientCountry)) return "outside-scope";
-  if (input.clientType === CLIENT_TYPE.PERSON) return "croatian-pdv";
-  if (isDomestic(input.clientCountry)) return "croatian-pdv";
-  if (input.clientVatNumber) return "reverse-charge";
-  return "croatian-pdv";
+};
+
+export type ServiceLegalTexts = {
+  legalTextServiceDomesticHr: string | null;
+  legalTextServiceEuB2cHr: string | null;
+  legalTextServiceEuB2cEn: string | null;
+  legalTextServiceEuB2bReverseChargeHr: string | null;
+  legalTextServiceEuB2bReverseChargeEn: string | null;
+  legalTextServiceEuB2bWithoutVatIdHr: string | null;
+  legalTextServiceEuB2bWithoutVatIdEn: string | null;
+  legalTextServiceNonEuB2cHr: string | null;
+  legalTextServiceNonEuB2cEn: string | null;
+  legalTextServiceNonEuB2bHr: string | null;
+  legalTextServiceNonEuB2bEn: string | null;
+};
+
+export type ServiceLegalTextPair = {
+  hr: string | null;
+  en: string | null;
+};
+
+function hasVatNumber(value: string | null): boolean {
+  return !!value?.trim();
 }
 
-export function chargesCroatianPdv(treatment: TaxTreatment): boolean {
-  return treatment === "croatian-pdv";
+export function decideServiceVat(input: ServiceVatInput): ServiceVatDecision {
+  if (isDomestic(input.clientCountry)) {
+    return {
+      supplyKind: "service",
+      scenario: "service-domestic",
+      chargesVat: true,
+      requiresVies: false,
+      legalTextKey: "serviceDomestic",
+      reason: "domestic-service",
+    };
+  }
+
+  const b2b = input.clientType === CLIENT_TYPE.BUSINESS;
+
+  if (isEuCountry(input.clientCountry)) {
+    if (!b2b) {
+      return {
+        supplyKind: "service",
+        scenario: "service-eu-b2c",
+        chargesVat: true,
+        requiresVies: false,
+        legalTextKey: "serviceEuB2c",
+        reason: "eu-b2c-service",
+      };
+    }
+
+    if (hasVatNumber(input.clientVatNumber)) {
+      return {
+        supplyKind: "service",
+        scenario: "service-eu-b2b-reverse-charge",
+        chargesVat: false,
+        requiresVies: true,
+        legalTextKey: "serviceEuB2bReverseCharge",
+        reason: "eu-b2b-service-with-vat-id",
+      };
+    }
+
+    return {
+      supplyKind: "service",
+      scenario: "service-eu-b2b-without-vat-id",
+      chargesVat: true,
+      requiresVies: false,
+      legalTextKey: "serviceEuB2bWithoutVatId",
+      reason: "eu-b2b-service-without-vat-id",
+    };
+  }
+
+  if (b2b) {
+    return {
+      supplyKind: "service",
+      scenario: "service-non-eu-b2b",
+      chargesVat: false,
+      requiresVies: false,
+      legalTextKey: "serviceNonEuB2b",
+      reason: "non-eu-b2b-service",
+    };
+  }
+
+  return {
+    supplyKind: "service",
+    scenario: "service-non-eu-b2c",
+    chargesVat: false,
+    requiresVies: false,
+    legalTextKey: "serviceNonEuB2c",
+    reason: "non-eu-b2c-service",
+  };
+}
+
+export function serviceLegalTextPair(
+  texts: ServiceLegalTexts,
+  key: ServiceLegalTextKey,
+): ServiceLegalTextPair {
+  switch (key) {
+    case "serviceDomestic":
+      return { hr: texts.legalTextServiceDomesticHr, en: null };
+    case "serviceEuB2c":
+      return { hr: texts.legalTextServiceEuB2cHr, en: texts.legalTextServiceEuB2cEn };
+    case "serviceEuB2bReverseCharge":
+      return {
+        hr: texts.legalTextServiceEuB2bReverseChargeHr,
+        en: texts.legalTextServiceEuB2bReverseChargeEn,
+      };
+    case "serviceEuB2bWithoutVatId":
+      return {
+        hr: texts.legalTextServiceEuB2bWithoutVatIdHr,
+        en: texts.legalTextServiceEuB2bWithoutVatIdEn,
+      };
+    case "serviceNonEuB2c":
+      return { hr: texts.legalTextServiceNonEuB2cHr, en: texts.legalTextServiceNonEuB2cEn };
+    case "serviceNonEuB2b":
+      return { hr: texts.legalTextServiceNonEuB2bHr, en: texts.legalTextServiceNonEuB2bEn };
+  }
+}
+
+export function serviceLegalTextForLang(
+  texts: ServiceLegalTexts,
+  decision: ServiceVatDecision,
+  lang: DocumentLanguage,
+): string | null {
+  const pair = serviceLegalTextPair(texts, decision.legalTextKey);
+  return lang === "hr" ? pair.hr : (pair.en ?? pair.hr);
 }
 
 export type TaxBreakdown = {
@@ -31,39 +181,18 @@ export function calculateTaxBreakdown(baseAmount: number, vatRate: number): TaxB
   return { base: baseAmount, pdv, total: baseAmount + pdv };
 }
 
-export type TaxInput = {
-  clientType: ClientType;
-  clientCountry: string;
-  clientVatNumber: string | null;
+export type TaxInput = ServiceVatInput & {
   vatRate: number;
   baseAmount: number;
-  companyLegalTexts: {
-    domestic: string | null;
-    foreignHr: string | null;
-    foreignEn: string | null;
-  };
+  companyLegalTexts: ServiceLegalTexts;
 };
 
-type CroatianPdvResult = {
+type ServiceVatSuccessResult = {
   ok: true;
-  type: "croatian-pdv";
+  decision: ServiceVatDecision;
   breakdown: TaxBreakdown;
-  legalTexts: { domestic: string | null };
-};
-
-type ReverseChargeResult = {
-  ok: true;
-  type: "reverse-charge";
-  breakdown: TaxBreakdown;
-  legalTexts: { foreignHr: string | null; foreignEn: string | null };
-  viesResult: ViesSuccess;
-};
-
-type OutsideScopeResult = {
-  ok: true;
-  type: "outside-scope";
-  breakdown: TaxBreakdown;
-  legalTexts: Record<string, never>;
+  legalTexts: ServiceLegalTextPair;
+  viesResult: ViesSuccess | null;
 };
 
 type TaxError = {
@@ -72,29 +201,21 @@ type TaxError = {
   code: "vies_invalid" | "vies_error";
 };
 
-export type TaxResult = CroatianPdvResult | ReverseChargeResult | OutsideScopeResult | TaxError;
+export type TaxResult = ServiceVatSuccessResult | TaxError;
 
 export async function verifyAndDetermine(
   input: TaxInput,
   fetcher?: typeof fetch,
 ): Promise<TaxResult> {
-  const treatment = determineTaxTreatment(input);
+  const decision = decideServiceVat(input);
 
-  if (treatment === "croatian-pdv") {
+  if (!decision.requiresVies) {
     return {
       ok: true,
-      type: "croatian-pdv",
-      breakdown: calculateTaxBreakdown(input.baseAmount, input.vatRate),
-      legalTexts: { domestic: input.companyLegalTexts.domestic },
-    };
-  }
-
-  if (treatment === "outside-scope") {
-    return {
-      ok: true,
-      type: "outside-scope",
-      breakdown: calculateTaxBreakdown(input.baseAmount, 0),
-      legalTexts: {},
+      decision,
+      breakdown: calculateTaxBreakdown(input.baseAmount, decision.chargesVat ? input.vatRate : 0),
+      legalTexts: serviceLegalTextPair(input.companyLegalTexts, decision.legalTextKey),
+      viesResult: null,
     };
   }
 
@@ -118,12 +239,9 @@ export async function verifyAndDetermine(
 
   return {
     ok: true,
-    type: "reverse-charge",
+    decision,
     breakdown: calculateTaxBreakdown(input.baseAmount, 0),
-    legalTexts: {
-      foreignHr: input.companyLegalTexts.foreignHr,
-      foreignEn: input.companyLegalTexts.foreignEn,
-    },
+    legalTexts: serviceLegalTextPair(input.companyLegalTexts, decision.legalTextKey),
     viesResult,
   };
 }

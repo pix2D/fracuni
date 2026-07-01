@@ -13,11 +13,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OFFER_STATUS } from "@/lib/documents";
 import type { Offer } from "@/lib/offers";
 import { useOfferDocumentActions } from "@/components/offers/useOfferDocumentActions";
-import type { PdfLang } from "@/lib/pdf-document";
+import { DOCUMENT_LANGUAGES, parseDocumentLanguage, type DocumentLanguage } from "@/lib/language";
 
 interface Props {
   offer: Offer;
-  defaultLang: PdfLang;
+  defaultLang: DocumentLanguage;
 }
 
 function statusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
@@ -89,7 +89,7 @@ function LifecycleStatus({ offer }: { offer: Offer }) {
 }
 
 export function OfferView({ offer, defaultLang }: Props) {
-  const [lang, setLang] = useState<PdfLang>(defaultLang);
+  const [lang, setLang] = useState<DocumentLanguage>(defaultLang);
   const isDraft = offer.status === OFFER_STATUS.DRAFT;
   const isFinalized = offer.status === OFFER_STATUS.FINALIZED;
   const isRejected = offer.status === OFFER_STATUS.REJECTED;
@@ -162,10 +162,19 @@ export function OfferView({ offer, defaultLang }: Props) {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-3">
-          <Tabs value={lang} onValueChange={(value) => setLang(value as PdfLang)}>
+          <Tabs
+            value={lang}
+            onValueChange={(value) => {
+              const nextLang = parseDocumentLanguage(value);
+              if (nextLang) setLang(nextLang);
+            }}
+          >
             <TabsList aria-label="Preview language">
-              <TabsTrigger value="hr">HR</TabsTrigger>
-              <TabsTrigger value="en">EN</TabsTrigger>
+              {DOCUMENT_LANGUAGES.map((documentLang) => (
+                <TabsTrigger key={documentLang} value={documentLang}>
+                  {documentLang.toUpperCase()}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
           <iframe

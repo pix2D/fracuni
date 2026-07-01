@@ -1,7 +1,7 @@
 import type { LineItemRow } from "@/components/LineItemsEditor";
 import { isDomestic } from "@/lib/countries";
 import { isCurrencyCode, type CurrencyCode } from "@/lib/currency";
-import { chargesCroatianPdv, determineTaxTreatment, type TaxTreatment } from "@/lib/tax-engine";
+import { decideServiceVat, type ServiceVatDecision } from "@/lib/tax-engine";
 import { computeInvoiceTotals, type InvoiceTotals } from "@/lib/invoice-totals";
 import { parseDecimalInput } from "@/lib/decimal-input";
 import { DOCUMENT_TYPE } from "@/lib/documents";
@@ -148,10 +148,10 @@ export function isDomesticInvoice(values: InvoiceFormValues, clients: Client[]):
   return client ? isDomestic(client.country) : true;
 }
 
-export function invoiceTaxTreatment(values: InvoiceFormValues, clients: Client[]): TaxTreatment | null {
+export function invoiceVatDecision(values: InvoiceFormValues, clients: Client[]): ServiceVatDecision | null {
   const client = selectedClient(values, clients);
   if (!client) return null;
-  return determineTaxTreatment({
+  return decideServiceVat({
     clientType: client.clientType,
     clientCountry: client.country,
     clientVatNumber: client.vatNumber,
@@ -171,8 +171,8 @@ export function invoiceTotals(
   const currencyCode = invoiceCurrencyCode(values);
   if (!currencyCode) return null;
 
-  const treatment = invoiceTaxTreatment(values, clients);
-  const chargeVat = treatment ? chargesCroatianPdv(treatment) : false;
+  const decision = invoiceVatDecision(values, clients);
+  const chargeVat = decision?.chargesVat ?? false;
   const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
 
   const items = values.lineItems.map((item) => {

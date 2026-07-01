@@ -34,7 +34,7 @@ export const ClientFieldsSchema = ClientFieldsBaseSchema.superRefine((value, ctx
   if (value.clientType === CLIENT_TYPE.BUSINESS && isDomestic(value.country) && !value.oib?.trim()) {
     ctx.addIssue({
       code: "custom",
-      message: "OIB is required for Croatian business clients",
+      message: "OIB is required for Croatian B2B clients",
       path: ["oib"],
     });
   }

@@ -23,9 +23,17 @@ const company: Company = {
   emailBodyTemplate: null,
   defaultPaymentTermsDays: 15,
   issuerName: "Ana Anić",
-  legalTextDomestic: "Domaći zakonski tekst.",
-  legalTextForeignHr: "Prijenos porezne obveze (čl. 17. st. 1.).",
-  legalTextForeignEn: "Reverse charge (Art. 196 VAT Directive).",
+  legalTextServiceDomesticHr: "Domaći zakonski tekst.",
+  legalTextServiceEuB2cHr: "EU B2C zakonski tekst.",
+  legalTextServiceEuB2cEn: "EU B2C legal text.",
+  legalTextServiceEuB2bReverseChargeHr: "Prijenos porezne obveze (čl. 17. st. 1.).",
+  legalTextServiceEuB2bReverseChargeEn: "Reverse charge (Art. 196 VAT Directive).",
+  legalTextServiceEuB2bWithoutVatIdHr: "EU B2B bez PDV ID zakonski tekst.",
+  legalTextServiceEuB2bWithoutVatIdEn: "EU B2B without VAT ID legal text.",
+  legalTextServiceNonEuB2cHr: "Isporuka izvan područja PDV-a.",
+  legalTextServiceNonEuB2cEn: "Supply outside the scope of VAT.",
+  legalTextServiceNonEuB2bHr: "Non-EU B2B zakonski tekst.",
+  legalTextServiceNonEuB2bEn: "Non-EU B2B legal text.",
   logoPath: null,
   taglineHr: "Vatreni softver",
   taglineEn: "Software on fire",
@@ -168,6 +176,7 @@ describe("buildPdfDocumentData — domestic Croatian invoice", () => {
     expect(data.totals.total).toBe("250,00");
     expect(data.totals.currency).toBe("EUR");
     expect(data.totals.eurEquivalent).toBeNull();
+    expect(data.showVatColumn).toBe(true);
   });
 
   it("formats line items with EU numbers and the Croatian description", () => {
@@ -197,7 +206,7 @@ describe("buildPdfDocumentData — domestic Croatian invoice", () => {
   });
 });
 
-describe("buildPdfDocumentData — foreign reverse-charge invoice", () => {
+describe("buildPdfDocumentData — EU reverse-charge invoice", () => {
   const foreign = makeClient({
     name: "Acme GmbH",
     country: "DE",
@@ -215,17 +224,19 @@ describe("buildPdfDocumentData — foreign reverse-charge invoice", () => {
     expect(data.lineItems[0]!.description).toBe("Consulting");
   });
 
-  it("charges no PDV and shows the foreign legal text", () => {
+  it("charges no PDV and shows the EU legal text", () => {
     const dataEn = buildPdfDocumentData(input({ lang: "en", client: foreign }));
     expect(dataEn.totals.vat).toBeNull();
     expect(dataEn.totals.subtotal).toBe("200,00");
     expect(dataEn.totals.total).toBe("200,00");
     expect(dataEn.legalText).toBe("Reverse charge (Art. 196 VAT Directive).");
+    expect(dataEn.showVatColumn).toBe(false);
+    expect(dataEn.lineItems[0]!.vatPercent).toBeNull();
 
     const dataHr = buildPdfDocumentData(input({ lang: "hr", client: foreign }));
     expect(dataHr.legalText).toBe("Prijenos porezne obveze (čl. 17. st. 1.).");
-    // The Croatian table keeps the PDV % column, at 0 for reverse charge.
-    expect(dataHr.lineItems[0]!.vatPercent).toBe("0");
+    expect(dataHr.showVatColumn).toBe(false);
+    expect(dataHr.lineItems[0]!.vatPercent).toBeNull();
   });
 
   it("renders the VAT number plus additional tax ids", () => {
@@ -237,26 +248,46 @@ describe("buildPdfDocumentData — foreign reverse-charge invoice", () => {
   });
 });
 
-describe("buildPdfDocumentData — EU business client without VAT", () => {
-  const euBusinessWithoutVat = makeClient({
+describe("buildPdfDocumentData — EU B2B service client without VAT ID", () => {
+  const euBusinessWithoutVatId = makeClient({
     name: "No VAT GmbH",
     country: "DE",
     oib: null,
     vatNumber: null,
   });
 
-  it("charges Croatian PDV and uses the Croatian PDV legal text", () => {
-    const data = buildPdfDocumentData(input({ lang: "en", client: euBusinessWithoutVat }));
+  it("charges VAT and uses the EU B2B without VAT ID legal text", () => {
+    const data = buildPdfDocumentData(input({ lang: "en", client: euBusinessWithoutVatId }));
 
     expect(data.totals.subtotal).toBe("200,00");
     expect(data.totals.vat).toEqual({ rate: "25", amount: "50,00" });
     expect(data.totals.total).toBe("250,00");
-    expect(data.legalText).toBe("Domaći zakonski tekst.");
+    expect(data.legalText).toBe("EU B2B without VAT ID legal text.");
+    expect(data.showVatColumn).toBe(true);
     expect(data.lineItems[0]!.vatPercent).toBe("25");
   });
 });
 
-describe("buildPdfDocumentData — non-EU outside-scope client", () => {
+describe("buildPdfDocumentData — EU B2C service client", () => {
+  const euB2c = makeClient({
+    name: "Taylor EU",
+    clientType: "person",
+    country: "DE",
+    oib: null,
+    vatNumber: null,
+  });
+
+  it("charges VAT and uses the EU B2C legal text", () => {
+    const data = buildPdfDocumentData(input({ lang: "en", client: euB2c }));
+
+    expect(data.totals.vat).toEqual({ rate: "25", amount: "50,00" });
+    expect(data.legalText).toBe("EU B2C legal text.");
+    expect(data.showVatColumn).toBe(true);
+    expect(data.lineItems[0]!.vatPercent).toBe("25");
+  });
+});
+
+describe("buildPdfDocumentData — non-EU B2C service client", () => {
   const nonEuPerson = makeClient({
     name: "Taylor Client",
     clientType: "person",
@@ -265,14 +296,36 @@ describe("buildPdfDocumentData — non-EU outside-scope client", () => {
     vatNumber: null,
   });
 
-  it("does not charge Croatian PDV or show reverse-charge legal text", () => {
+  it("does not charge Croatian PDV and shows the non-EU legal text", () => {
     const data = buildPdfDocumentData(input({ lang: "en", client: nonEuPerson }));
 
     expect(data.totals.subtotal).toBe("200,00");
     expect(data.totals.vat).toBeNull();
     expect(data.totals.total).toBe("200,00");
-    expect(data.legalText).toBeNull();
-    expect(data.lineItems[0]!.vatPercent).toBe("0");
+    expect(data.legalText).toBe("Supply outside the scope of VAT.");
+    expect(data.showVatColumn).toBe(false);
+    expect(data.lineItems[0]!.vatPercent).toBeNull();
+
+    const dataHr = buildPdfDocumentData(input({ lang: "hr", client: nonEuPerson }));
+    expect(dataHr.legalText).toBe("Isporuka izvan područja PDV-a.");
+  });
+});
+
+describe("buildPdfDocumentData — non-EU B2B service client", () => {
+  const nonEuBusiness = makeClient({
+    name: "Acme US LLC",
+    country: "US",
+    oib: null,
+    vatNumber: null,
+  });
+
+  it("does not charge VAT and uses the non-EU B2B legal text", () => {
+    const data = buildPdfDocumentData(input({ lang: "en", client: nonEuBusiness }));
+
+    expect(data.totals.vat).toBeNull();
+    expect(data.legalText).toBe("Non-EU B2B legal text.");
+    expect(data.showVatColumn).toBe(false);
+    expect(data.lineItems[0]!.vatPercent).toBeNull();
   });
 });
 
@@ -393,11 +446,12 @@ describe("buildPdfPreviewDocumentData", () => {
         position: 1,
         description: "-",
         quantity: "-",
-        vatPercent: "-",
+        vatPercent: null,
         unitPrice: "-",
         amount: "-",
       },
     ]);
+    expect(data.showVatColumn).toBe(false);
     expect(data.totals.total).toBe("-");
   });
 

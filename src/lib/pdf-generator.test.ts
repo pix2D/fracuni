@@ -36,9 +36,17 @@ const COMPANY_INPUT = {
   emailFromAddress: "info@firefly.hr",
   emailFromName: "Firefly One",
   issuerName: "Ana Anić",
-  legalTextDomestic: "Domaći tekst.",
-  legalTextForeignHr: "Prijenos porezne obveze.",
-  legalTextForeignEn: "Reverse charge.",
+  legalTextServiceDomesticHr: "Domaći tekst.",
+  legalTextServiceEuB2cHr: "EU B2C tekst.",
+  legalTextServiceEuB2cEn: "EU B2C text.",
+  legalTextServiceEuB2bReverseChargeHr: "Prijenos porezne obveze.",
+  legalTextServiceEuB2bReverseChargeEn: "Reverse charge.",
+  legalTextServiceEuB2bWithoutVatIdHr: "EU B2B bez PDV ID tekst.",
+  legalTextServiceEuB2bWithoutVatIdEn: "EU B2B without VAT ID text.",
+  legalTextServiceNonEuB2cHr: "Non-EU B2C tekst.",
+  legalTextServiceNonEuB2cEn: "Non-EU B2C text.",
+  legalTextServiceNonEuB2bHr: "Non-EU B2B tekst.",
+  legalTextServiceNonEuB2bEn: "Non-EU B2B text.",
 };
 
 async function setupCompany() {

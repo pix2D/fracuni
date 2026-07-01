@@ -18,7 +18,7 @@ import {
   type DocumentType,
   type OfferStatus,
 } from "@/lib/documents";
-import { determineTaxTreatment } from "@/lib/tax-engine";
+import { decideServiceVat } from "@/lib/tax-engine";
 import { validateVat, type ViesSuccess } from "@/lib/vies";
 import { getExchangeRate, type HnbSuccess } from "@/lib/hnb";
 import { expandPlaceholders } from "@/lib/placeholders";
@@ -169,14 +169,14 @@ async function prepareInvoiceFinalization(
     .executeTakeFirst();
   if (!client) throw notFound("Referenced client not found");
 
-  // VIES gate — only foreign clients with a VAT Number (reverse charge) are checked.
+  // VIES gate: service EU B2B reverse-charge documents need a valid VAT ID.
   let viesResult: ViesSuccess | null = null;
-  const treatment = determineTaxTreatment({
+  const decision = decideServiceVat({
     clientType: parseClientType(client.clientType),
     clientCountry: client.country,
     clientVatNumber: client.vatNumber,
   });
-  if (treatment === "reverse-charge") {
+  if (decision.requiresVies) {
     const result = await validateVat(client.country, client.vatNumber!, deps.viesFetcher);
     if (!result.ok) {
       throw invalidOperation(`VIES verification failed: ${result.error}`);

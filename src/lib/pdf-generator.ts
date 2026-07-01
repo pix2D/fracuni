@@ -15,11 +15,12 @@ import { getInvoice, type Invoice } from "@/lib/invoices";
 import { getCompany } from "@/lib/companies";
 import { getClient } from "@/lib/clients";
 import { getSettings } from "@/lib/settings";
-import { buildPdfDocumentData, type PdfLang } from "@/lib/pdf-document";
+import type { DocumentLanguage } from "@/lib/language";
+import { documentLanguagesForCountry } from "@/lib/language";
+import { buildPdfDocumentData } from "@/lib/pdf-document";
 import { renderDocumentHtml } from "@/lib/pdf-template";
 import { renderHtmlToPdf } from "@/lib/pdf-renderer";
 import { DOCUMENT_TYPE, type DocumentType } from "@/lib/documents";
-import { isDomestic } from "@/lib/countries";
 import { getDataDir } from "@/lib/data-dir";
 import { slugify } from "@/lib/slug";
 import { invalidOperation, notFound } from "@/lib/app-errors";
@@ -92,7 +93,7 @@ function pdfFilename(
   type: DocumentType,
   fileNumber: string,
   clientSlug: string,
-  lang: PdfLang,
+  lang: DocumentLanguage,
 ): string {
   if (type === DOCUMENT_TYPE.CREDIT_NOTE) {
     return lang === "en"
@@ -167,7 +168,7 @@ export async function renderAndStoreInvoicePdfs(
 
   const { company, client, location, paymentMethod, settings, logoDataUri } = context;
   const type = invoice.type as DocumentType;
-  const langs: PdfLang[] = isDomestic(client.country) ? ["hr"] : ["hr", "en"];
+  const langs: DocumentLanguage[] = documentLanguagesForCountry(client.country);
 
   const fileNumber = fileSafeNumber(invoice.documentNumber);
   const companySlug = slugify(company.name);
@@ -175,7 +176,7 @@ export async function renderAndStoreInvoicePdfs(
   const year = invoice.issueDate.slice(0, 4);
   const month = invoice.issueDate.slice(5, 7);
 
-  const stored: Partial<Record<PdfLang, { path: string; hash: string }>> = {};
+  const stored: Partial<Record<DocumentLanguage, { path: string; hash: string }>> = {};
 
   for (const lang of langs) {
     const data = buildPdfDocumentData({

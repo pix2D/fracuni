@@ -68,6 +68,8 @@ When working in a fresh worktree (e.g. tmux workers), run `pnpm install --frozen
 
 LLM agents run in a sandboxed container. No Docker commands. Do not start watchers, dev servers, or other long-running processes manually and leave them running. Build, test, and one-shot commands work fine, including E2E test commands such as `pnpm run test:e2e` that start and stop their own temporary web server.
 
+This workspace configures pnpm's store outside the repo at `../.pnpm-store`. If pnpm fails in the sandbox with `unable to open database file`, rerun the same pnpm command with sandbox privilege escalation so it can access the store.
+
 ## Agent skills
 
 ### Issue tracker

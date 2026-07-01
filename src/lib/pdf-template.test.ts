@@ -8,6 +8,7 @@ function base(overrides: Partial<PdfDocumentData> = {}): PdfDocumentData {
     title: "Račun",
     isOffer: false,
     documentNumber: "1/1/1",
+    showVatColumn: true,
     company: {
       name: "Firefly One d.o.o.",
       address: "Ulica 1\n10000 Zagreb",
@@ -71,11 +72,13 @@ describe("renderDocumentHtml", () => {
     expect(html).toContain("250,00");
   });
 
-  it("uses English headers and omits the PDV column for the English copy", () => {
+  it("uses English headers and omits the VAT column when VAT is not charged", () => {
     const html = renderDocumentHtml(
       base({
         lang: "en",
         title: "Invoice",
+        showVatColumn: false,
+        lineItems: [{ position: 1, description: "Consulting", quantity: "2,00", vatPercent: null, unitPrice: "100,00", amount: "200,00" }],
         totals: { subtotal: "200,00", vat: null, total: "200,00", currency: "EUR", eurEquivalent: null },
         legalText: "Reverse charge.",
       }),
@@ -86,6 +89,20 @@ describe("renderDocumentHtml", () => {
     expect(html).not.toContain("PDV %");
     expect(html).not.toContain("Osnovica");
     expect(html).toContain("TOTAL");
+  });
+
+  it("shows the VAT column on an English copy when VAT is charged", () => {
+    const html = renderDocumentHtml(
+      base({
+        lang: "en",
+        title: "Invoice",
+        showVatColumn: true,
+        lineItems: [{ position: 1, description: "Consulting", quantity: "2,00", vatPercent: "25", unitPrice: "100,00", amount: "200,00" }],
+      }),
+    );
+
+    expect(html).toContain("VAT %");
+    expect(html).toContain("VAT (25%)");
   });
 
   it("escapes HTML in user-supplied content", () => {
