@@ -11,6 +11,8 @@ USER root
 
 WORKDIR /app
 
+ENV ASTRO_TELEMETRY_DISABLED=1
+
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN corepack enable && corepack prepare pnpm@11.5.1 --activate && pnpm install --frozen-lockfile
 

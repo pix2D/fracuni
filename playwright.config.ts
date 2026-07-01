@@ -1,7 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 4321;
-const TEST_DATA_DIR = "data/e2e";
+const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 4322);
+if (!Number.isInteger(PORT) || PORT <= 0) {
+  throw new Error(`PLAYWRIGHT_PORT must be a positive integer, got ${process.env.PLAYWRIGHT_PORT}`);
+}
+
+const TEST_DATA_DIR = process.env.PLAYWRIGHT_DATA_DIR ?? "data/e2e";
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -22,11 +26,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "node tests/e2e/setup/reset-data-dir.mjs && pnpm run db:migrate && pnpm exec astro dev --host 127.0.0.1 --port 4321",
+    command: `node tests/e2e/setup/reset-data-dir.mjs && pnpm run db:migrate && pnpm exec astro dev --host 127.0.0.1 --port ${PORT}`,
     url: `http://127.0.0.1:${PORT}/`,
     timeout: 120_000,
     reuseExistingServer: false,
     env: {
+      ASTRO_TELEMETRY_DISABLED: "1",
       FIRERACUNI_DATA_DIR: TEST_DATA_DIR,
     },
   },

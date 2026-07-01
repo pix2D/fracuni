@@ -72,3 +72,10 @@ pnpm run test:e2e
 ```
 
 E2E tests use `data/e2e`, wipe it at startup, and leave it after the run for inspection.
+They run on port 4322 by default so the production-like app can keep using 4321 during development.
+
+For a custom port or data directory:
+
+```sh
+PLAYWRIGHT_PORT=4323 PLAYWRIGHT_DATA_DIR=data/e2e-4323 pnpm run test:e2e
+```

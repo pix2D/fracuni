@@ -4,7 +4,7 @@ import { selectCombobox, waitForAstroHydration } from "./controls";
 
 type JourneyFixture = typeof happyPath;
 
-export async function createInvoiceViaUi(page: Page, fixture: JourneyFixture): Promise<void> {
+export async function createInvoiceViaUi(page: Page, fixture: JourneyFixture): Promise<number> {
   await page.goto("/invoices/new");
   await waitForAstroHydration(page);
   await expect(page.getByRole("heading", { name: "New Invoice" })).toBeVisible();
@@ -24,4 +24,8 @@ export async function createInvoiceViaUi(page: Page, fixture: JourneyFixture): P
   await page.getByRole("button", { name: "Save Draft" }).click();
   await expect(page).toHaveURL(/\/invoices\/\d+\/edit$/);
   await expect(page.getByRole("heading", { name: "Edit Invoice" })).toBeVisible();
+
+  const match = page.url().match(/\/invoices\/(\d+)\/edit$/);
+  if (!match) throw new Error(`Expected invoice edit URL, got ${page.url()}`);
+  return Number(match[1]!);
 }

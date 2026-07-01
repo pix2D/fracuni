@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { InvoiceDocumentActionDialogs } from "@/components/invoices/InvoiceDocumentActionDialogs";
+import { invoiceNoun, invoiceRouteBase } from "@/components/invoices/InvoiceFormLayout";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 import type { EmailLog } from "@/lib/email";
@@ -15,6 +18,7 @@ import type { HnbPreview } from "@/lib/hnb";
 import type { Invoice } from "@/lib/invoices";
 import type { ViesVerification } from "@/lib/vies-verifications";
 import type { InvoiceDocumentType } from "@/components/invoices/invoice-form-model";
+import { useInvoiceDocumentActions } from "@/components/invoices/useInvoiceDocumentActions";
 import type { PdfLang } from "@/lib/pdf-document";
 
 interface Props {
@@ -25,14 +29,6 @@ interface Props {
   viesVerification: ViesVerification | null;
   emailLogs: EmailLog[];
   previewExchangeRate?: HnbPreview | null;
-}
-
-function routeBase(documentType: InvoiceDocumentType): "/invoices" | "/credit-notes" {
-  return documentType === DOCUMENT_TYPE.CREDIT_NOTE ? "/credit-notes" : "/invoices";
-}
-
-function noun(documentType: InvoiceDocumentType): "Invoice" | "Credit Note" {
-  return documentType === DOCUMENT_TYPE.CREDIT_NOTE ? "Credit Note" : "Invoice";
 }
 
 function statusVariant(status: string): "default" | "secondary" | "outline" {
@@ -223,9 +219,21 @@ export function InvoiceView({
   emailLogs,
   previewExchangeRate,
 }: Props) {
+  const currentInvoice = invoice;
   const [lang, setLang] = useState<PdfLang>(defaultLang);
-  const base = routeBase(documentType);
-  const label = noun(documentType);
+  const base = invoiceRouteBase(documentType);
+  const label = invoiceNoun(documentType);
+  const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
+  const isDraft = currentInvoice.status === INVOICE_STATUS.DRAFT;
+  const isFinalized = currentInvoice.status === INVOICE_STATUS.FINALIZED;
+  const isSent = currentInvoice.status === INVOICE_STATUS.SENT;
+  const actions = useInvoiceDocumentActions({
+    documentType,
+    onChanged: () => window.location.reload(),
+    onDeleted: () => {
+      window.location.href = base;
+    },
+  });
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -234,14 +242,42 @@ export function InvoiceView({
           <h1 className="text-2xl font-semibold">View {label}</h1>
           <p className="text-sm text-muted-foreground">
             Document Number{" "}
-            <span className="font-medium text-foreground">{invoice.documentNumber ?? "Draft"}</span>
+            <span className="font-medium text-foreground">{currentInvoice.documentNumber ?? "Draft"}</span>
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Badge variant={statusVariant(invoice.status)}>{invoice.status}</Badge>
-          {invoice.status === INVOICE_STATUS.DRAFT && (
+          <Badge variant={statusVariant(currentInvoice.status)}>{currentInvoice.status}</Badge>
+          {isDraft && (
             <Button asChild variant="secondary">
-              <a href={`${base}/${invoice.id}/edit`}>Edit Draft</a>
+              <a href={`${base}/${currentInvoice.id}/edit`}>Edit Draft</a>
+            </Button>
+          )}
+          {isFinalized && (
+            <>
+              <Button type="button" onClick={() => actions.openSend(currentInvoice)}>
+                Send Email
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => actions.handleMarkSent(currentInvoice.id)}>
+                Mark Sent
+              </Button>
+            </>
+          )}
+          {isSent && (
+            <Button type="button" onClick={() => actions.openPay(currentInvoice)}>
+              Mark as Paid
+            </Button>
+          )}
+          <Button type="button" variant="outline" onClick={() => actions.handleDuplicate(currentInvoice.id)}>
+            Duplicate
+          </Button>
+          {!isCreditNote && !isDraft && (
+            <Button type="button" variant="outline" onClick={() => actions.handleCreateCreditNote(currentInvoice.id)}>
+              Credit Note
+            </Button>
+          )}
+          {isDraft && (
+            <Button type="button" variant="destructive" onClick={() => actions.handleDelete(currentInvoice.id)}>
+              Delete
             </Button>
           )}
           <Button asChild variant="outline">
@@ -249,6 +285,12 @@ export function InvoiceView({
           </Button>
         </div>
       </div>
+
+      {actions.error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{actions.error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-3">
@@ -261,18 +303,20 @@ export function InvoiceView({
           <iframe
             key={lang}
             title={`${label} preview`}
-            src={`/api/invoices/${invoice.id}/preview?lang=${lang}`}
+            src={`/api/invoices/${currentInvoice.id}/preview?lang=${lang}`}
             className="h-[calc(100vh-13rem)] min-h-[760px] w-full border border-border bg-white"
           />
         </div>
 
         <aside className="space-y-4">
-          <ExchangeStatus invoice={invoice} previewExchangeRate={previewExchangeRate} />
-          <ViesStatus required={viesRequired} verification={viesVerification} invoice={invoice} />
-          <EmailStatus invoice={invoice} logs={emailLogs} />
-          <PdfStatus invoice={invoice} />
+          <ExchangeStatus invoice={currentInvoice} previewExchangeRate={previewExchangeRate} />
+          <ViesStatus required={viesRequired} verification={viesVerification} invoice={currentInvoice} />
+          <EmailStatus invoice={currentInvoice} logs={emailLogs} />
+          <PdfStatus invoice={currentInvoice} />
         </aside>
       </div>
+
+      <InvoiceDocumentActionDialogs actions={actions} />
     </div>
   );
 }

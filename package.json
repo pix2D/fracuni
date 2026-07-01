@@ -7,17 +7,17 @@
   },
   "packageManager": "pnpm@11.5.1",
   "scripts": {
-    "dev": "pnpm run db:migrate && astro dev",
-    "build": "astro build",
-    "start": "pnpm run db:migrate && node dist/server/entry.mjs",
-    "preview": "astro preview",
-    "astro": "astro",
+    "dev": "pnpm run db:migrate && ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "start": "pnpm run db:migrate && ASTRO_TELEMETRY_DISABLED=1 node dist/server/entry.mjs",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "astro": "ASTRO_TELEMETRY_DISABLED=1 astro",
     "db:migrate": "kysely migrate:latest --no-outdated-check",
     "db:generate": "sh -c 'kysely-codegen --dialect sqlite --camel-case --url \"${FIRERACUNI_DATA_DIR:-data}/fireracuni.db\" --out-file src/lib/db.generated.ts'",
     "test:e2e": "playwright test",
     "postinstall": "playwright install chromium",
     "test": "vitest run",
-    "verify": "astro check && vitest run"
+    "verify": "ASTRO_TELEMETRY_DISABLED=1 astro check && vitest run"
   },
   "dependencies": {
     "@astrojs/node": "^10.1.3",

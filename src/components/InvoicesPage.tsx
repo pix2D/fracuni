@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { SendEmailDialog } from "@/components/SendEmailDialog";
-import { MarkPaidDialog } from "@/components/MarkPaidDialog";
 import { DocumentDataTable } from "@/components/documents/DocumentDataTable";
+import { InvoiceDocumentActionDialogs } from "@/components/invoices/InvoiceDocumentActionDialogs";
 import { InvoiceDocumentActionsMenu } from "@/components/invoices/InvoiceDocumentActionsMenu";
-import { responseEntityId } from "@/lib/api-response";
+import { useInvoiceDocumentActions } from "@/components/invoices/useInvoiceDocumentActions";
 import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 import type { Client } from "@/lib/clients";
 import type { CompanyWithRelations } from "@/lib/companies";
@@ -45,9 +44,6 @@ export function InvoicesPage({
   const isCreditNote = documentType === DOCUMENT_TYPE.CREDIT_NOTE;
   const basePath = isCreditNote ? "/credit-notes" : "/invoices";
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [sending, setSending] = useState<Invoice | null>(null);
-  const [paying, setPaying] = useState<Invoice | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchInvoices = useCallback(async () => {
     if (!company) return;
@@ -59,90 +55,11 @@ export function InvoicesPage({
     fetchInvoices();
   }, [fetchInvoices]);
 
-  async function handleDuplicate(id: number) {
-    const res = await fetch(`/api/invoices/${id}/duplicate`, { method: "POST" });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error || "Failed to duplicate invoice");
-      return;
-    }
-    setError(null);
-    const duplicateId = await responseEntityId(res);
-    if (!duplicateId) {
-      setError("The duplicate was created, but the server did not return its ID");
-      return;
-    }
-    window.location.href = `${basePath}/${duplicateId}/edit`;
-  }
-
-  async function handleDelete(id: number) {
-    const res = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error || "Failed to delete invoice");
-      return;
-    }
-    await fetchInvoices();
-  }
-
-  async function handleMarkSent(id: number) {
-    const res = await fetch(`/api/invoices/${id}/mark-sent`, { method: "POST" });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error || "Failed to mark invoice as sent");
-      return;
-    }
-    setError(null);
-    await fetchInvoices();
-  }
-
-  // "Create Credit Note" off a Finalized Invoice: the server pre-fills a Draft
-  // Credit Note with negative amounts; we send the user to the Credit Notes page
-  // to review and finalize it.
-  async function handleCreateCreditNote(id: number) {
-    const res = await fetch(`/api/invoices/${id}/credit-note`, { method: "POST" });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error || "Failed to create credit note");
-      return;
-    }
-    const creditNoteId = await responseEntityId(res);
-    if (!creditNoteId) {
-      setError("The credit note was created, but the server did not return its ID");
-      return;
-    }
-    window.location.href = `/credit-notes/${creditNoteId}/edit`;
-  }
-
-  function openView(invoice: Invoice) {
-    setError(null);
-    window.location.href = `${basePath}/${invoice.id}`;
-  }
-
-  function openEdit(invoice: Invoice) {
-    setError(null);
-    window.location.href = `${basePath}/${invoice.id}/edit`;
-  }
-
-  function openSend(invoice: Invoice) {
-    setError(null);
-    setSending(invoice);
-  }
-
-  function openPay(invoice: Invoice) {
-    setError(null);
-    setPaying(invoice);
-  }
-
-  async function handleSent() {
-    setSending(null);
-    await fetchInvoices();
-  }
-
-  async function handlePaid() {
-    setPaying(null);
-    await fetchInvoices();
-  }
+  const actions = useInvoiceDocumentActions({
+    documentType,
+    onChanged: fetchInvoices,
+    onDeleted: fetchInvoices,
+  });
 
   if (!company) {
     return (
@@ -164,9 +81,9 @@ export function InvoicesPage({
         </Button>
       </div>
 
-      {error ? (
+      {actions.error ? (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{actions.error}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -203,20 +120,19 @@ export function InvoicesPage({
           <InvoiceDocumentActionsMenu
             invoice={invoice}
             isCreditNote={isCreditNote}
-            onView={openView}
-            onEdit={openEdit}
-            onSend={openSend}
-            onMarkSent={handleMarkSent}
-            onMarkPaid={openPay}
-            onDuplicate={handleDuplicate}
-            onDelete={handleDelete}
-            onCreateCreditNote={handleCreateCreditNote}
+            onView={actions.openView}
+            onEdit={actions.openEdit}
+            onSend={actions.openSend}
+            onMarkSent={actions.handleMarkSent}
+            onMarkPaid={actions.openPay}
+            onDuplicate={actions.handleDuplicate}
+            onDelete={actions.handleDelete}
+            onCreateCreditNote={actions.handleCreateCreditNote}
           />
         )}
       />
 
-      <SendEmailDialog invoice={sending} onClose={() => setSending(null)} onSent={handleSent} />
-      <MarkPaidDialog invoice={paying} onClose={() => setPaying(null)} onPaid={handlePaid} />
+      <InvoiceDocumentActionDialogs actions={actions} />
     </div>
   );
 }

@@ -16,7 +16,7 @@ function section(page: Page, heading: string) {
 function companyIdFromUrl(page: Page): string {
   const match = page.url().match(/\/companies\/(\d+)$/);
   if (!match) throw new Error(`Expected company detail URL, got ${page.url()}`);
-  return match[1];
+  return match[1]!;
 }
 
 export async function createCompanyViaUi(page: Page, company: CompanyFixture): Promise<void> {

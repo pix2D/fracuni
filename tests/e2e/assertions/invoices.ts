@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import type { happyPath } from "../fixtures/data";
+import { waitForAstroHydration } from "../flows/controls";
 
 type JourneyFixture = typeof happyPath;
 
@@ -37,4 +38,18 @@ export async function expectInvoiceListRow(page: Page, fixture: JourneyFixture):
   const row = page.getByRole("row").filter({ hasText: fixture.client.name });
   await expect(row).toContainText("draft");
   await expect(row).toContainText(fixture.expected.total);
+}
+
+export async function expectDraftInvoiceViewActions(page: Page, invoiceId: number): Promise<void> {
+  await page.goto(`/invoices/${invoiceId}`);
+  await waitForAstroHydration(page);
+
+  await expect(page.getByRole("heading", { name: "View Invoice" })).toBeVisible();
+  await expect(page.getByText("draft", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Edit Draft" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Duplicate" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to Invoices" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send Email" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Mark Sent" })).toHaveCount(0);
 }
