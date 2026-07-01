@@ -12,7 +12,8 @@ import type { Offer } from "@/lib/offers";
 
 interface Props {
   offer: Offer;
-  onOpen: (offer: Offer) => void;
+  onView: (offer: Offer) => void;
+  onEdit: (offer: Offer) => void;
   onStatus: (offer: Offer, status: OfferStatus) => void;
   onConvert: (offer: Offer) => void;
   onDuplicate: (offer: Offer) => void;
@@ -21,7 +22,8 @@ interface Props {
 
 export function OfferDocumentActionsMenu({
   offer,
-  onOpen,
+  onView,
+  onEdit,
   onStatus,
   onConvert,
   onDuplicate,
@@ -42,9 +44,10 @@ export function OfferDocumentActionsMenu({
         </Tooltip>
       </TooltipProvider>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => onOpen(offer)}>
-          {offer.status === OFFER_STATUS.DRAFT ? "Edit" : "View"}
-        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onView(offer)}>View</DropdownMenuItem>
+        {offer.status === OFFER_STATUS.DRAFT && (
+          <DropdownMenuItem onSelect={() => onEdit(offer)}>Edit</DropdownMenuItem>
+        )}
         {offer.status === OFFER_STATUS.FINALIZED && (
           <>
             <DropdownMenuItem onSelect={() => onStatus(offer, OFFER_STATUS.ACCEPTED)}>

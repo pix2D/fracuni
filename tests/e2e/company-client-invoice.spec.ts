@@ -6,14 +6,17 @@ import {
   expectInvoiceListRow,
   expectInvoiceTotals,
 } from "./assertions/invoices";
+import { expectDraftOfferViewActions } from "./assertions/offers";
 import { expectedInvoiceDates, happyPath } from "./fixtures/data";
 import { createClientViaUi } from "./flows/clients";
 import { createCompanyViaUi, uploadCompanyLogoViaUi } from "./flows/companies";
 import { createInvoiceViaUi } from "./flows/invoices";
+import { createOfferViaUi } from "./flows/offers";
 
-test("creates a company, client, and invoice with correct totals", async ({ page }) => {
+test("creates a company, client, invoice, and offer with correct controls", async ({ page }) => {
   const dates = expectedInvoiceDates();
   let invoiceId = 0;
+  let offerId = 0;
 
   await test.step("create company through the UI", async () => {
     await createCompanyViaUi(page, happyPath.company);
@@ -47,5 +50,13 @@ test("creates a company, client, and invoice with correct totals", async ({ page
 
   await test.step("verify invoice detail page exposes draft controls", async () => {
     await expectDraftInvoiceViewActions(page, invoiceId);
+  });
+
+  await test.step("create offer through the UI", async () => {
+    offerId = await createOfferViaUi(page, happyPath);
+  });
+
+  await test.step("verify offer detail page exposes draft controls", async () => {
+    await expectDraftOfferViewActions(page, offerId);
   });
 });

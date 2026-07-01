@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { DocumentDataTable } from "@/components/documents/DocumentDataTable";
 import { OfferDocumentActionsMenu } from "@/components/offers/OfferDocumentActionsMenu";
-import { responseEntityId, responseError } from "@/lib/api-response";
-import { OFFER_STATUS, type OfferStatus } from "@/lib/documents";
+import { useOfferDocumentActions } from "@/components/offers/useOfferDocumentActions";
+import { OFFER_STATUS } from "@/lib/documents";
 import type { Client } from "@/lib/clients";
 import type { CompanyWithRelations } from "@/lib/companies";
 import type { Settings } from "@/lib/settings";
@@ -19,7 +19,6 @@ interface Props {
 
 export function OffersPage({ company, clients, settings }: Props) {
   const [offers, setOffers] = useState<Offer[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchOffers = useCallback(async () => {
     if (!company) return;
@@ -31,53 +30,10 @@ export function OffersPage({ company, clients, settings }: Props) {
     fetchOffers();
   }, [fetchOffers]);
 
-  async function handleStatus(offer: Offer, status: OfferStatus) {
-    const res = await fetch(`/api/offers/${offer.id}/status`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (!res.ok) {
-      setError(await responseError(res, "Failed to update offer status"));
-      return;
-    }
-    setError(null);
-    await fetchOffers();
-  }
-
-  async function handleConvert(offer: Offer) {
-    const res = await fetch(`/api/offers/${offer.id}/convert`, { method: "POST" });
-    if (!res.ok) {
-      setError(await responseError(res, "Failed to convert offer"));
-      return;
-    }
-    const invoiceId = await responseEntityId(res);
-    window.location.href = invoiceId ? `/invoices/${invoiceId}/edit` : "/invoices";
-  }
-
-  async function handleDuplicate(offer: Offer) {
-    const res = await fetch(`/api/offers/${offer.id}/duplicate`, { method: "POST" });
-    if (!res.ok) {
-      setError(await responseError(res, "Failed to duplicate offer"));
-      return;
-    }
-    setError(null);
-    const offerId = await responseEntityId(res);
-    window.location.href = offerId ? `/offers/${offerId}/edit` : "/offers";
-  }
-
-  async function handleDelete(id: number) {
-    const res = await fetch(`/api/offers/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      setError(await responseError(res, "Failed to delete offer"));
-      return;
-    }
-    await fetchOffers();
-  }
-
-  function openEdit(offer: Offer) {
-    window.location.href = `/offers/${offer.id}/edit`;
-  }
+  const actions = useOfferDocumentActions({
+    onChanged: fetchOffers,
+    onDeleted: fetchOffers,
+  });
 
   if (!company) {
     return (
@@ -99,9 +55,9 @@ export function OffersPage({ company, clients, settings }: Props) {
         </Button>
       </div>
 
-      {error ? (
+      {actions.error ? (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{actions.error}</AlertDescription>
         </Alert>
       ) : null}
 
@@ -123,11 +79,12 @@ export function OffersPage({ company, clients, settings }: Props) {
         renderActions={(offer) => (
           <OfferDocumentActionsMenu
             offer={offer}
-            onOpen={openEdit}
-            onStatus={handleStatus}
-            onConvert={handleConvert}
-            onDuplicate={handleDuplicate}
-            onDelete={handleDelete}
+            onView={actions.openView}
+            onEdit={actions.openEdit}
+            onStatus={actions.handleStatus}
+            onConvert={actions.handleConvert}
+            onDuplicate={actions.handleDuplicate}
+            onDelete={actions.handleDelete}
           />
         )}
       />

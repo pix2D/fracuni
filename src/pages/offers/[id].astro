@@ -1,0 +1,23 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { OfferView } from "@/components/offers/OfferView";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getClient } from "@/lib/clients";
+import { isDomestic } from "@/lib/countries";
+import { getOffer } from "@/lib/offers";
+
+const id = Number(Astro.params.id);
+const offer = Number.isInteger(id) && id > 0 ? await getOffer(id) : null;
+const client = offer?.clientId != null ? await getClient(offer.clientId) : null;
+const defaultLang = client && !isDomestic(client.country) ? "en" : "hr";
+---
+
+<Layout>
+  {offer ? (
+    <OfferView client:load offer={offer} defaultLang={defaultLang} />
+  ) : (
+    <Alert variant="destructive">
+      <AlertDescription>Offer not found.</AlertDescription>
+    </Alert>
+  )}
+</Layout>

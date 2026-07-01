@@ -65,6 +65,12 @@ export const happyPath = {
     unitPrice: "100",
     notesHr: "Hvala na suradnji.",
   },
+  offer: {
+    descriptionHr: "Dizajn prototipa",
+    quantity: "1",
+    unitPrice: "150",
+    notesHr: "Ponuda vrijedi prema navedenom roku.",
+  },
   expected: {
     subtotal: "200,00 EUR",
     pdv: "50,00 EUR",
