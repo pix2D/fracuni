@@ -61,6 +61,10 @@ export async function createClient(input: ClientInput): Promise<Client> {
           defaultPaymentTermsDays: clientData.defaultPaymentTermsDays ?? null,
           defaultOfferValidityDays: clientData.defaultOfferValidityDays ?? null,
           email: clientData.email ?? null,
+          emailFromAddress: clientData.emailFromAddress ?? null,
+          emailFromName: clientData.emailFromName ?? null,
+          emailSubjectTemplate: clientData.emailSubjectTemplate ?? null,
+          emailBodyTemplate: clientData.emailBodyTemplate ?? null,
         })
         .returningAll()
         .executeTakeFirstOrThrow();
@@ -158,6 +162,10 @@ export async function updateClient(id: number, input: Partial<ClientInput>): Pro
     if (clientData.defaultPaymentTermsDays !== undefined) updates.defaultPaymentTermsDays = clientData.defaultPaymentTermsDays;
     if (clientData.defaultOfferValidityDays !== undefined) updates.defaultOfferValidityDays = clientData.defaultOfferValidityDays;
     if (clientData.email !== undefined) updates.email = clientData.email;
+    if (clientData.emailFromAddress !== undefined) updates.emailFromAddress = clientData.emailFromAddress;
+    if (clientData.emailFromName !== undefined) updates.emailFromName = clientData.emailFromName;
+    if (clientData.emailSubjectTemplate !== undefined) updates.emailSubjectTemplate = clientData.emailSubjectTemplate;
+    if (clientData.emailBodyTemplate !== undefined) updates.emailBodyTemplate = clientData.emailBodyTemplate;
 
     let row: Selectable<Clients> | undefined;
     try {

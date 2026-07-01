@@ -4,9 +4,15 @@ import { expandPlaceholders, expandEmailTemplate } from "@/lib/placeholders";
 describe("expandPlaceholders", () => {
   const date = new Date(2026, 5, 7); // 7 June 2026
 
-  it("expands day, month and year with zero-padding", () => {
-    expect(expandPlaceholders("Usluge {day}.{month}.{year}.", date)).toBe(
-      "Usluge 07.06.2026.",
+  it("expands day, month number, month name and year", () => {
+    expect(expandPlaceholders("Usluge {day}. {monthName} {month}/{year}.", date)).toBe(
+      "Usluge 07. lipanj 06/2026.",
+    );
+  });
+
+  it("uses English month names for non-Croatian clients", () => {
+    expect(expandPlaceholders("Services for {monthName} {year}", { date, domestic: false })).toBe(
+      "Services for June 2026",
     );
   });
 
@@ -32,12 +38,14 @@ describe("expandEmailTemplate", () => {
     documentNumber: "1/1/1",
     clientName: "Acme GmbH",
     companyName: "Orion Test Works d.o.o.",
+    date: new Date(2026, 5, 7),
+    locale: "en" as const,
   };
 
-  it("expands document number, client name and company name", () => {
+  it("expands document number, client name, company name and date placeholders", () => {
     expect(
-      expandEmailTemplate("Račun {documentNumber} za {clientName} od {companyName}", vars),
-    ).toBe("Račun 1/1/1 za Acme GmbH od Orion Test Works d.o.o.");
+      expandEmailTemplate("Invoice {documentNumber} for {clientName} from {companyName} - {monthName} {year}", vars),
+    ).toBe("Invoice 1/1/1 for Acme GmbH from Orion Test Works d.o.o. - June 2026");
   });
 
   it("expands repeated placeholders", () => {

@@ -27,6 +27,13 @@ export const ClientFieldsBaseSchema = z.object({
   defaultPaymentTermsDays: positiveInteger("Default payment terms"),
   defaultOfferValidityDays: positiveInteger("Default offer validity"),
   email: optionalText.refine((value) => !value || EMAIL_SCHEMA.safeParse(value).success, "Email must be a valid email"),
+  emailFromAddress: optionalText.refine(
+    (value) => !value || EMAIL_SCHEMA.safeParse(value).success,
+    "From address must be a valid email",
+  ),
+  emailFromName: optionalText,
+  emailSubjectTemplate: optionalText,
+  emailBodyTemplate: optionalText,
   taxIds: z.array(ClientTaxIdSchema).optional(),
 });
 
@@ -65,6 +72,10 @@ export function normalizeClientInput(input: ClientInput): ClientInput {
     vatNumber: business && eu && !domestic ? blankToNull(input.vatNumber) : null,
     defaultCurrency: blankToNull(input.defaultCurrency)?.toUpperCase() ?? null,
     email: blankToNull(input.email),
+    emailFromAddress: blankToNull(input.emailFromAddress),
+    emailFromName: blankToNull(input.emailFromName),
+    emailSubjectTemplate: blankToNull(input.emailSubjectTemplate),
+    emailBodyTemplate: blankToNull(input.emailBodyTemplate),
     taxIds: input.taxIds?.filter((taxId) => taxId.label.trim() || taxId.value.trim()),
   };
 }
@@ -77,6 +88,10 @@ export function normalizeClientPatch(input: Partial<ClientInput>): Partial<Clien
     vatNumber: input.vatNumber !== undefined ? blankToNull(input.vatNumber) : undefined,
     defaultCurrency: input.defaultCurrency !== undefined ? blankToNull(input.defaultCurrency)?.toUpperCase() ?? null : undefined,
     email: input.email !== undefined ? blankToNull(input.email) : undefined,
+    emailFromAddress: input.emailFromAddress !== undefined ? blankToNull(input.emailFromAddress) : undefined,
+    emailFromName: input.emailFromName !== undefined ? blankToNull(input.emailFromName) : undefined,
+    emailSubjectTemplate: input.emailSubjectTemplate !== undefined ? blankToNull(input.emailSubjectTemplate) : undefined,
+    emailBodyTemplate: input.emailBodyTemplate !== undefined ? blankToNull(input.emailBodyTemplate) : undefined,
     taxIds: input.taxIds?.filter((taxId) => taxId.label.trim() || taxId.value.trim()),
   };
 

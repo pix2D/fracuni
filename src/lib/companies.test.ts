@@ -38,8 +38,8 @@ const COMPANY_INPUT: CompanyInput = {
   legalTextServiceNonEuB2bEn: "Non-EU B2B text...",
   emailFromAddress: "info@orion-test-works.test",
   emailFromName: "Orion Test Works",
-  emailSubjectTemplate: "Račun {broj}",
-  emailBodyTemplate: "Poštovani, u prilogu šaljemo račun.",
+  emailSubjectTemplate: "Invoice {documentNumber}",
+  emailBodyTemplate: "Hello, please find invoice {documentNumber}.",
   defaultPaymentTermsDays: 15,
   issuerName: "Marko Marković",
 };
@@ -58,7 +58,7 @@ describe("company profile", () => {
     expect(fetched!.oib).toBe("12345678901");
     expect(fetched!.iban).toBe("HR1234567890123456789");
     expect(fetched!.swift).toBe("ZABAHR2X");
-    expect(fetched!.emailSubjectTemplate).toBe("Račun {broj}");
+    expect(fetched!.emailSubjectTemplate).toBe("Invoice {documentNumber}");
     expect(fetched!.legalTextServiceEuB2bWithoutVatIdEn).toBe("EU B2B without VAT ID text...");
     expect(fetched!.defaultPaymentTermsDays).toBe(15);
     expect(fetched!.issuerName).toBe("Marko Marković");

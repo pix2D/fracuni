@@ -29,8 +29,8 @@ const COMPANY_INPUT: CompanyInput = {
   legalTextServiceNonEuB2bEn: "Non-EU B2B text...",
   emailFromAddress: "info@orion-test-works.test",
   emailFromName: "Orion Test Works",
-  emailSubjectTemplate: "Račun {broj}",
-  emailBodyTemplate: "Poštovani, u prilogu šaljemo račun.",
+  emailSubjectTemplate: "Invoice {documentNumber}",
+  emailBodyTemplate: "Hello, please find invoice {documentNumber}.",
   defaultPaymentTermsDays: 15,
   issuerName: "Marko Marković",
 };

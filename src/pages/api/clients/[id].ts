@@ -20,6 +20,10 @@ function mergeClientPatch(current: NonNullable<Awaited<ReturnType<typeof getClie
     defaultPaymentTermsDays: patchValue(patch.defaultPaymentTermsDays, current.defaultPaymentTermsDays),
     defaultOfferValidityDays: patchValue(patch.defaultOfferValidityDays, current.defaultOfferValidityDays),
     email: patchValue(patch.email, current.email),
+    emailFromAddress: patchValue(patch.emailFromAddress, current.emailFromAddress),
+    emailFromName: patchValue(patch.emailFromName, current.emailFromName),
+    emailSubjectTemplate: patchValue(patch.emailSubjectTemplate, current.emailSubjectTemplate),
+    emailBodyTemplate: patchValue(patch.emailBodyTemplate, current.emailBodyTemplate),
     taxIds: patch.taxIds ?? current.taxIds.map((taxId) => ({ label: taxId.label, value: taxId.value })),
   };
 }

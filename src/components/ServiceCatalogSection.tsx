@@ -67,6 +67,7 @@ export function ServiceCatalogSection() {
           Reusable line item templates. Descriptions support placeholders:{" "}
           <code className="bg-muted px-1 py-0.5">{"{day}"}</code>,{" "}
           <code className="bg-muted px-1 py-0.5">{"{month}"}</code>,{" "}
+          <code className="bg-muted px-1 py-0.5">{"{monthName}"}</code>,{" "}
           <code className="bg-muted px-1 py-0.5">{"{year}"}</code>{" "}
           — expanded to current date values when selected during document creation.
         </p>

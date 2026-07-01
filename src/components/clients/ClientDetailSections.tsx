@@ -1,6 +1,7 @@
 import { FieldGroup } from "@/components/ui/field";
 import { FormSection } from "@/components/forms/FormSection";
 import { withFieldGroup } from "@/components/forms/app-form";
+import { EmailTemplatePlaceholderHelp } from "@/components/EmailTemplatePlaceholderHelp";
 import {
   clientCountryOptions,
   clientCurrencyOptions,
@@ -115,6 +116,37 @@ export const ClientDetailSections = withFieldGroup({
             </group.AppField>
             <group.AppField name="defaultOfferValidityDays" validators={clientFieldValidators.defaultOfferValidityDays}>
               {(field) => <field.NumberField label="Offer Validity (days)" min={1} description="Overrides the system default." />}
+            </group.AppField>
+          </FieldGroup>
+        </FormSection>
+
+        <FormSection
+          title="Email Settings"
+          description="Optional overrides for emailed documents. Blank fields use the company email settings."
+        >
+          <FieldGroup className="grid gap-4 sm:grid-cols-2">
+            <group.AppField name="emailFromAddress" validators={clientFieldValidators.emailFromAddress}>
+              {(field) => <field.TextField label="From Address" type="email" />}
+            </group.AppField>
+            <group.AppField name="emailFromName" validators={clientFieldValidators.emailFromName}>
+              {(field) => <field.TextField label="From Name" />}
+            </group.AppField>
+            <group.AppField name="emailSubjectTemplate" validators={clientFieldValidators.emailSubjectTemplate}>
+              {(field) => (
+                <field.TextField
+                  label="Subject Template"
+                  description={<EmailTemplatePlaceholderHelp />}
+                />
+              )}
+            </group.AppField>
+            <group.AppField name="emailBodyTemplate" validators={clientFieldValidators.emailBodyTemplate}>
+              {(field) => (
+                <field.TextareaField
+                  label="Body Template"
+                  rows={5}
+                  description={<EmailTemplatePlaceholderHelp />}
+                />
+              )}
             </group.AppField>
           </FieldGroup>
         </FormSection>

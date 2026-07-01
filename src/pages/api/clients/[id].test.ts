@@ -63,6 +63,52 @@ describe("PUT /api/clients/:id", () => {
     expect(body.taxIds[0].label).toBe("USt");
   });
 
+  it("updates and clears per-client email settings", async () => {
+    const client = await createClient(CLIENT_INPUT);
+
+    const updateResponse = await PUT(apiContext({
+      params: { id: String(client.id) },
+      request: new Request("http://test.local", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emailFromAddress: "vip@orion-test-works.test",
+          emailFromName: "VIP Billing",
+          emailSubjectTemplate: "Statement {documentNumber} for {clientName}",
+          emailBodyTemplate: "Hello {clientName}, see {monthName} {year}.",
+        }),
+      }),
+    }));
+
+    expect(updateResponse.status).toBe(200);
+    const updated = await updateResponse.json();
+    expect(updated.emailFromAddress).toBe("vip@orion-test-works.test");
+    expect(updated.emailFromName).toBe("VIP Billing");
+    expect(updated.emailSubjectTemplate).toBe("Statement {documentNumber} for {clientName}");
+    expect(updated.emailBodyTemplate).toBe("Hello {clientName}, see {monthName} {year}.");
+
+    const clearResponse = await PUT(apiContext({
+      params: { id: String(client.id) },
+      request: new Request("http://test.local", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emailFromAddress: "",
+          emailFromName: "",
+          emailSubjectTemplate: "",
+          emailBodyTemplate: "",
+        }),
+      }),
+    }));
+
+    expect(clearResponse.status).toBe(200);
+    const cleared = await clearResponse.json();
+    expect(cleared.emailFromAddress).toBeNull();
+    expect(cleared.emailFromName).toBeNull();
+    expect(cleared.emailSubjectTemplate).toBeNull();
+    expect(cleared.emailBodyTemplate).toBeNull();
+  });
+
   it("rejects an update that would make a Croatian business client missing OIB", async () => {
     const client = await createClient({ name: "Ana", clientType: "person", country: "HR" });
 

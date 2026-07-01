@@ -42,8 +42,8 @@ const COMPANY_INPUT = {
   emailFromAddress: "info@orion-test-works.test",
   emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
-  emailSubjectTemplate: "Račun {documentNumber} — {companyName}",
-  emailBodyTemplate: "Poštovani {clientName},\n\nu privitku Vam šaljemo račun.",
+  emailSubjectTemplate: "Invoice {documentNumber} - {companyName} - {month}/{year}",
+  emailBodyTemplate: "Hello {clientName},\n\nPlease find the invoice for {monthName} {year}.",
 };
 
 async function setupCompany() {
@@ -93,7 +93,7 @@ async function readyDomestic(invoiceOverrides: Record<string, unknown> = {}): Pr
   return generateInvoicePdfs(draft.id, { renderer: fakeRenderer, dataDir });
 }
 
-async function readyForeign(): Promise<Invoice> {
+async function readyForeign(clientOverrides: Partial<Parameters<typeof createClient>[0]> = {}): Promise<Invoice> {
   const { location, paymentMethod } = await setupCompany();
   const client = await createClient({
     name: "Acme GmbH",
@@ -101,6 +101,7 @@ async function readyForeign(): Promise<Invoice> {
     country: "DE",
     vatNumber: "DE123456789",
     email: "billing@acme.de",
+    ...clientOverrides,
   });
   const draft = await createInvoice({
     clientId: client.id,
@@ -130,11 +131,27 @@ describe("buildEmailDefaults", () => {
 
     const defaults = await buildEmailDefaults(invoice.id);
 
-    expect(defaults.subject).toBe("Račun 1/1/1 — Orion Test Works d.o.o.");
-    expect(defaults.body).toContain("Poštovani Domaći d.o.o.");
+    expect(defaults.subject).toBe("Invoice 1/1/1 - Orion Test Works d.o.o. - 06/2026");
+    expect(defaults.body).toContain("Hello Domaći d.o.o.");
+    expect(defaults.body).toContain("lipanj 2026");
     expect(defaults.to).toBe("racuni@domaci.hr");
     expect(defaults.from).toBe("Orion Test Works <info@orion-test-works.test>");
     expect(defaults.attachmentFilename).toBe("1-1-1-domaci-d-o-o.pdf");
+  });
+
+  it("uses per-client email settings and English month names for foreign clients", async () => {
+    const invoice = await readyForeign({
+      emailFromAddress: "vip@orion-test-works.test",
+      emailFromName: "Orion VIP Desk",
+      emailSubjectTemplate: "Statement {documentNumber} for {clientName} - {monthName} {year}",
+      emailBodyTemplate: "Hello {clientName}, document date: {day} {monthName} {year}.",
+    });
+
+    const defaults = await buildEmailDefaults(invoice.id);
+
+    expect(defaults.from).toBe("Orion VIP Desk <vip@orion-test-works.test>");
+    expect(defaults.subject).toBe("Statement 1/1/1 for Acme GmbH - June 2026");
+    expect(defaults.body).toBe("Hello Acme GmbH, document date: 15 June 2026.");
   });
 
   it("prefers the Invoice's stored email over the Client default", async () => {

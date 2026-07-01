@@ -45,8 +45,8 @@ const COMPANY_INPUT = {
   emailFromAddress: "info@orion-test-works.test",
   emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
-  emailSubjectTemplate: "Račun {documentNumber}",
-  emailBodyTemplate: "Poštovani {clientName}",
+  emailSubjectTemplate: "Invoice {documentNumber} - {month}/{year}",
+  emailBodyTemplate: "Hello {clientName}, invoice month: {monthName}",
 };
 
 async function readyInvoice() {
@@ -84,8 +84,8 @@ describe("GET /api/invoices/:id/email", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.to).toBe("racuni@domaci.hr");
-    expect(body.subject).toBe("Račun 1/1/1");
-    expect(body.body).toBe("Poštovani Domaći d.o.o.");
+    expect(body.subject).toBe("Invoice 1/1/1 - 06/2026");
+    expect(body.body).toBe("Hello Domaći d.o.o., invoice month: lipanj");
     expect(body.from).toBe("Orion Test Works <info@orion-test-works.test>");
     expect(body.attachmentFilename).toBe("1-1-1-domaci-d-o-o.pdf");
     expect(body.logs).toEqual([]);

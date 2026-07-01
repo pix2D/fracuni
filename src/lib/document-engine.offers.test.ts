@@ -36,7 +36,7 @@ const todayPlusDays = (days: number): string => {
 
 async function setup(
   overrides: Partial<Parameters<typeof upsertCompanyProfile>[0]> = {},
-  clientOverrides: { defaultPaymentTermsDays?: number } = {},
+  clientOverrides: Partial<Parameters<typeof createClient>[0]> = {},
 ) {
   await upsertCompanyProfile({ ...COMPANY_INPUT, ...overrides });
   const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
@@ -324,5 +324,39 @@ describe("duplicateDocument", () => {
     const expectedMonth = String(new Date().getMonth() + 1).padStart(2, "0");
     const expectedYear = String(new Date().getFullYear());
     expect(dup.lineItems[0]!.descriptionHr).toBe(`Najam za ${expectedMonth}/${expectedYear}`);
+  });
+
+  it("uses English month names when re-expanding placeholders for a foreign client", async () => {
+    const ids = await setup({}, {
+      name: "Acme GmbH",
+      country: "DE",
+      oib: null,
+      vatNumber: "DE123456789",
+    });
+    const draft = await createOffer({
+      ...ids,
+      currency: "EUR",
+      issueDate: "2026-06-15",
+      lineItems: [{ descriptionHr: "Consulting for {monthName} {year}" }],
+    });
+
+    const dup = await duplicateDocument(draft.id);
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    const expectedMonthName = monthNames[new Date().getMonth()];
+    const expectedYear = String(new Date().getFullYear());
+    expect(dup.lineItems[0]!.descriptionHr).toBe(`Consulting for ${expectedMonthName} ${expectedYear}`);
   });
 });

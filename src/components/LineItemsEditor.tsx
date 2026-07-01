@@ -66,8 +66,8 @@ export function LineItemsEditor({
 
   function applyCatalog(index: number, entry: CatalogEntry) {
     updateRow(index, {
-      descriptionHr: expandPlaceholders(entry.descriptionHr),
-      descriptionEn: entry.descriptionEn ? expandPlaceholders(entry.descriptionEn) : "",
+      descriptionHr: expandPlaceholders(entry.descriptionHr, { domestic }),
+      descriptionEn: entry.descriptionEn ? expandPlaceholders(entry.descriptionEn, { domestic }) : "",
     });
   }
 

@@ -72,6 +72,8 @@ describe("POST /api/clients", () => {
           clientType: "business",
           country: "HR",
           oib: "12345678901",
+          emailSubjectTemplate: "Invoice {documentNumber}",
+          emailBodyTemplate: "Hello {clientName}",
           taxIds: [{ label: "OIB", value: "12345678901" }],
         }),
       }),
@@ -81,6 +83,8 @@ describe("POST /api/clients", () => {
     const body = await response.json();
     expect(body.name).toBe("New Client");
     expect(body.country).toBe("HR");
+    expect(body.emailSubjectTemplate).toBe("Invoice {documentNumber}");
+    expect(body.emailBodyTemplate).toBe("Hello {clientName}");
     expect(body.taxIds).toHaveLength(1);
   });
 

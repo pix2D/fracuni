@@ -37,6 +37,10 @@ export const clientFieldValidators = {
   defaultPaymentTermsDays: { onSubmit: ClientFieldsBaseSchema.shape.defaultPaymentTermsDays },
   defaultOfferValidityDays: { onSubmit: ClientFieldsBaseSchema.shape.defaultOfferValidityDays },
   email: { onSubmit: ClientFieldsBaseSchema.shape.email },
+  emailFromAddress: { onSubmit: ClientFieldsBaseSchema.shape.emailFromAddress },
+  emailFromName: { onSubmit: ClientFieldsBaseSchema.shape.emailFromName },
+  emailSubjectTemplate: { onSubmit: ClientFieldsBaseSchema.shape.emailSubjectTemplate },
+  emailBodyTemplate: { onSubmit: ClientFieldsBaseSchema.shape.emailBodyTemplate },
   taxIds: { onSubmit: ClientFieldsBaseSchema.shape.taxIds },
 };
 
@@ -56,6 +60,10 @@ export const clientDetailDefaults: ClientDetailFieldsInput = {
   defaultPaymentTermsDays: undefined,
   defaultOfferValidityDays: undefined,
   email: "",
+  emailFromAddress: "",
+  emailFromName: "",
+  emailSubjectTemplate: "",
+  emailBodyTemplate: "",
 };
 
 export const clientTaxIdsDefaults: ClientTaxIdsInput = {
@@ -78,6 +86,10 @@ export const clientDetailFields = {
   defaultPaymentTermsDays: "defaultPaymentTermsDays",
   defaultOfferValidityDays: "defaultOfferValidityDays",
   email: "email",
+  emailFromAddress: "emailFromAddress",
+  emailFromName: "emailFromName",
+  emailSubjectTemplate: "emailSubjectTemplate",
+  emailBodyTemplate: "emailBodyTemplate",
 } satisfies { [K in keyof ClientDetailFieldsInput]-?: K };
 
 export const clientTaxIdsFields = {
@@ -96,6 +108,10 @@ export function clientDefaultsFromClient(client: Client): ClientFieldsInput {
     defaultPaymentTermsDays: client.defaultPaymentTermsDays ?? undefined,
     defaultOfferValidityDays: client.defaultOfferValidityDays ?? undefined,
     email: client.email ?? "",
+    emailFromAddress: client.emailFromAddress ?? "",
+    emailFromName: client.emailFromName ?? "",
+    emailSubjectTemplate: client.emailSubjectTemplate ?? "",
+    emailBodyTemplate: client.emailBodyTemplate ?? "",
     taxIds: client.taxIds.map((taxId) => ({
       label: taxId.label,
       value: taxId.value,

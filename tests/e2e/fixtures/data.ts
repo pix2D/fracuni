@@ -41,8 +41,8 @@ export const happyPath = {
     legalTextServiceNonEuB2bEn: "Service to a non-EU B2B client is outside the scope of VAT.",
     emailFromAddress: "invoices@nova-test-labs.test",
     emailFromName: "Nova Test Finance",
-    emailSubjectTemplate: "Racun {broj} - {kupac}",
-    emailBodyTemplate: "Postovani,\n\nu privitku saljemo racun {broj}.",
+    emailSubjectTemplate: "Invoice {documentNumber} - {clientName}",
+    emailBodyTemplate: "Hello,\n\nPlease find invoice {documentNumber}.",
     location: {
       number: 1,
       nameHr: "Zagreb",

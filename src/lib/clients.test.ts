@@ -22,6 +22,10 @@ const CLIENT_INPUT: ClientInput = {
   defaultCurrency: "EUR",
   defaultPaymentTermsDays: 30,
   email: "billing@acme.de",
+  emailFromAddress: "acme@orion-test-works.test",
+  emailFromName: "Acme Desk",
+  emailSubjectTemplate: "Invoice {documentNumber} for {clientName}",
+  emailBodyTemplate: "Hello {clientName}",
   taxIds: [
     { label: "Tax ID", value: "8722223585" },
     { label: "EIN", value: "12-3456789" },
@@ -37,6 +41,8 @@ describe("clients", () => {
     expect(created.country).toBe("DE");
     expect(created.vatNumber).toBe("DE123456789");
     expect(created.archivedAt).toBeNull();
+    expect(created.emailFromAddress).toBe("acme@orion-test-works.test");
+    expect(created.emailSubjectTemplate).toBe("Invoice {documentNumber} for {clientName}");
     expect(created.taxIds).toHaveLength(2);
     expect(created.taxIds[0]).toMatchObject({ label: "Tax ID", value: "8722223585" });
 
@@ -78,6 +84,7 @@ describe("clients", () => {
 
     expect(updated.name).toBe("Acme AG");
     expect(updated.country).toBe("DE");
+    expect(updated.emailSubjectTemplate).toBe("Invoice {documentNumber} for {clientName}");
     expect(updated.taxIds).toHaveLength(1);
     expect(updated.taxIds[0]).toMatchObject({ label: "USt-IdNr", value: "DE999999999" });
   });

@@ -31,6 +31,7 @@ import {
 } from "@/lib/pdf-generator";
 import { parseClientType } from "@/lib/client-types";
 import { getSettings } from "@/lib/settings";
+import { isDomestic } from "@/lib/countries";
 
 // Invoices and Credit Notes are priced in EUR by default; only non-EUR documents
 // need an HNB exchange rate captured at finalization.
@@ -553,15 +554,25 @@ export async function transitionOfferStatus(id: number, target: OfferStatus): Pr
 }
 
 // Copies line items into a fresh draft, re-expanding any Service Catalog
-// {day}/{month}/{year} placeholders against the given date. (Most descriptions
+// {day}/{month}/{monthName}/{year} placeholders against the given date. (Most descriptions
 // are already-expanded literals, so this is a no-op for them.)
-function copyLineItems(lineItems: Invoice["lineItems"], now: Date): LineItemInput[] {
+function copyLineItems(lineItems: Invoice["lineItems"], now: Date, domestic: boolean): LineItemInput[] {
   return lineItems.map((li) => ({
-    descriptionHr: li.descriptionHr != null ? expandPlaceholders(li.descriptionHr, now) : null,
-    descriptionEn: li.descriptionEn != null ? expandPlaceholders(li.descriptionEn, now) : null,
+    descriptionHr: li.descriptionHr != null ? expandPlaceholders(li.descriptionHr, { date: now, domestic }) : null,
+    descriptionEn: li.descriptionEn != null ? expandPlaceholders(li.descriptionEn, { date: now, domestic }) : null,
     quantity: li.quantity,
     unitPrice: li.unitPrice,
   }));
+}
+
+async function documentClientIsDomestic(clientId: number | null): Promise<boolean> {
+  if (clientId == null) return true;
+  const client = await getDb()
+    .selectFrom("clients")
+    .select("country")
+    .where("id", "=", clientId)
+    .executeTakeFirst();
+  return isDomestic(client?.country);
 }
 
 function dateOffsetDays(start: string | null, end: string | null): number | null {
@@ -643,6 +654,7 @@ export async function convertOfferToInvoice(offerId: number): Promise<Invoice> {
   const now = new Date();
   const today = format(now, "yyyy-MM-dd");
   const dueDate = await dueDateFromPaymentTerms(offer, now);
+  const domestic = await documentClientIsDomestic(offer.clientId);
 
   return createInvoice({
     type: DOCUMENT_TYPE.INVOICE,
@@ -656,7 +668,7 @@ export async function convertOfferToInvoice(offerId: number): Promise<Invoice> {
     issueDate: today,
     deliveryDate: today,
     dueDate,
-    lineItems: copyLineItems(offer.lineItems, new Date()),
+    lineItems: copyLineItems(offer.lineItems, now, domestic),
   });
 }
 
@@ -677,6 +689,7 @@ export async function duplicateDocument(id: number): Promise<Invoice> {
   // days are defaulting state, not document data.
   const offset = dateOffsetDays(source.issueDate, source.dueDate);
   const followUp = offset != null ? format(addDays(now, offset), "yyyy-MM-dd") : null;
+  const domestic = await documentClientIsDomestic(source.clientId);
 
   return createInvoice({
     type: source.type as DocumentType,
@@ -690,6 +703,6 @@ export async function duplicateDocument(id: number): Promise<Invoice> {
     dueDate: followUp,
     notesHr: source.notesHr,
     notesEn: source.notesEn,
-    lineItems: copyLineItems(source.lineItems, now),
+    lineItems: copyLineItems(source.lineItems, now, domestic),
   });
 }

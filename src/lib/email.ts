@@ -19,7 +19,11 @@ import { markInvoiceSent } from "@/lib/document-engine";
 import { INVOICE_STATUS } from "@/lib/documents";
 import { isDomestic } from "@/lib/countries";
 import { getDataDir } from "@/lib/data-dir";
-import { expandEmailTemplate } from "@/lib/placeholders";
+import {
+  dateFromIsoDate,
+  expandEmailTemplate,
+  placeholderLocaleForCountry,
+} from "@/lib/placeholders";
 import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
 
 // SQLite introspection reports autoincrement PKs as nullable; they never are after insert/select.
@@ -109,8 +113,18 @@ async function loadContext(invoiceId: number): Promise<DocumentContext> {
   return { invoice, company, client };
 }
 
-function fromAddress(company: CompanyWithRelations): string {
-  return `${company.emailFromName} <${company.emailFromAddress}>`;
+function fromAddress(company: CompanyWithRelations, client: Client): string {
+  const name = client.emailFromName ?? company.emailFromName;
+  const address = client.emailFromAddress ?? company.emailFromAddress;
+  return `${name} <${address}>`;
+}
+
+function subjectTemplate(company: CompanyWithRelations, client: Client): string {
+  return client.emailSubjectTemplate ?? company.emailSubjectTemplate ?? "";
+}
+
+function bodyTemplate(company: CompanyWithRelations, client: Client): string {
+  return client.emailBodyTemplate ?? company.emailBodyTemplate ?? "";
 }
 
 // Foreign clients receive the English PDF only; domestic clients the Croatian PDF.
@@ -148,13 +162,15 @@ export async function buildEmailDefaults(invoiceId: number): Promise<EmailDefaul
     documentNumber: invoice.documentNumber ?? "",
     clientName: client.name,
     companyName: company.name,
+    date: dateFromIsoDate(invoice.issueDate),
+    locale: placeholderLocaleForCountry(client.country),
   };
 
   return {
     to: invoice.email ?? client.email ?? "",
-    subject: expandEmailTemplate(company.emailSubjectTemplate ?? "", vars),
-    body: expandEmailTemplate(company.emailBodyTemplate ?? "", vars),
-    from: fromAddress(company),
+    subject: expandEmailTemplate(subjectTemplate(company, client), vars),
+    body: expandEmailTemplate(bodyTemplate(company, client), vars),
+    from: fromAddress(company, client),
     attachmentFilename: path.basename(attachmentRelPath(invoice, client)),
   };
 }
@@ -220,7 +236,7 @@ export async function sendInvoiceEmail(
   const bytes = await fs.readFile(path.join(dataDir, relPath));
 
   const email: OutgoingEmail = {
-    from: fromAddress(company),
+    from: fromAddress(company, client),
     to: recipient,
     subject: input.subject,
     body: input.body,

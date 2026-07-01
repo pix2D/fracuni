@@ -2,12 +2,7 @@ import { FieldGroup } from "@/components/ui/field";
 import { FormSection } from "@/components/forms/FormSection";
 import { withFieldGroup } from "@/components/forms/app-form";
 import { companyDetailDefaults, companyFieldValidators } from "@/components/companies/company-form-model";
-
-const PLACEHOLDER_TOKENS = [
-  { token: "{broj}", description: "Document number" },
-  { token: "{kupac}", description: "Client name" },
-  { token: "{datum}", description: "Document date" },
-];
+import { EmailTemplatePlaceholderHelp } from "@/components/EmailTemplatePlaceholderHelp";
 
 export const CompanyDetailSections = withFieldGroup({
   defaultValues: companyDetailDefaults,
@@ -137,21 +132,17 @@ export const CompanyDetailSections = withFieldGroup({
               {(field) => (
                 <field.TextField
                   label="Subject Template"
-                  description={
-                    <span className="flex flex-wrap gap-2">
-                      {PLACEHOLDER_TOKENS.map(({ token, description }) => (
-                        <span key={token} className="bg-muted px-1.5 py-0.5 font-mono">
-                          {token} <span className="text-muted-foreground/70">- {description}</span>
-                        </span>
-                      ))}
-                    </span>
-                  }
+                  description={<EmailTemplatePlaceholderHelp />}
                 />
               )}
             </group.AppField>
             <group.AppField name="emailBodyTemplate">
               {(field) => (
-                <field.TextareaField label="Body Template" rows={5} description="Default message body. Editable for each individual send." />
+                <field.TextareaField
+                  label="Body Template"
+                  rows={5}
+                  description={<EmailTemplatePlaceholderHelp />}
+                />
               )}
             </group.AppField>
           </FieldGroup>

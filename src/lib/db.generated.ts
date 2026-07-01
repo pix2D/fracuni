@@ -19,6 +19,10 @@ export interface Clients {
   defaultOfferValidityDays: number | null;
   defaultPaymentTermsDays: number | null;
   email: string | null;
+  emailBodyTemplate: string | null;
+  emailFromAddress: string | null;
+  emailFromName: string | null;
+  emailSubjectTemplate: string | null;
   id: Generated<number | null>;
   name: string;
   oib: string | null;
