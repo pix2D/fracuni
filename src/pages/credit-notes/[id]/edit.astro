@@ -2,7 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import { InvoiceEditForm } from "@/components/invoices/InvoiceEditForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getCompany } from "@/lib/companies";
+import { getCompanyProfile } from "@/lib/companies";
 import { listClients } from "@/lib/clients";
 import { getInvoice } from "@/lib/invoices";
 import { listCatalogEntries } from "@/lib/service-catalog";
@@ -15,7 +15,7 @@ const creditNote = invoice?.type === DOCUMENT_TYPE.CREDIT_NOTE ? invoice : null;
 if (creditNote && creditNote.status !== INVOICE_STATUS.DRAFT) {
   return Astro.redirect(`/credit-notes/${creditNote.id}`);
 }
-const company = creditNote ? await getCompany(creditNote.companyId) : null;
+const company = creditNote ? await getCompanyProfile() : null;
 const [clients, catalog, settings] = await Promise.all([
   listClients(),
   listCatalogEntries(),

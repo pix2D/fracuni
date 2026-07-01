@@ -58,7 +58,7 @@ export function OfferCreateForm({ company, clients, catalog, settings }: Props) 
         const response = await fetch("/api/offers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(offerPayloadFromValues(value, company.id, domestic)),
+          body: JSON.stringify(offerPayloadFromValues(value, domestic)),
         });
 
         if (!response.ok) {

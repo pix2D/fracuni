@@ -39,7 +39,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .column("invoice_id")
     .execute();
 
-  // One sequence counter per (Company, calendar year, Payment Method). The
+  // One sequence counter per (calendar year, Payment Method). The
   // Document Number's first segment is drawn from last_value. Invoices and
   // Credit Notes share a row (no document-type column), so they advance the
   // same sequence. The UNIQUE constraint plus an atomic upsert
@@ -48,9 +48,6 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable("document_number_sequences")
     .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
-    .addColumn("company_id", "integer", (col) =>
-      col.notNull().references("companies.id").onDelete("cascade"),
-    )
     .addColumn("year", "integer", (col) => col.notNull())
     .addColumn("payment_method_id", "integer", (col) =>
       col.notNull().references("payment_methods.id").onDelete("restrict"),
@@ -61,7 +58,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createIndex("document_number_sequences_key_unique")
     .on("document_number_sequences")
-    .columns(["company_id", "year", "payment_method_id"])
+    .columns(["year", "payment_method_id"])
     .unique()
     .execute();
 }

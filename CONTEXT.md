@@ -1,6 +1,6 @@
 # FireRacuni
 
-Internal invoicing application for small Croatian companies. Generates legally compliant invoices, credit notes, and offers for domestic and international clients.
+Internal invoicing application for a single Croatian issuer company. Generates legally compliant invoices, credit notes, and offers for domestic and international clients.
 
 ## Language
 
@@ -19,17 +19,17 @@ A non-binding proposal to a Client. Same structure as an Invoice but with its ow
 _Avoid_: Quote, estimate, proposal
 
 **Document Number**:
-The legally required sequential identifier in the format `{sequence}/{location}/{payment_method}`. Only the sequence increments. The sequence is bound to the Payment Method — each Payment Method maintains its own independent sequence per Company per calendar year.
+The legally required sequential identifier in the format `{sequence}/{location}/{payment_method}`. Only the sequence increments. The sequence is bound to the Payment Method — each Payment Method maintains its own independent sequence per calendar year.
 _Avoid_: Invoice number (when referring to the full formatted number)
 
 ### Entities
 
 **Company**:
-A legal entity that issues documents. Has its own branding, bank details, Locations, Payment Methods, legal texts, and email configuration.
+A singleton legal issuer profile. Has branding, bank details, Locations, Payment Methods, legal texts, and email configuration used on every document.
 _Avoid_: Organization, business, issuer
 
 **Client (Kupac)**:
-A recipient of documents. Shared across all Companies. A Client is explicitly either a **Business** or a **Person**. Has a free-text address block, country, optional tax identifiers, default document values, and additional tax ID key-value pairs.
+A recipient of documents. A Client is explicitly either a **Business** or a **Person**. Has a free-text address block, country, optional tax identifiers, default document values, and additional tax ID key-value pairs.
 _Avoid_: Customer, buyer
 
 **Business Client**:
@@ -41,11 +41,11 @@ A natural-person Client receiving documents as a final consumer. Does not partic
 _Avoid_: Consumer, buyer
 
 **Location (Mjesto izdavanja)**:
-A physical issuing location belonging to a Company. Has a number (used in the Document Number) and a multilingual name. Appears as "Mjesto izdavanja" on the document.
+A physical issuing location in the singleton Company profile. Has a number (used in the Document Number) and a multilingual name. Appears as "Mjesto izdavanja" on the document.
 _Avoid_: Office, branch
 
 **Payment Method (Način plaćanja)**:
-A payment method belonging to a Company. Has a number (used in the Document Number) and a multilingual name (e.g. "Virman", "Transakcijski").
+A payment method in the singleton Company profile. Has a number (used in the Document Number) and a multilingual name (e.g. "Virman", "Transakcijski").
 _Avoid_: Payment type, payment option
 
 **Service Catalog**:
@@ -106,11 +106,10 @@ _Avoid_: Settled, closed, completed
 
 ## Relationships
 
-- A **Company** has many **Locations** and **Payment Methods**
-- A **Client** is shared across all **Companies**
-- An **Invoice** belongs to one **Company** and one **Client**
-- A **Credit Note** shares the **Document Number** sequence with **Invoices** (per Company, per year)
-- An **Offer** has its own numbering sequence (per Company, per year)
+- The singleton **Company** profile has many **Locations** and **Payment Methods**
+- An **Invoice** uses the singleton **Company** profile and belongs to one **Client**
+- A **Credit Note** shares the **Document Number** sequence with **Invoices** (per Payment Method, per year)
+- An **Offer** has its own numbering sequence (per year)
 - A **Credit Note** may reference the original **Invoice** it refunds
 - An **Offer** can be converted into a **Draft** **Invoice**
 - A **Line Item** belongs to one document (Invoice, Credit Note, or Offer)
@@ -122,7 +121,7 @@ _Avoid_: Settled, closed, completed
 > **Domain expert:** "No — Offers and Invoices have completely separate numbering. Converting an Offer creates a new Draft Invoice with no number yet. The number is assigned at Finalization."
 
 > **Dev:** "If we issue a Credit Note, does that use the next Invoice number?"
-> **Domain expert:** "Yes. Credit Notes and Invoices share one sequence per Company per year. If Invoice 5 was the last document, the Credit Note is number 6."
+> **Domain expert:** "Yes. Credit Notes and Invoices share one sequence per Payment Method per year. If Invoice 5 was the last document for that Payment Method, the Credit Note is number 6."
 
 > **Dev:** "A Business Client in Germany has a VAT Number. Do we charge PDV?"
 > **Domain expert:** "No. We run a VIES Verification first. If it passes, the Invoice is reverse charge — no PDV, just the legal text. If VIES fails, the Invoice stays in Draft."

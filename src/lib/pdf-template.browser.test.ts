@@ -14,7 +14,7 @@ function hrData(overrides: Partial<PdfDocumentData> = {}): PdfDocumentData {
     documentNumber: "1/1/1",
     showVatColumn: true,
     company: {
-      name: "Firefly One d.o.o.",
+      name: "Orion Test Works d.o.o.",
       address: "Ulica 1\n10000 Zagreb",
       taxId: { label: "OIB", value: "12345678901" },
       iban: "HR1234567890",

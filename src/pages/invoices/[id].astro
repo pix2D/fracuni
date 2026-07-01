@@ -3,7 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import { InvoiceView } from "@/components/invoices/InvoiceView";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getClient } from "@/lib/clients";
-import { getCompany } from "@/lib/companies";
+import { getCompanyProfile } from "@/lib/companies";
 import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 import { listEmailLogs } from "@/lib/email";
 import { getExchangeRatePreview } from "@/lib/hnb";
@@ -15,7 +15,7 @@ import { getLatestViesVerification } from "@/lib/vies-verifications";
 const id = Number(Astro.params.id);
 const invoice = Number.isInteger(id) && id > 0 ? await getInvoice(id) : null;
 const validInvoice = invoice?.type === DOCUMENT_TYPE.INVOICE ? invoice : null;
-const company = validInvoice ? await getCompany(validInvoice.companyId) : null;
+const company = validInvoice ? await getCompanyProfile() : null;
 const client =
   validInvoice?.clientId != null ? await getClient(validInvoice.clientId) : null;
 const [emailLogs, viesVerification] = validInvoice

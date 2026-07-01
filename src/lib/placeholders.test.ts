@@ -31,13 +31,13 @@ describe("expandEmailTemplate", () => {
   const vars = {
     documentNumber: "1/1/1",
     clientName: "Acme GmbH",
-    companyName: "Firefly One d.o.o.",
+    companyName: "Orion Test Works d.o.o.",
   };
 
   it("expands document number, client name and company name", () => {
     expect(
       expandEmailTemplate("Račun {documentNumber} za {clientName} od {companyName}", vars),
-    ).toBe("Račun 1/1/1 za Acme GmbH od Firefly One d.o.o.");
+    ).toBe("Račun 1/1/1 za Acme GmbH od Orion Test Works d.o.o.");
   });
 
   it("expands repeated placeholders", () => {

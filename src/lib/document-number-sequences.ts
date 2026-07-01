@@ -3,7 +3,6 @@ import { DOCUMENT_TYPE, INVOICE_STATUS } from "@/lib/documents";
 import { invalidOperation, invalidRequest, notFound } from "@/lib/app-errors";
 
 export interface DocumentNumberSequenceState {
-  companyId: number;
   year: number;
   paymentMethodId: number;
   paymentMethodNumber: number;
@@ -20,24 +19,10 @@ function parseSequence(documentNumber: string): number | null {
   return Number.isInteger(sequence) && sequence > 0 ? sequence : null;
 }
 
-async function assertCompanyExists(companyId: number): Promise<void> {
-  const company = await getDb()
-    .selectFrom("companies")
-    .select("id")
-    .where("id", "=", companyId)
-    .executeTakeFirst();
-
-  if (!company) throw notFound("Company not found");
-}
-
-async function issuedSequenceMaximums(
-  companyId: number,
-  year: number,
-): Promise<Map<number, number>> {
+async function issuedSequenceMaximums(year: number): Promise<Map<number, number>> {
   const rows = await getDb()
     .selectFrom("invoices")
     .select(["paymentMethodId", "documentNumber"])
-    .where("companyId", "=", companyId)
     .where("issueDate", ">=", `${year}-01-01`)
     .where("issueDate", "<", `${year + 1}-01-01`)
     .where("status", "!=", INVOICE_STATUS.DRAFT)
@@ -56,26 +41,21 @@ async function issuedSequenceMaximums(
 }
 
 export async function listDocumentNumberSequences(
-  companyId: number,
   year: number,
 ): Promise<DocumentNumberSequenceState[]> {
-  await assertCompanyExists(companyId);
-
   const db = getDb();
   const [paymentMethods, sequences, issuedMaximums] = await Promise.all([
     db
       .selectFrom("paymentMethods")
       .select(["id", "number", "nameHr", "nameEn"])
-      .where("companyId", "=", companyId)
       .orderBy("number")
       .execute(),
     db
       .selectFrom("documentNumberSequences")
       .select(["paymentMethodId", "lastValue"])
-      .where("companyId", "=", companyId)
       .where("year", "=", year)
       .execute(),
-    issuedSequenceMaximums(companyId, year),
+    issuedSequenceMaximums(year),
   ]);
 
   const sequenceByPaymentMethod = new Map(
@@ -85,7 +65,6 @@ export async function listDocumentNumberSequences(
   return paymentMethods.map((paymentMethod) => {
     const lastValue = sequenceByPaymentMethod.get(paymentMethod.id!) ?? 0;
     return {
-      companyId,
       year,
       paymentMethodId: paymentMethod.id!,
       paymentMethodNumber: paymentMethod.number,
@@ -99,7 +78,6 @@ export async function listDocumentNumberSequences(
 }
 
 export async function setDocumentNumberNextSequence(
-  companyId: number,
   year: number,
   paymentMethodId: number,
   nextSequence: number,
@@ -108,20 +86,18 @@ export async function setDocumentNumberNextSequence(
     throw invalidRequest("Next sequence must be a positive whole number");
   }
 
-  await assertCompanyExists(companyId);
-
   const db = getDb();
   const paymentMethod = await db
     .selectFrom("paymentMethods")
-    .select(["id", "companyId"])
+    .select("id")
     .where("id", "=", paymentMethodId)
     .executeTakeFirst();
 
-  if (!paymentMethod || paymentMethod.companyId !== companyId) {
+  if (!paymentMethod) {
     throw notFound("Payment method not found");
   }
 
-  const issuedMaximum = (await issuedSequenceMaximums(companyId, year)).get(paymentMethodId) ?? 0;
+  const issuedMaximum = (await issuedSequenceMaximums(year)).get(paymentMethodId) ?? 0;
   if (nextSequence <= issuedMaximum) {
     throw invalidOperation(
       `Next sequence must be greater than the locally issued sequence ${issuedMaximum}`,
@@ -131,15 +107,15 @@ export async function setDocumentNumberNextSequence(
   const lastValue = nextSequence - 1;
   await db
     .insertInto("documentNumberSequences")
-    .values({ companyId, year, paymentMethodId, lastValue })
+    .values({ year, paymentMethodId, lastValue })
     .onConflict((oc) =>
       oc
-        .columns(["companyId", "year", "paymentMethodId"])
+        .columns(["year", "paymentMethodId"])
         .doUpdateSet({ lastValue }),
     )
     .execute();
 
-  const state = (await listDocumentNumberSequences(companyId, year)).find(
+  const state = (await listDocumentNumberSequences(year)).find(
     (sequence) => sequence.paymentMethodId === paymentMethodId,
   );
   if (!state) throw notFound("Payment method not found");

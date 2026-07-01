@@ -2,18 +2,13 @@
 import Layout from "@/layouts/Layout.astro";
 import { InvoiceCreateForm } from "@/components/invoices/InvoiceCreateForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { listCompanies, getCompany } from "@/lib/companies";
+import { getCompanyProfile } from "@/lib/companies";
 import { listClients } from "@/lib/clients";
 import { listCatalogEntries } from "@/lib/service-catalog";
 import { getSettings } from "@/lib/settings";
 import { DOCUMENT_TYPE } from "@/lib/documents";
 
-const companies = await listCompanies();
-const cookieCompanyId = Astro.cookies.get("companyId")?.value;
-const selectedId = cookieCompanyId ? Number(cookieCompanyId) : companies[0]?.id;
-const selectedCompanyId = selectedId !== undefined && Number.isInteger(selectedId) && selectedId > 0 ? selectedId : null;
-
-const company = selectedCompanyId ? await getCompany(selectedCompanyId) : null;
+const company = await getCompanyProfile();
 const [clients, catalog, settings] = await Promise.all([
   listClients(),
   listCatalogEntries(),
@@ -33,7 +28,7 @@ const [clients, catalog, settings] = await Promise.all([
     />
   ) : (
     <Alert variant="destructive">
-      <AlertDescription>Select or create a Company first to create credit notes.</AlertDescription>
+      <AlertDescription>Set up the company profile first to create credit notes.</AlertDescription>
     </Alert>
   )}
 </Layout>

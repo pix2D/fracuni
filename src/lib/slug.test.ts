@@ -3,7 +3,7 @@ import { slugify } from "@/lib/slug";
 
 describe("slugify", () => {
   it("lowercases and hyphenates words", () => {
-    expect(slugify("Firefly One d.o.o.")).toBe("firefly-one-d-o-o");
+    expect(slugify("Orion Test Works d.o.o.")).toBe("orion-test-works-d-o-o");
   });
 
   it("transliterates Croatian diacritics", () => {

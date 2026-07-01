@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { POST } from "@/pages/api/invoices/[id]/finalize";
 import { createInvoice, getInvoice } from "@/lib/invoices";
-import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { upsertCompanyProfile, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { configurePdfGeneration } from "@/lib/pdf-generator";
 import { DOCUMENT_TYPE, type DocumentType } from "@/lib/documents";
@@ -29,34 +29,33 @@ afterEach(async () => {
 });
 
 const COMPANY_INPUT = {
-  name: "Firefly One d.o.o.",
+  name: "Orion Test Works d.o.o.",
   address: "Ulica 1, Zagreb",
   phone: "+385 1 234 5678",
   oib: "12345678901",
   iban: "HR1234567890",
   swift: "ZABAHR2X",
-  emailFromAddress: "info@firefly.hr",
-  emailFromName: "Firefly One",
+  emailFromAddress: "info@orion-test-works.test",
+  emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
 };
 
 async function setup() {
-  const company = await createCompany(COMPANY_INPUT);
-  const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
-  const paymentMethod = await createPaymentMethod(company.id, {
+  await upsertCompanyProfile(COMPANY_INPUT);
+  const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
+  const paymentMethod = await createPaymentMethod({
     number: 1,
     nameHr: "Transakcijski račun",
     isDefault: true,
   });
   const client = await createClient({ name: "Domaći d.o.o.", clientType: "business", country: "HR", oib: "98765432109" });
-  return { company, location, paymentMethod, client };
+  return { location, paymentMethod, client };
 }
 
 async function draftDocument(type: DocumentType = DOCUMENT_TYPE.INVOICE) {
-  const { company, location, paymentMethod, client } = await setup();
+  const { location, paymentMethod, client } = await setup();
   return createInvoice({
     type,
-    companyId: company.id,
     clientId: client.id,
     locationId: location.id,
     paymentMethodId: paymentMethod.id,
@@ -68,9 +67,8 @@ async function draftDocument(type: DocumentType = DOCUMENT_TYPE.INVOICE) {
 
 describe("POST /api/invoices/:id/finalize", () => {
   it("finalizes a complete draft and returns the document number", async () => {
-    const { company, location, paymentMethod, client } = await setup();
+    const { location, paymentMethod, client } = await setup();
     const invoice = await createInvoice({
-      companyId: company.id,
       clientId: client.id,
       locationId: location.id,
       paymentMethodId: paymentMethod.id,
@@ -85,7 +83,7 @@ describe("POST /api/invoices/:id/finalize", () => {
     expect(body.status).toBe("finalized");
     expect(body.documentNumber).toBe("1/1/1");
     // Finalization also generates the PDF: a domestic client gets one HR file.
-    expect(body.pdfPathHr).toBe("pdfs/firefly-one-d-o-o/2026/06/1-1-1-domaci-d-o-o.pdf");
+    expect(body.pdfPathHr).toBe("pdfs/2026/06/1-1-1-domaci-d-o-o.pdf");
     expect(body.pdfHashHr).toMatch(/^[0-9a-f]{64}$/);
     expect(body.pdfPathEn).toBeNull();
     await expect(fs.access(path.join(dataDir, body.pdfPathHr))).resolves.toBeUndefined();
@@ -150,12 +148,12 @@ describe("POST /api/invoices/:id/finalize", () => {
     expect(retry.status).toBe(200);
     const retried = await retry.json();
     expect(retried.documentNumber).toBe("1/1/1");
-    expect(retried.pdfPathHr).toBe("pdfs/firefly-one-d-o-o/2026/06/1-1-1-odobrenje-domaci-d-o-o.pdf");
+    expect(retried.pdfPathHr).toBe("pdfs/2026/06/1-1-1-odobrenje-domaci-d-o-o.pdf");
   });
 
   it("returns 400 when required fields are missing", async () => {
-    const { company } = await setup();
-    const invoice = await createInvoice({ companyId: company.id });
+    await setup();
+    const invoice = await createInvoice({});
 
     const response = await POST(apiContext({ params: { id: String(invoice.id) } }));
     expect(response.status).toBe(400);
@@ -165,9 +163,8 @@ describe("POST /api/invoices/:id/finalize", () => {
   });
 
   it("returns 409 when finalizing an already-finalized invoice", async () => {
-    const { company, location, paymentMethod, client } = await setup();
+    const { location, paymentMethod, client } = await setup();
     const invoice = await createInvoice({
-      companyId: company.id,
       clientId: client.id,
       locationId: location.id,
       paymentMethodId: paymentMethod.id,

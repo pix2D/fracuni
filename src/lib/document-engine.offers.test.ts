@@ -8,7 +8,7 @@ import {
 } from "@/lib/document-engine";
 import { createInvoice } from "@/lib/invoices";
 import { createOffer, getOffer, type Offer } from "@/lib/offers";
-import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { upsertCompanyProfile, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { DOCUMENT_TYPE } from "@/lib/documents";
 import { useMigratedDb } from "@/test/db";
@@ -16,14 +16,14 @@ import { useMigratedDb } from "@/test/db";
 useMigratedDb();
 
 const COMPANY_INPUT = {
-  name: "Firefly One d.o.o.",
+  name: "Orion Test Works d.o.o.",
   address: "Ulica 1, Zagreb",
   phone: "+385 1 234 5678",
   oib: "12345678901",
   iban: "HR1234567890",
   swift: "ZABAHR2X",
-  emailFromAddress: "info@firefly.hr",
-  emailFromName: "Firefly One",
+  emailFromAddress: "info@orion-test-works.test",
+  emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
 };
 
@@ -35,12 +35,12 @@ const todayPlusDays = (days: number): string => {
 };
 
 async function setup(
-  overrides: Partial<Parameters<typeof createCompany>[0]> = {},
+  overrides: Partial<Parameters<typeof upsertCompanyProfile>[0]> = {},
   clientOverrides: { defaultPaymentTermsDays?: number } = {},
 ) {
-  const company = await createCompany({ ...COMPANY_INPUT, ...overrides });
-  const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
-  const paymentMethod = await createPaymentMethod(company.id, {
+  await upsertCompanyProfile({ ...COMPANY_INPUT, ...overrides });
+  const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
+  const paymentMethod = await createPaymentMethod({
     number: 1,
     nameHr: "Transakcijski račun",
     isDefault: true,
@@ -53,7 +53,6 @@ async function setup(
     ...clientOverrides,
   });
   return {
-    companyId: company.id,
     clientId: client.id,
     locationId: location.id,
     paymentMethodId: paymentMethod.id,
@@ -64,7 +63,6 @@ type Ids = Awaited<ReturnType<typeof setup>>;
 
 async function draftOffer(ids: Ids, overrides: Partial<Parameters<typeof createOffer>[0]> = {}): Promise<Offer> {
   return createOffer({
-    companyId: ids.companyId,
     clientId: ids.clientId,
     locationId: ids.locationId,
     paymentMethodId: ids.paymentMethodId,
@@ -85,9 +83,9 @@ describe("finalizeOffer — numbering", () => {
     expect(offer.type).toBe(DOCUMENT_TYPE.OFFER);
   });
 
-  it("increments per company per year, independent of payment method", async () => {
+  it("increments per year, independent of payment method", async () => {
     const ids = await setup();
-    const pm2 = await createPaymentMethod(ids.companyId, { number: 2, nameHr: "Gotovina" });
+    const pm2 = await createPaymentMethod({ number: 2, nameHr: "Gotovina" });
 
     const a = await finalizeOffer((await draftOffer(ids)).id);
     const b = await finalizeOffer((await draftOffer(ids, { paymentMethodId: pm2.id })).id);
@@ -120,8 +118,8 @@ describe("finalizeOffer — numbering", () => {
   });
 
   it("blocks finalization listing missing required fields", async () => {
-    const { companyId } = await setup();
-    const bare = await createOffer({ companyId });
+    await setup();
+    const bare = await createOffer({});
     await expect(finalizeOffer(bare.id)).rejects.toThrow(
       /missing required fields: Client, Location, Payment Method, Currency, Offer Date, Valid Until, at least one complete Line Item/,
     );

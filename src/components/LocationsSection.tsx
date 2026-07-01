@@ -13,12 +13,11 @@ import type { Location } from "@/lib/companies";
 import { PencilSimpleIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 
 interface Props {
-  companyId: number;
   locations: Location[];
   onUpdated: () => void;
 }
 
-export function LocationsSection({ companyId, locations, onUpdated }: Props) {
+export function LocationsSection({ locations, onUpdated }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +38,7 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
   }
 
   async function handleAdd(data: CompanyNumberedSettingInput) {
-    const res = await fetch(`/api/companies/${companyId}/locations`, {
+    const res = await fetch("/api/company/locations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -98,7 +97,7 @@ export function LocationsSection({ companyId, locations, onUpdated }: Props) {
           <Empty className="border border-border">
             <EmptyHeader>
               <EmptyTitle>No locations yet</EmptyTitle>
-              <EmptyDescription>Add an issuing location for this company.</EmptyDescription>
+              <EmptyDescription>Add an issuing location for the company profile.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (

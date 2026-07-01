@@ -234,11 +234,9 @@ export function offerDefaults({
 
 export function offerPayloadFromValues(
   values: OfferFormValues,
-  companyId: number,
   domestic: boolean,
 ): OfferInput {
   return {
-    companyId,
     clientId: parseId(values.clientId),
     locationId: parseId(values.locationId),
     paymentMethodId: parseId(values.paymentMethodId),

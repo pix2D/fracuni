@@ -6,7 +6,7 @@ import {
   markInvoicePaid,
 } from "@/lib/document-engine";
 import { createInvoice, getInvoice, deleteInvoice, type Invoice } from "@/lib/invoices";
-import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { upsertCompanyProfile, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { getDb } from "@/lib/db";
 import { useMigratedDb } from "@/test/db";
@@ -14,21 +14,21 @@ import { useMigratedDb } from "@/test/db";
 useMigratedDb();
 
 const COMPANY_INPUT = {
-  name: "Firefly One d.o.o.",
+  name: "Orion Test Works d.o.o.",
   address: "Ulica 1, Zagreb",
   phone: "+385 1 234 5678",
   oib: "12345678901",
   iban: "HR1234567890",
   swift: "ZABAHR2X",
-  emailFromAddress: "info@firefly.hr",
-  emailFromName: "Firefly One",
+  emailFromAddress: "info@orion-test-works.test",
+  emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
 };
 
 async function setupCompany(overrides: Partial<typeof COMPANY_INPUT> = {}) {
-  const company = await createCompany({ ...COMPANY_INPUT, ...overrides });
-  const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
-  const paymentMethod = await createPaymentMethod(company.id, {
+  const company = await upsertCompanyProfile({ ...COMPANY_INPUT, ...overrides });
+  const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
+  const paymentMethod = await createPaymentMethod({
     number: 1,
     nameHr: "Transakcijski račun",
     isDefault: true,
@@ -54,11 +54,10 @@ async function nonEuPersonClient() {
   return createClient({ name: "Taylor Client", clientType: "person", country: "US" });
 }
 
-type Ids = { companyId: number; clientId: number; locationId: number; paymentMethodId: number };
+type Ids = { clientId: number; locationId: number; paymentMethodId: number };
 
 async function draft(ids: Ids, overrides: Partial<Parameters<typeof createInvoice>[0]> = {}): Promise<Invoice> {
   return createInvoice({
-    companyId: ids.companyId,
     clientId: ids.clientId,
     locationId: ids.locationId,
     paymentMethodId: ids.paymentMethodId,
@@ -104,10 +103,9 @@ const HNB_DOWN: typeof fetch = async () => {
 };
 
 async function setupDomestic() {
-  const { company, location, paymentMethod } = await setupCompany();
+  const { location, paymentMethod } = await setupCompany();
   const client = await domesticClient();
   return {
-    companyId: company.id,
     clientId: client.id,
     locationId: location.id,
     paymentMethodId: paymentMethod.id,
@@ -138,15 +136,14 @@ describe("finalizeInvoice — Document Number assignment", () => {
   });
 
   it("uses the location and payment-method numbers in the document number", async () => {
-    const { company, paymentMethod } = await setupCompany();
-    const location = await createLocation(company.id, { number: 7, nameHr: "Split" });
-    const pm2 = await createPaymentMethod(company.id, { number: 3, nameHr: "Gotovina" });
+    const { paymentMethod } = await setupCompany();
+    const location = await createLocation({ number: 7, nameHr: "Split" });
+    const pm2 = await createPaymentMethod({ number: 3, nameHr: "Gotovina" });
     const client = await domesticClient();
 
     const a = await finalizeInvoice(
       (
         await draft({
-          companyId: company.id,
           clientId: client.id,
           locationId: location.id,
           paymentMethodId: pm2.id,
@@ -160,7 +157,6 @@ describe("finalizeInvoice — Document Number assignment", () => {
     const b = await finalizeInvoice(
       (
         await draft({
-          companyId: company.id,
           clientId: client.id,
           locationId: location.id,
           paymentMethodId: paymentMethod.id,
@@ -172,42 +168,40 @@ describe("finalizeInvoice — Document Number assignment", () => {
 });
 
 describe("finalizeInvoice — sequence isolation", () => {
-  it("keeps independent sequences per company", async () => {
-    const a = await setupCompany();
-    const b = await setupCompany({ oib: "99999999999" });
+  it("keeps the sequence when the singleton company profile is updated", async () => {
+    const { location, paymentMethod } = await setupCompany();
     const clientA = await domesticClient();
     const clientB = await createClient({ name: "Drugi", clientType: "business", country: "HR", oib: "11111111111" });
 
     const invA = await finalizeInvoice(
       (
         await draft({
-          companyId: a.company.id,
           clientId: clientA.id,
-          locationId: a.location.id,
-          paymentMethodId: a.paymentMethod.id,
+          locationId: location.id,
+          paymentMethodId: paymentMethod.id,
         })
       ).id,
     );
+    await upsertCompanyProfile({ ...COMPANY_INPUT, name: "Updated Orion Test Works d.o.o." });
     const invB = await finalizeInvoice(
       (
         await draft({
-          companyId: b.company.id,
           clientId: clientB.id,
-          locationId: b.location.id,
-          paymentMethodId: b.paymentMethod.id,
+          locationId: location.id,
+          paymentMethodId: paymentMethod.id,
         })
       ).id,
     );
 
     expect(invA.documentNumber).toBe("1/1/1");
-    expect(invB.documentNumber).toBe("1/1/1");
+    expect(invB.documentNumber).toBe("2/1/1");
   });
 
   it("keeps independent sequences per payment method within a company", async () => {
-    const { company, location, paymentMethod } = await setupCompany();
-    const pm2 = await createPaymentMethod(company.id, { number: 2, nameHr: "Gotovina" });
+    const { location, paymentMethod } = await setupCompany();
+    const pm2 = await createPaymentMethod({ number: 2, nameHr: "Gotovina" });
     const client = await domesticClient();
-    const base = { companyId: company.id, clientId: client.id, locationId: location.id };
+    const base = { clientId: client.id, locationId: location.id };
 
     const p1a = await finalizeInvoice((await draft({ ...base, paymentMethodId: paymentMethod.id })).id);
     const p2a = await finalizeInvoice((await draft({ ...base, paymentMethodId: pm2.id })).id);
@@ -244,10 +238,9 @@ describe("finalizeInvoice — sequence isolation", () => {
 
 describe("finalizeInvoice — VIES gate", () => {
   async function foreignSetup() {
-    const { company, location, paymentMethod } = await setupCompany();
+    const { location, paymentMethod } = await setupCompany();
     const client = await foreignVatClient();
     return {
-      companyId: company.id,
       clientId: client.id,
       locationId: location.id,
       paymentMethodId: paymentMethod.id,
@@ -306,10 +299,9 @@ describe("finalizeInvoice — VIES gate", () => {
   });
 
   it("does not run VIES for an EU business client without a VAT number", async () => {
-    const { company, location, paymentMethod } = await setupCompany();
+    const { location, paymentMethod } = await setupCompany();
     const client = await euBusinessNoVatClient();
     const drafted = await draft({
-      companyId: company.id,
       clientId: client.id,
       locationId: location.id,
       paymentMethodId: paymentMethod.id,
@@ -327,10 +319,9 @@ describe("finalizeInvoice — VIES gate", () => {
   });
 
   it("does not run VIES for a non-EU person client", async () => {
-    const { company, location, paymentMethod } = await setupCompany();
+    const { location, paymentMethod } = await setupCompany();
     const client = await nonEuPersonClient();
     const drafted = await draft({
-      companyId: company.id,
       clientId: client.id,
       locationId: location.id,
       paymentMethodId: paymentMethod.id,
@@ -381,8 +372,8 @@ describe("finalizeInvoice — HNB gate", () => {
 
 describe("finalizeInvoice — required field validation", () => {
   it("lists every missing required field", async () => {
-    const { company } = await setupCompany();
-    const drafted = await createInvoice({ companyId: company.id });
+    await setupCompany();
+    const drafted = await createInvoice({});
 
     await expect(finalizeInvoice(drafted.id)).rejects.toThrow(
       /missing required fields: Client, Location, Payment Method, Currency, Issue Date, at least one complete Line Item/,
@@ -506,11 +497,10 @@ describe("createCreditNoteFromInvoice", () => {
 
 describe("finalizeInvoice — gap-free sequence", () => {
   it("does not consume a number when a gate blocks finalization", async () => {
-    const { company, location, paymentMethod } = await setupCompany();
+    const { location, paymentMethod } = await setupCompany();
     const domestic = await domesticClient();
     const foreign = await foreignVatClient();
     const base = {
-      companyId: company.id,
       locationId: location.id,
       paymentMethodId: paymentMethod.id,
     };

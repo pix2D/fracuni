@@ -1,6 +1,6 @@
 # FireRacuni
 
-Internal invoicing app for companies, clients, offers, invoices, credit notes, PDFs, and email sending.
+Internal invoicing app for a single issuer company profile, clients, offers, invoices, credit notes, PDFs, and email sending.
 
 ## Local Development
 

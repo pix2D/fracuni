@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
-import { getCompany, updateCompany } from "@/lib/companies";
-import { errorResponse, handleApiError, jsonResponse, parseIdParam } from "@/lib/api";
+import { getCompanyProfile, updateCompanyProfile } from "@/lib/companies";
+import { errorResponse, handleApiError, jsonResponse } from "@/lib/api";
 import { getDataDir, resolveDataPath, resolveDataRelativePath } from "@/lib/data-dir";
 import { LOGO_TYPES, logoFileError, logoTypeForMime } from "@/lib/logo-upload";
 import fs from "node:fs/promises";
@@ -31,10 +31,9 @@ function contentTypeForPath(filePath: string): string | null {
   return logoType?.contentType ?? null;
 }
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async () => {
   try {
-    const id = parseIdParam(params.id, "company");
-    const company = await getCompany(id);
+    const company = await getCompanyProfile();
     if (!company?.logoPath) {
       return errorResponse("Logo not found", 404);
     }
@@ -56,12 +55,11 @@ export const GET: APIRoute = async ({ params }) => {
   }
 };
 
-export const POST: APIRoute = async ({ params, request }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
-    const id = parseIdParam(params.id, "company");
-    const company = await getCompany(id);
+    const company = await getCompanyProfile();
     if (!company) {
-      return errorResponse("Company not found", 404);
+      return errorResponse("Company profile not found", 404);
     }
 
     let formData: FormData;
@@ -84,7 +82,7 @@ export const POST: APIRoute = async ({ params, request }) => {
     const logoType = logoTypeForMime(file.type);
     if (!logoType) return errorResponse("File must be a PNG, JPEG, or WebP image", 400);
 
-    const filename = `${id}${logoType.extension}`;
+    const filename = `company${logoType.extension}`;
     const logosDir = resolveDataPath(LOGOS_SUBDIR);
     const filepath = path.join(logosDir, filename);
 
@@ -94,7 +92,7 @@ export const POST: APIRoute = async ({ params, request }) => {
     await fs.writeFile(filepath, buffer);
 
     const logoPath = `logos/${filename}`;
-    await updateCompany(id, { logoPath });
+    await updateCompanyProfile({ logoPath });
 
     return jsonResponse({ logoPath });
   } catch (error: unknown) {

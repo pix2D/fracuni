@@ -68,7 +68,7 @@ export function InvoiceCreateForm({
         const response = await fetch("/api/invoices", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(invoicePayloadFromValues(value, company.id, documentType, domestic)),
+          body: JSON.stringify(invoicePayloadFromValues(value, documentType, domestic)),
         });
 
         if (!response.ok) {

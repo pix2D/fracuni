@@ -1,5 +1,5 @@
 import { getClient } from "@/lib/clients";
-import { getCompany } from "@/lib/companies";
+import { getCompanyProfile } from "@/lib/companies";
 import { getDataDir } from "@/lib/data-dir";
 import { INVOICE_STATUS } from "@/lib/documents";
 import { getExchangeRatePreview } from "@/lib/hnb";
@@ -21,8 +21,8 @@ export async function documentPreviewResponse(document: Invoice, request: Reques
   const requestedLang = parseDocumentLanguage(rawLang);
   if (rawLang && !requestedLang) return errorResponse("Invalid language", 400);
 
-  const company = await getCompany(document.companyId);
-  if (!company) return errorResponse("Company not found", 404);
+  const company = await getCompanyProfile();
+  if (!company) return errorResponse("Company profile not found", 404);
 
   const [client, settings] = await Promise.all([
     document.clientId ? getClient(document.clientId) : Promise.resolve(null),

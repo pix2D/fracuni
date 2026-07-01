@@ -2,7 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import { OfferEditForm } from "@/components/offers/OfferEditForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getCompany } from "@/lib/companies";
+import { getCompanyProfile } from "@/lib/companies";
 import { listClients } from "@/lib/clients";
 import { getOffer } from "@/lib/offers";
 import { listCatalogEntries } from "@/lib/service-catalog";
@@ -10,7 +10,7 @@ import { getSettings } from "@/lib/settings";
 
 const id = Number(Astro.params.id);
 const offer = Number.isInteger(id) && id > 0 ? await getOffer(id) : null;
-const company = offer ? await getCompany(offer.companyId) : null;
+const company = offer ? await getCompanyProfile() : null;
 const [clients, catalog, settings] = await Promise.all([
   listClients(),
   listCatalogEntries(),

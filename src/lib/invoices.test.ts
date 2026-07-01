@@ -6,7 +6,7 @@ import {
   updateInvoice,
   deleteInvoice,
 } from "@/lib/invoices";
-import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { upsertCompanyProfile, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { getDb } from "@/lib/db";
 import { useMigratedDb } from "@/test/db";
@@ -14,21 +14,21 @@ import { useMigratedDb } from "@/test/db";
 useMigratedDb();
 
 const COMPANY_INPUT = {
-  name: "Firefly One d.o.o.",
+  name: "Orion Test Works d.o.o.",
   address: "Ulica 1, Zagreb",
   phone: "+385 1 234 5678",
   oib: "12345678901",
   iban: "HR1234567890",
   swift: "ZABAHR2X",
-  emailFromAddress: "info@firefly.hr",
-  emailFromName: "Firefly One",
+  emailFromAddress: "info@orion-test-works.test",
+  emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
 };
 
 async function setupCompany() {
-  const company = await createCompany(COMPANY_INPUT);
-  const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
-  const paymentMethod = await createPaymentMethod(company.id, {
+  const company = await upsertCompanyProfile(COMPANY_INPUT);
+  const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
+  const paymentMethod = await createPaymentMethod({
     number: 1,
     nameHr: "Transakcijski račun",
     isDefault: true,
@@ -42,11 +42,10 @@ async function setupClient() {
 
 describe("invoices data layer", () => {
   it("creates a draft invoice with line items", async () => {
-    const { company, location, paymentMethod } = await setupCompany();
+    const { location, paymentMethod } = await setupCompany();
     const client = await setupClient();
 
     const invoice = await createInvoice({
-      companyId: company.id,
       clientId: client.id,
       locationId: location.id,
       paymentMethodId: paymentMethod.id,
@@ -71,23 +70,22 @@ describe("invoices data layer", () => {
   });
 
   it("saves a draft with missing fields (no validation)", async () => {
-    const { company } = await setupCompany();
-
-    const invoice = await createInvoice({ companyId: company.id });
+    const invoice = await createInvoice({});
 
     expect(invoice.clientId).toBeNull();
     expect(invoice.currency).toBeNull();
     expect(invoice.lineItems).toHaveLength(0);
   });
 
-  it("rejects an invoice for a non-existent company", async () => {
-    await expect(createInvoice({ companyId: 9999 })).rejects.toThrow();
+  it("rejects references to missing settings", async () => {
+    await expect(createInvoice({ locationId: 9999 })).rejects.toThrow(
+      "Referenced client, location, or payment method does not exist",
+    );
   });
 
   it("retrieves an invoice by id with ordered line items", async () => {
-    const { company } = await setupCompany();
+    await setupCompany();
     const created = await createInvoice({
-      companyId: company.id,
       lineItems: [
         { descriptionHr: "First", quantity: 1, unitPrice: 10 },
         { descriptionHr: "Second", quantity: 1, unitPrice: 20 },
@@ -99,34 +97,31 @@ describe("invoices data layer", () => {
     expect(fetched!.lineItems.map((li) => li.descriptionHr)).toEqual(["First", "Second"]);
   });
 
-  it("lists only invoices for the given company, newest first", async () => {
-    const { company } = await setupCompany();
-    const other = await createCompany({ ...COMPANY_INPUT, oib: "99999999999" });
+  it("lists invoices newest first", async () => {
+    await setupCompany();
+    const a = await createInvoice({});
+    const b = await createInvoice({});
+    const c = await createInvoice({});
 
-    const a = await createInvoice({ companyId: company.id });
-    const b = await createInvoice({ companyId: company.id });
-    await createInvoice({ companyId: other.id });
-
-    const list = await listInvoices({ companyId: company.id });
-    expect(list).toHaveLength(2);
-    expect(list.map((i) => i.id)).toEqual([b.id, a.id]);
+    const list = await listInvoices();
+    expect(list).toHaveLength(3);
+    expect(list.map((i) => i.id)).toEqual([c.id, b.id, a.id]);
   });
 
   it("excludes credit notes from the default invoice list", async () => {
-    const { company } = await setupCompany();
-    await createInvoice({ companyId: company.id });
-    await createInvoice({ companyId: company.id, type: "credit_note" });
+    await setupCompany();
+    await createInvoice({});
+    await createInvoice({ type: "credit_note" });
 
-    const invoices = await listInvoices({ companyId: company.id });
+    const invoices = await listInvoices();
     expect(invoices).toHaveLength(1);
     expect(invoices[0]!.type).toBe("invoice");
   });
 
   it("normalizes Credit Note line items on create", async () => {
-    const { company } = await setupCompany();
+    await setupCompany();
 
     const creditNote = await createInvoice({
-      companyId: company.id,
       type: "credit_note",
       lineItems: [
         { descriptionHr: "Refund A", quantity: -2, unitPrice: 150 },
@@ -147,9 +142,8 @@ describe("invoices data layer", () => {
   });
 
   it("replaces line items on update, recalculating positions", async () => {
-    const { company } = await setupCompany();
+    await setupCompany();
     const invoice = await createInvoice({
-      companyId: company.id,
       lineItems: [
         { descriptionHr: "One", quantity: 1, unitPrice: 10 },
         { descriptionHr: "Two", quantity: 1, unitPrice: 20 },
@@ -167,9 +161,8 @@ describe("invoices data layer", () => {
   });
 
   it("normalizes Credit Note line items on update", async () => {
-    const { company } = await setupCompany();
+    await setupCompany();
     const creditNote = await createInvoice({
-      companyId: company.id,
       type: "credit_note",
       lineItems: [{ descriptionHr: "Old", quantity: 1, unitPrice: 10 }],
     });
@@ -187,9 +180,8 @@ describe("invoices data layer", () => {
   });
 
   it("keeps existing line items when update omits them", async () => {
-    const { company } = await setupCompany();
+    await setupCompany();
     const invoice = await createInvoice({
-      companyId: company.id,
       lineItems: [{ descriptionHr: "Keep", quantity: 1, unitPrice: 10 }],
     });
 
@@ -203,8 +195,8 @@ describe("invoices data layer", () => {
   });
 
   it("refuses to update a finalized invoice", async () => {
-    const { company } = await setupCompany();
-    const invoice = await createInvoice({ companyId: company.id, notesHr: "Original" });
+    await setupCompany();
+    const invoice = await createInvoice({ notesHr: "Original" });
     await getDb().updateTable("invoices").set({ status: "finalized" }).where("id", "=", invoice.id).execute();
 
     await expect(updateInvoice(invoice.id, { notesHr: "Corrected" })).rejects.toThrow(
@@ -214,9 +206,8 @@ describe("invoices data layer", () => {
   });
 
   it("deletes a draft and cascades line items", async () => {
-    const { company } = await setupCompany();
+    await setupCompany();
     const invoice = await createInvoice({
-      companyId: company.id,
       lineItems: [{ descriptionHr: "Gone", quantity: 1, unitPrice: 1 }],
     });
 
@@ -232,8 +223,8 @@ describe("invoices data layer", () => {
   });
 
   it("refuses to delete a non-draft invoice", async () => {
-    const { company } = await setupCompany();
-    const invoice = await createInvoice({ companyId: company.id });
+    await setupCompany();
+    const invoice = await createInvoice({});
     await getDb().updateTable("invoices").set({ status: "finalized" }).where("id", "=", invoice.id).execute();
 
     await expect(deleteInvoice(invoice.id)).rejects.toThrow("Only Draft invoices can be deleted");

@@ -47,7 +47,7 @@ export function InvoicesPage({
 
   const fetchInvoices = useCallback(async () => {
     if (!company) return;
-    const res = await fetch(`/api/invoices?companyId=${company.id}&type=${documentType}`);
+    const res = await fetch(`/api/invoices?type=${documentType}`);
     if (res.ok) setInvoices(await res.json());
   }, [company, documentType]);
 
@@ -65,8 +65,8 @@ export function InvoicesPage({
     return (
       <Empty className="border border-border">
         <EmptyHeader>
-          <EmptyTitle>No company selected</EmptyTitle>
-          <EmptyDescription>Select or create a company first to start invoicing.</EmptyDescription>
+          <EmptyTitle>Company profile missing</EmptyTitle>
+          <EmptyDescription>Set up the company profile first to start invoicing.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );

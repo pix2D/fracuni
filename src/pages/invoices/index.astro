@@ -1,15 +1,11 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import { InvoicesPage } from "@/components/InvoicesPage";
-import { listCompanies, getCompany } from "@/lib/companies";
+import { getCompanyProfile } from "@/lib/companies";
 import { listClients } from "@/lib/clients";
 import { getSettings } from "@/lib/settings";
 
-const companies = await listCompanies();
-const cookieCompanyId = Astro.cookies.get("companyId")?.value;
-const selectedId = cookieCompanyId ? Number(cookieCompanyId) : companies[0]?.id;
-
-const company = selectedId ? await getCompany(selectedId) : null;
+const company = await getCompanyProfile();
 const [clients, settings] = await Promise.all([
   listClients(),
   getSettings(),

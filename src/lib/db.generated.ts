@@ -33,7 +33,7 @@ export interface ClientTaxIds {
   value: string;
 }
 
-export interface Companies {
+export interface CompanyProfile {
   address: string;
   createdAt: Generated<string>;
   defaultPaymentTermsDays: Generated<number>;
@@ -66,7 +66,6 @@ export interface Companies {
 }
 
 export interface DocumentNumberSequences {
-  companyId: number;
   id: Generated<number | null>;
   lastValue: number;
   paymentMethodId: number;
@@ -94,7 +93,6 @@ export interface HolidaysCache {
 
 export interface Invoices {
   clientId: number | null;
-  companyId: number;
   createdAt: Generated<string>;
   currency: string | null;
   deliveryDate: string | null;
@@ -131,7 +129,6 @@ export interface LineItems {
 }
 
 export interface Locations {
-  companyId: number;
   createdAt: Generated<string>;
   id: Generated<number | null>;
   isDefault: Generated<number>;
@@ -142,14 +139,12 @@ export interface Locations {
 }
 
 export interface OfferNumberSequences {
-  companyId: number;
   id: Generated<number | null>;
   lastValue: number;
   year: number;
 }
 
 export interface PaymentMethods {
-  companyId: number;
   createdAt: Generated<string>;
   id: Generated<number | null>;
   isDefault: Generated<number>;
@@ -193,7 +188,7 @@ export interface ViesVerifications {
 export interface DB {
   clients: Clients;
   clientTaxIds: ClientTaxIds;
-  companies: Companies;
+  companyProfile: CompanyProfile;
   documentNumberSequences: DocumentNumberSequences;
   emailLogs: EmailLogs;
   holidaysCache: HolidaysCache;

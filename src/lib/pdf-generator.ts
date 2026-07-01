@@ -12,7 +12,7 @@ import path from "node:path";
 import { sql } from "kysely";
 import { getDb } from "@/lib/db";
 import { getInvoice, type Invoice } from "@/lib/invoices";
-import { getCompany } from "@/lib/companies";
+import { getCompanyProfile } from "@/lib/companies";
 import { getClient } from "@/lib/clients";
 import { getSettings } from "@/lib/settings";
 import type { DocumentLanguage } from "@/lib/language";
@@ -140,8 +140,8 @@ export async function loadPdfGenerationContext(
   if (invoice.locationId == null) throw invalidOperation("PDFs require a location");
   if (invoice.paymentMethodId == null) throw invalidOperation("PDFs require a payment method");
 
-  const company = await getCompany(invoice.companyId);
-  if (!company) throw notFound("Company not found");
+  const company = await getCompanyProfile();
+  if (!company) throw notFound("Company profile not found");
   const client = await getClient(invoice.clientId);
   if (!client) throw notFound("Client not found");
   const location = company.locations.find((l) => l.id === invoice.locationId);
@@ -171,7 +171,6 @@ export async function renderAndStoreInvoicePdfs(
   const langs: DocumentLanguage[] = documentLanguagesForCountry(client.country);
 
   const fileNumber = fileSafeNumber(invoice.documentNumber);
-  const companySlug = slugify(company.name);
   const clientSlug = slugify(client.name);
   const year = invoice.issueDate.slice(0, 4);
   const month = invoice.issueDate.slice(5, 7);
@@ -193,7 +192,7 @@ export async function renderAndStoreInvoicePdfs(
     const buffer = await renderer(html);
 
     const filename = pdfFilename(type, fileNumber, clientSlug, lang);
-    const relPath = [PDF_SUBDIR, companySlug, year, month, filename].join("/");
+    const relPath = [PDF_SUBDIR, year, month, filename].join("/");
     stored[lang] = await storePdf(buffer, relPath, dataDir);
   }
 

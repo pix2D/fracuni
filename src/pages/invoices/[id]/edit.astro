@@ -2,7 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import { InvoiceEditForm } from "@/components/invoices/InvoiceEditForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getCompany } from "@/lib/companies";
+import { getCompanyProfile } from "@/lib/companies";
 import { listClients } from "@/lib/clients";
 import { getInvoice } from "@/lib/invoices";
 import { listCatalogEntries } from "@/lib/service-catalog";
@@ -15,7 +15,7 @@ const validInvoice = invoice?.type === DOCUMENT_TYPE.INVOICE ? invoice : null;
 if (validInvoice && validInvoice.status !== INVOICE_STATUS.DRAFT) {
   return Astro.redirect(`/invoices/${validInvoice.id}`);
 }
-const company = validInvoice ? await getCompany(validInvoice.companyId) : null;
+const company = validInvoice ? await getCompanyProfile() : null;
 const [clients, catalog, settings] = await Promise.all([
   listClients(),
   listCatalogEntries(),

@@ -2,8 +2,8 @@ import { type Kysely, sql } from "kysely";
 
 export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
-    .createTable("companies")
-    .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
+    .createTable("company_profile")
+    .addColumn("id", "integer", (col) => col.primaryKey().defaultTo(1).check(sql`id = 1`))
     .addColumn("name", "text", (col) => col.notNull())
     .addColumn("address", "text", (col) => col.notNull())
     .addColumn("phone", "text", (col) => col.notNull())
@@ -38,7 +38,6 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .createTable("locations")
     .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
-    .addColumn("company_id", "integer", (col) => col.notNull().references("companies.id").onDelete("cascade"))
     .addColumn("number", "integer", (col) => col.notNull())
     .addColumn("name_hr", "text", (col) => col.notNull())
     .addColumn("name_en", "text")
@@ -48,16 +47,15 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .execute();
 
   await db.schema
-    .createIndex("locations_company_number_unique")
+    .createIndex("locations_number_unique")
     .on("locations")
-    .columns(["company_id", "number"])
+    .column("number")
     .unique()
     .execute();
 
   await db.schema
     .createTable("payment_methods")
     .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
-    .addColumn("company_id", "integer", (col) => col.notNull().references("companies.id").onDelete("cascade"))
     .addColumn("number", "integer", (col) => col.notNull())
     .addColumn("name_hr", "text", (col) => col.notNull())
     .addColumn("name_en", "text")
@@ -67,9 +65,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .execute();
 
   await db.schema
-    .createIndex("payment_methods_company_number_unique")
+    .createIndex("payment_methods_number_unique")
     .on("payment_methods")
-    .columns(["company_id", "number"])
+    .column("number")
     .unique()
     .execute();
 }
@@ -77,5 +75,5 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 export async function down(db: Kysely<unknown>): Promise<void> {
   await db.schema.dropTable("payment_methods").execute();
   await db.schema.dropTable("locations").execute();
-  await db.schema.dropTable("companies").execute();
+  await db.schema.dropTable("company_profile").execute();
 }

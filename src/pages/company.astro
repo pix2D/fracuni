@@ -1,0 +1,11 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { CompanyView } from "@/components/companies/CompanyView";
+import { getCompanyProfile } from "@/lib/companies";
+
+const company = await getCompanyProfile();
+---
+
+<Layout>
+  <CompanyView client:load company={company} />
+</Layout>

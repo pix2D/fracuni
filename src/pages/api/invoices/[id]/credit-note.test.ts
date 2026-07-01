@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { POST } from "@/pages/api/invoices/[id]/credit-note";
 import { createInvoice } from "@/lib/invoices";
 import { finalizeInvoice } from "@/lib/document-engine";
-import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { upsertCompanyProfile, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { apiContext } from "@/test/api";
 import { useMigratedDb } from "@/test/db";
@@ -10,33 +10,32 @@ import { useMigratedDb } from "@/test/db";
 useMigratedDb();
 
 const COMPANY_INPUT = {
-  name: "Firefly One d.o.o.",
+  name: "Orion Test Works d.o.o.",
   address: "Ulica 1, Zagreb",
   phone: "+385 1 234 5678",
   oib: "12345678901",
   iban: "HR1234567890",
   swift: "ZABAHR2X",
-  emailFromAddress: "info@firefly.hr",
-  emailFromName: "Firefly One",
+  emailFromAddress: "info@orion-test-works.test",
+  emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
 };
 
 async function setup() {
-  const company = await createCompany(COMPANY_INPUT);
-  const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
-  const paymentMethod = await createPaymentMethod(company.id, {
+  await upsertCompanyProfile(COMPANY_INPUT);
+  const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
+  const paymentMethod = await createPaymentMethod({
     number: 1,
     nameHr: "Transakcijski račun",
     isDefault: true,
   });
   const client = await createClient({ name: "Domaći d.o.o.", clientType: "business", country: "HR", oib: "98765432109" });
-  return { company, location, paymentMethod, client };
+  return { location, paymentMethod, client };
 }
 
 async function finalizedInvoice() {
-  const { company, location, paymentMethod, client } = await setup();
+  const { location, paymentMethod, client } = await setup();
   const invoice = await createInvoice({
-    companyId: company.id,
     clientId: client.id,
     locationId: location.id,
     paymentMethodId: paymentMethod.id,
@@ -63,9 +62,8 @@ describe("POST /api/invoices/:id/credit-note", () => {
   });
 
   it("returns 409 when the source Invoice is still a Draft", async () => {
-    const { company, client, location, paymentMethod } = await setup();
+    const { client, location, paymentMethod } = await setup();
     const draft = await createInvoice({
-      companyId: company.id,
       clientId: client.id,
       locationId: location.id,
       paymentMethodId: paymentMethod.id,

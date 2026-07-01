@@ -24,12 +24,12 @@ Use Kysely's **typed query builder** — never raw `sql` template literals for s
 
 ```ts
 // correct
-await db.selectFrom('companies').selectAll().where('id', '=', id).executeTakeFirstOrThrow();
-await db.insertInto('companies').values(data).returningAll().executeTakeFirstOrThrow();
-await db.updateTable('companies').set(updates).where('id', '=', id).execute();
+await db.selectFrom('companyProfile').selectAll().where('id', '=', 1).executeTakeFirstOrThrow();
+await db.insertInto('clients').values(data).returningAll().executeTakeFirstOrThrow();
+await db.updateTable('clients').set(updates).where('id', '=', id).execute();
 
 // wrong — defeats the purpose of Kysely
-await sql`SELECT * FROM companies WHERE id = ${id}`.execute(db);
+await sql`SELECT * FROM clients WHERE id = ${id}`.execute(db);
 ```
 
 **Type generation:** After writing or modifying a migration, run `pnpm run db:generate` to regenerate `src/lib/db.generated.ts` via `kysely-codegen`. This file is committed. `getDb()` returns `Kysely<DB>` where `DB` is the generated interface.
@@ -42,8 +42,8 @@ await sql`SELECT * FROM companies WHERE id = ${id}`.execute(db);
 
 ### Data access modules
 
-- One file per domain entity, plural name: `companies.ts`, `clients.ts`, `invoices.ts`
-- Export typed functions: `createCompany(data)`, `listCompanies()`, `getCompany(id)`, etc.
+- One file per domain entity: `companies.ts`, `clients.ts`, `invoices.ts`, etc.
+- Export typed functions: `upsertCompanyProfile(data)`, `createClient(data)`, `getInvoice(id)`, etc.
 - No manual row mappers — Kysely's typed results + CamelCasePlugin handle this
 - Validate inputs at the API boundary (Astro API routes), not in the data layer
 

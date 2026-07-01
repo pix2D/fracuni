@@ -16,7 +16,6 @@ export const OfferLineItemSchema = z.object({
 });
 
 export const CreateOfferSchema = z.object({
-  companyId: positiveId("Company"),
   clientId: positiveId("Client").nullish(),
   locationId: positiveId("Location").nullish(),
   paymentMethodId: positiveId("Payment Method").nullish(),
@@ -29,9 +28,7 @@ export const CreateOfferSchema = z.object({
   lineItems: z.array(OfferLineItemSchema).optional(),
 });
 
-export const UpdateOfferSchema = CreateOfferSchema.omit({
-  companyId: true,
-}).partial();
+export const UpdateOfferSchema = CreateOfferSchema.partial();
 
 export type CreateOfferInput = z.infer<typeof CreateOfferSchema>;
 export type UpdateOfferInput = z.infer<typeof UpdateOfferSchema>;

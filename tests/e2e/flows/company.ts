@@ -13,16 +13,10 @@ function section(page: Page, heading: string) {
   return page.locator("section").filter({ has: page.getByRole("heading", { name: heading }) });
 }
 
-function companyIdFromUrl(page: Page): string {
-  const match = page.url().match(/\/companies\/(\d+)$/);
-  if (!match) throw new Error(`Expected company detail URL, got ${page.url()}`);
-  return match[1]!;
-}
-
-export async function createCompanyViaUi(page: Page, company: CompanyFixture): Promise<void> {
-  await page.goto("/companies/new");
+export async function saveCompanyProfileViaUi(page: Page, company: CompanyFixture): Promise<void> {
+  await page.goto("/company");
   await waitForAstroHydration(page);
-  await expect(page.getByRole("heading", { name: "New Company" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Company", exact: true })).toBeVisible();
 
   await page.getByLabel("Company Name", { exact: true }).fill(company.name);
   await page.getByLabel("OIB", { exact: true }).fill(company.oib);
@@ -51,10 +45,10 @@ export async function createCompanyViaUi(page: Page, company: CompanyFixture): P
   await page.getByLabel("Subject Template", { exact: true }).fill(company.emailSubjectTemplate);
   await page.getByLabel("Body Template", { exact: true }).fill(company.emailBodyTemplate);
 
-  await page.getByRole("button", { name: "Create Company" }).click();
-  await expect(page).toHaveURL(/\/companies\/\d+$/);
+  await page.getByRole("button", { name: /^(Create|Save) Company Profile$/ }).click();
+  await expect(page).toHaveURL(/\/company$/);
   await waitForAstroHydration(page);
-  await expect(page.getByRole("heading", { name: company.name })).toBeVisible();
+  await expect(page.getByText("Company profile saved.")).toBeVisible();
 
   await page.getByRole("button", { name: "Add Location" }).click();
   const locationDialog = page.getByRole("dialog", { name: "Add Location" });
@@ -86,7 +80,6 @@ export async function createCompanyViaUi(page: Page, company: CompanyFixture): P
 }
 
 export async function uploadCompanyLogoViaUi(page: Page): Promise<void> {
-  const companyId = companyIdFromUrl(page);
   const logo = section(page, "Logo");
 
   await logo.getByLabel("Logo file").setInputFiles({
@@ -98,7 +91,7 @@ export async function uploadCompanyLogoViaUi(page: Page): Promise<void> {
   const responsePromise = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
-      response.url().endsWith(`/api/companies/${companyId}/logo`),
+      response.url().endsWith("/api/company/logo"),
   );
   await logo.getByRole("button", { name: "Upload" }).click();
   const response = await responsePromise;
@@ -106,7 +99,7 @@ export async function uploadCompanyLogoViaUi(page: Page): Promise<void> {
   expect(response.ok()).toBe(true);
   await expect(logo.getByAltText("Logo")).toBeVisible();
 
-  const logoResponse = await page.request.get(`/api/companies/${companyId}/logo`);
+  const logoResponse = await page.request.get("/api/company/logo");
   expect(logoResponse.status()).toBe(200);
   expect(logoResponse.headers()["content-type"]).toContain("image/png");
   expect(await logoResponse.body()).toEqual(testLogoPng);

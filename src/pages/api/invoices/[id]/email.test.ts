@@ -7,7 +7,7 @@ import { finalizeInvoice } from "@/lib/document-engine";
 import { generateInvoicePdfs, type HtmlRenderer } from "@/lib/pdf-generator";
 import { configureEmailSending, type EmailSender, type OutgoingEmail } from "@/lib/email";
 import { createInvoice, getInvoice } from "@/lib/invoices";
-import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { upsertCompanyProfile, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { updateSettings } from "@/lib/settings";
 import { apiContext } from "@/test/api";
@@ -36,23 +36,23 @@ afterEach(async () => {
 });
 
 const COMPANY_INPUT = {
-  name: "Firefly One d.o.o.",
+  name: "Orion Test Works d.o.o.",
   address: "Ulica 1, Zagreb",
   phone: "+385 1 234 5678",
   oib: "12345678901",
   iban: "HR1234567890",
   swift: "ZABAHR2X",
-  emailFromAddress: "info@firefly.hr",
-  emailFromName: "Firefly One",
+  emailFromAddress: "info@orion-test-works.test",
+  emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
   emailSubjectTemplate: "Račun {documentNumber}",
   emailBodyTemplate: "Poštovani {clientName}",
 };
 
 async function readyInvoice() {
-  const company = await createCompany(COMPANY_INPUT);
-  const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
-  const paymentMethod = await createPaymentMethod(company.id, {
+  await upsertCompanyProfile(COMPANY_INPUT);
+  const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
+  const paymentMethod = await createPaymentMethod({
     number: 1,
     nameHr: "Transakcijski",
     isDefault: true,
@@ -65,7 +65,6 @@ async function readyInvoice() {
     email: "racuni@domaci.hr",
   });
   const draft = await createInvoice({
-    companyId: company.id,
     clientId: client.id,
     locationId: location.id,
     paymentMethodId: paymentMethod.id,
@@ -87,7 +86,7 @@ describe("GET /api/invoices/:id/email", () => {
     expect(body.to).toBe("racuni@domaci.hr");
     expect(body.subject).toBe("Račun 1/1/1");
     expect(body.body).toBe("Poštovani Domaći d.o.o.");
-    expect(body.from).toBe("Firefly One <info@firefly.hr>");
+    expect(body.from).toBe("Orion Test Works <info@orion-test-works.test>");
     expect(body.attachmentFilename).toBe("1-1-1-domaci-d-o-o.pdf");
     expect(body.logs).toEqual([]);
   });

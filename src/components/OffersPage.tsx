@@ -22,7 +22,7 @@ export function OffersPage({ company, clients, settings }: Props) {
 
   const fetchOffers = useCallback(async () => {
     if (!company) return;
-    const res = await fetch(`/api/offers?companyId=${company.id}`);
+    const res = await fetch("/api/offers");
     if (res.ok) setOffers(await res.json());
   }, [company]);
 
@@ -39,8 +39,8 @@ export function OffersPage({ company, clients, settings }: Props) {
     return (
       <Empty className="border border-border">
         <EmptyHeader>
-          <EmptyTitle>No company selected</EmptyTitle>
-          <EmptyDescription>Select or create a company first to start making offers.</EmptyDescription>
+          <EmptyTitle>Company profile missing</EmptyTitle>
+          <EmptyDescription>Set up the company profile first to start making offers.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );

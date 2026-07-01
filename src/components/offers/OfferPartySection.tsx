@@ -51,7 +51,7 @@ export const OfferPartySection = withFieldGroup<
             <div className="flex h-8 items-center border border-input bg-muted/40 px-2.5 text-xs">
               {company.name}
             </div>
-            <FieldDescription>Set by the company selector in the top navigation.</FieldDescription>
+            <FieldDescription>Set in the company profile.</FieldDescription>
           </Field>
 
           <group.AppField name="clientId">

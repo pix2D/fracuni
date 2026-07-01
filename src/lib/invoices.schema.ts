@@ -18,7 +18,6 @@ export const InvoiceLineItemSchema = z.object({
 
 export const CreateInvoiceSchema = z.object({
   type: z.enum([DOCUMENT_TYPE.INVOICE, DOCUMENT_TYPE.CREDIT_NOTE]).optional(),
-  companyId: positiveId("Company"),
   clientId: positiveId("Client").nullish(),
   locationId: positiveId("Location").nullish(),
   paymentMethodId: positiveId("Payment Method").nullish(),
@@ -32,10 +31,7 @@ export const CreateInvoiceSchema = z.object({
   lineItems: z.array(InvoiceLineItemSchema).optional(),
 });
 
-export const UpdateInvoiceSchema = CreateInvoiceSchema.omit({
-  type: true,
-  companyId: true,
-}).partial();
+export const UpdateInvoiceSchema = CreateInvoiceSchema.omit({ type: true }).partial();
 
 export type CreateInvoiceInput = z.infer<typeof CreateInvoiceSchema>;
 export type UpdateInvoiceInput = z.infer<typeof UpdateInvoiceSchema>;

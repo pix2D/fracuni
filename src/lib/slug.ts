@@ -1,5 +1,4 @@
-// URL/filename-safe slugs for Company and Client names. Used to build the PDF
-// storage path (`{company-slug}/{year}/{month}/{number}-{client-slug}.pdf`).
+// URL/filename-safe slugs for names used in generated filenames.
 //
 // Croatian-specific letters (č ć ž š đ) don't all decompose under NFKD — đ in
 // particular has no canonical decomposition — so they are transliterated

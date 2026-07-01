@@ -12,7 +12,7 @@ import {
 import { finalizeInvoice } from "@/lib/document-engine";
 import { generateInvoicePdfs, type HtmlRenderer } from "@/lib/pdf-generator";
 import { createInvoice, getInvoice, type Invoice } from "@/lib/invoices";
-import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { upsertCompanyProfile, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { updateSettings } from "@/lib/settings";
 import { useMigratedDb } from "@/test/db";
@@ -33,28 +33,28 @@ const fakeRenderer: HtmlRenderer = async (html) =>
   Buffer.from(`PDF::${html.length}::${html.slice(0, 40)}`);
 
 const COMPANY_INPUT = {
-  name: "Firefly One d.o.o.",
+  name: "Orion Test Works d.o.o.",
   address: "Ulica 1, Zagreb",
   phone: "+385 1 234 5678",
   oib: "12345678901",
   iban: "HR1234567890",
   swift: "ZABAHR2X",
-  emailFromAddress: "info@firefly.hr",
-  emailFromName: "Firefly One",
+  emailFromAddress: "info@orion-test-works.test",
+  emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
   emailSubjectTemplate: "Račun {documentNumber} — {companyName}",
   emailBodyTemplate: "Poštovani {clientName},\n\nu privitku Vam šaljemo račun.",
 };
 
 async function setupCompany() {
-  const company = await createCompany(COMPANY_INPUT);
-  const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
-  const paymentMethod = await createPaymentMethod(company.id, {
+  await upsertCompanyProfile(COMPANY_INPUT);
+  const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
+  const paymentMethod = await createPaymentMethod({
     number: 1,
     nameHr: "Transakcijski",
     isDefault: true,
   });
-  return { company, location, paymentMethod };
+  return { location, paymentMethod };
 }
 
 function mockJson(body: unknown): typeof fetch {
@@ -72,7 +72,7 @@ const VIES_VALID = mockJson({
 
 // Finalized + PDFs generated, ready to send. Domestic client by default.
 async function readyDomestic(invoiceOverrides: Record<string, unknown> = {}): Promise<Invoice> {
-  const { company, location, paymentMethod } = await setupCompany();
+  const { location, paymentMethod } = await setupCompany();
   const client = await createClient({
     name: "Domaći d.o.o.",
     clientType: "business",
@@ -81,7 +81,6 @@ async function readyDomestic(invoiceOverrides: Record<string, unknown> = {}): Pr
     email: "racuni@domaci.hr",
   });
   const draft = await createInvoice({
-    companyId: company.id,
     clientId: client.id,
     locationId: location.id,
     paymentMethodId: paymentMethod.id,
@@ -95,7 +94,7 @@ async function readyDomestic(invoiceOverrides: Record<string, unknown> = {}): Pr
 }
 
 async function readyForeign(): Promise<Invoice> {
-  const { company, location, paymentMethod } = await setupCompany();
+  const { location, paymentMethod } = await setupCompany();
   const client = await createClient({
     name: "Acme GmbH",
     clientType: "business",
@@ -104,7 +103,6 @@ async function readyForeign(): Promise<Invoice> {
     email: "billing@acme.de",
   });
   const draft = await createInvoice({
-    companyId: company.id,
     clientId: client.id,
     locationId: location.id,
     paymentMethodId: paymentMethod.id,
@@ -132,10 +130,10 @@ describe("buildEmailDefaults", () => {
 
     const defaults = await buildEmailDefaults(invoice.id);
 
-    expect(defaults.subject).toBe("Račun 1/1/1 — Firefly One d.o.o.");
+    expect(defaults.subject).toBe("Račun 1/1/1 — Orion Test Works d.o.o.");
     expect(defaults.body).toContain("Poštovani Domaći d.o.o.");
     expect(defaults.to).toBe("racuni@domaci.hr");
-    expect(defaults.from).toBe("Firefly One <info@firefly.hr>");
+    expect(defaults.from).toBe("Orion Test Works <info@orion-test-works.test>");
     expect(defaults.attachmentFilename).toBe("1-1-1-domaci-d-o-o.pdf");
   });
 
@@ -166,7 +164,7 @@ describe("sendInvoiceEmail", () => {
 
     expect(result.invoice.status).toBe("sent");
     expect(sent).toHaveLength(1);
-    expect(sent[0]!.from).toBe("Firefly One <info@firefly.hr>");
+    expect(sent[0]!.from).toBe("Orion Test Works <info@orion-test-works.test>");
     expect(sent[0]!.to).toBe("client@example.com");
     expect(sent[0]!.attachments).toHaveLength(1);
     expect(sent[0]!.attachments[0]!.filename).toBe("1-1-1-domaci-d-o-o.pdf");
@@ -222,10 +220,9 @@ describe("sendInvoiceEmail", () => {
   });
 
   it("refuses to send a draft", async () => {
-    const { company, location, paymentMethod } = await setupCompany();
+    const { location, paymentMethod } = await setupCompany();
     const client = await createClient({ name: "Domaći", clientType: "business", country: "HR", oib: "98765432109" });
     const draft = await createInvoice({
-      companyId: company.id,
       clientId: client.id,
       locationId: location.id,
       paymentMethodId: paymentMethod.id,

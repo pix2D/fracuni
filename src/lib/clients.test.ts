@@ -60,12 +60,12 @@ describe("clients", () => {
   });
 
   it("searches clients by name", async () => {
-    await createClient({ ...CLIENT_INPUT, name: "Firefly One d.o.o." });
+    await createClient({ ...CLIENT_INPUT, name: "Orion Test Works d.o.o." });
     await createClient({ ...CLIENT_INPUT, name: "Acme Corp", oib: null, vatNumber: "DE999" });
 
-    const results = await listClients({ search: "fire" });
+    const results = await listClients({ search: "orion" });
     expect(results).toHaveLength(1);
-    expect(results[0]!.name).toBe("Firefly One d.o.o.");
+    expect(results[0]!.name).toBe("Orion Test Works d.o.o.");
   });
 
   it("updates a client and replaces tax IDs", async () => {

@@ -35,7 +35,6 @@ export type Invoice =
 
 export type InvoiceInput = {
   type?: DocumentType;
-  companyId: number;
   clientId?: number | null;
   locationId?: number | null;
   paymentMethodId?: number | null;
@@ -125,7 +124,7 @@ function isSqliteError(error: unknown, code: string): boolean {
 
 function mapForeignKeyError(error: unknown): never {
   if (isSqliteError(error, "SQLITE_CONSTRAINT_FOREIGNKEY")) {
-    throw invalidRequest("Referenced company, client, location, or payment method does not exist");
+    throw invalidRequest("Referenced client, location, or payment method does not exist");
   }
   throw error;
 }
@@ -197,7 +196,6 @@ export async function createInvoice(input: InvoiceInput): Promise<Invoice> {
         .values({
           type: input.type ?? DOCUMENT_TYPE.INVOICE,
           status: INVOICE_STATUS.DRAFT,
-          companyId: input.companyId,
           clientId: input.clientId ?? null,
           locationId: input.locationId ?? null,
           paymentMethodId: input.paymentMethodId ?? null,
@@ -223,7 +221,6 @@ export async function createInvoice(input: InvoiceInput): Promise<Invoice> {
 }
 
 export interface ListInvoicesOptions {
-  companyId?: number;
   type?: DocumentType;
 }
 
@@ -236,10 +233,6 @@ export async function listInvoices(opts: ListInvoicesOptions = {}): Promise<Invo
     .where("type", "=", opts.type ?? DOCUMENT_TYPE.INVOICE)
     .orderBy("createdAt", "desc")
     .orderBy("id", "desc");
-
-  if (opts.companyId !== undefined) {
-    query = query.where("companyId", "=", opts.companyId);
-  }
 
   const rows = await query.execute();
   if (rows.length === 0) return [];
@@ -300,7 +293,6 @@ export async function updateInvoice(
 
     const updates: Record<string, unknown> = { updatedAt: sql`datetime('now')` };
     if (input.type !== undefined) updates.type = input.type;
-    if (input.companyId !== undefined) updates.companyId = input.companyId;
     if (input.clientId !== undefined) updates.clientId = input.clientId;
     if (input.locationId !== undefined) updates.locationId = input.locationId;
     if (input.paymentMethodId !== undefined) updates.paymentMethodId = input.paymentMethodId;

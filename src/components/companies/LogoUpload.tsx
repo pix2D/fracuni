@@ -9,7 +9,6 @@ import { responseError } from "@/lib/api-response";
 import { LOGO_ACCEPT, logoFileError } from "@/lib/logo-upload";
 
 interface LogoUploadProps {
-  companyId: number;
   currentPath?: string | null;
   onUploaded: () => void;
 }
@@ -34,7 +33,7 @@ function validateLogoUploadForm(values: LogoUploadFormValues) {
   };
 }
 
-export function LogoUpload({ companyId, currentPath, onUploaded }: LogoUploadProps) {
+export function LogoUpload({ currentPath, onUploaded }: LogoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +59,7 @@ export function LogoUpload({ companyId, currentPath, onUploaded }: LogoUploadPro
         const formData = new FormData();
         formData.append("logo", value.logo);
 
-        const response = await fetch(`/api/companies/${companyId}/logo`, { method: "POST", body: formData });
+        const response = await fetch("/api/company/logo", { method: "POST", body: formData });
 
         if (!response.ok) {
           setError(await responseError(response, "Failed to upload logo"));
@@ -95,7 +94,7 @@ export function LogoUpload({ companyId, currentPath, onUploaded }: LogoUploadPro
       ) : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         {currentPath && (
-          <img src={`/api/companies/${companyId}/logo`} alt="Logo" className="h-12 w-12 object-contain" />
+          <img src="/api/company/logo" alt="Logo" className="h-12 w-12 object-contain" />
         )}
         <form.AppField name="logo">
           {(field) => (

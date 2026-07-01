@@ -22,6 +22,7 @@ import { decideServiceVat } from "@/lib/tax-engine";
 import { validateVat, type ViesSuccess } from "@/lib/vies";
 import { getExchangeRate, type HnbSuccess } from "@/lib/hnb";
 import { expandPlaceholders } from "@/lib/placeholders";
+import { getCompanyProfile } from "@/lib/companies";
 import {
   loadPdfGenerationContext,
   renderAndStoreInvoicePdfs,
@@ -109,22 +110,21 @@ function finalizedInvoiceSnapshot(
   };
 }
 
-// The Document Number's sequence segment. Atomic per (company, year, payment
+// The Document Number's sequence segment. Atomic per (year, payment
 // method): the upsert either seeds the row at 1 or increments last_value, and
 // RETURNING hands back the assigned value in a single statement. Invoices and
 // Credit Notes share the row, so they never collide or leave gaps.
 async function assignSequence(
   trx: Transaction<DB>,
-  companyId: number,
   year: number,
   paymentMethodId: number,
 ): Promise<number> {
   const row = await trx
     .insertInto("documentNumberSequences")
-    .values({ companyId, year, paymentMethodId, lastValue: 1 })
+    .values({ year, paymentMethodId, lastValue: 1 })
     .onConflict((oc) =>
       oc
-        .columns(["companyId", "year", "paymentMethodId"])
+        .columns(["year", "paymentMethodId"])
         .doUpdateSet({ lastValue: sql`last_value + 1` }),
     )
     .returning("lastValue")
@@ -213,7 +213,6 @@ async function commitInvoiceFinalization(
 
     const sequence = await assignSequence(
       trx,
-      invoice.companyId,
       yearOf(issueDate),
       invoice.paymentMethodId!,
     );
@@ -360,7 +359,7 @@ export async function markInvoicePaid(id: number, paymentDate: string): Promise<
  * Credit Note line amounts are normalized by the invoice data layer: quantities
  * stay positive, unit prices become negative magnitudes. The new Credit Note
  * starts as a Draft with no Document Number — that is assigned later at
- * finalization, sharing the Invoice/Credit Note sequence for its (Company, year,
+ * finalization, sharing the Invoice/Credit Note sequence for its (year,
  * Payment Method).
  */
 export async function createCreditNoteFromInvoice(sourceId: number): Promise<Invoice> {
@@ -378,7 +377,6 @@ export async function createCreditNoteFromInvoice(sourceId: number): Promise<Inv
 
   return createInvoice({
     type: DOCUMENT_TYPE.CREDIT_NOTE,
-    companyId: source.companyId,
     clientId: source.clientId,
     locationId: source.locationId,
     paymentMethodId: source.paymentMethodId,
@@ -444,19 +442,18 @@ function assertOfferFinalizable(offer: OfferDocument): void {
   }
 }
 
-// The offer number is a plain per-(company, year) counter. The atomic upsert
+// The offer number is a plain per-year counter. The atomic upsert
 // seeds at 1 or increments and RETURNING hands back the assigned value, so
 // numbers are gap-free and unique even under concurrency.
 async function assignOfferSequence(
   trx: Transaction<DB>,
-  companyId: number,
   year: number,
 ): Promise<number> {
   const row = await trx
     .insertInto("offerNumberSequences")
-    .values({ companyId, year, lastValue: 1 })
+    .values({ year, lastValue: 1 })
     .onConflict((oc) =>
-      oc.columns(["companyId", "year"]).doUpdateSet({ lastValue: sql`last_value + 1` }),
+      oc.column("year").doUpdateSet({ lastValue: sql`last_value + 1` }),
     )
     .returning("lastValue")
     .executeTakeFirstOrThrow();
@@ -476,7 +473,7 @@ export async function finalizeOffer(id: number): Promise<OfferDocument> {
   assertOfferFinalizable(offer);
 
   await db.transaction().execute(async (trx) => {
-    const sequence = await assignOfferSequence(trx, offer.companyId, yearOf(offer.issueDate!));
+    const sequence = await assignOfferSequence(trx, yearOf(offer.issueDate!));
     await trx
       .updateTable("invoices")
       .set({
@@ -502,7 +499,7 @@ export async function finalizeOfferWithPdfs(
   const context = await loadPdfGenerationContext(offer, deps);
 
   await db.transaction().execute(async (trx) => {
-    const sequence = await assignOfferSequence(trx, offer.companyId, yearOf(offer.issueDate!));
+    const sequence = await assignOfferSequence(trx, yearOf(offer.issueDate!));
     const documentNumber = String(sequence);
     const finalized = { ...offer, status: OFFER_STATUS.FINALIZED, documentNumber };
 
@@ -612,11 +609,7 @@ async function dueDateFromPaymentTerms(offer: Invoice, issueDate: Date): Promise
   const db = getDb();
   const [settings, company, client] = await Promise.all([
     getSettings(),
-    db
-      .selectFrom("companies")
-      .select("defaultPaymentTermsDays")
-      .where("id", "=", offer.companyId)
-      .executeTakeFirst(),
+    getCompanyProfile(),
     offer.clientId
       ? db
           .selectFrom("clients")
@@ -653,7 +646,6 @@ export async function convertOfferToInvoice(offerId: number): Promise<Invoice> {
 
   return createInvoice({
     type: DOCUMENT_TYPE.INVOICE,
-    companyId: offer.companyId,
     clientId: offer.clientId,
     locationId: offer.locationId,
     paymentMethodId: offer.paymentMethodId,
@@ -688,7 +680,6 @@ export async function duplicateDocument(id: number): Promise<Invoice> {
 
   return createInvoice({
     type: source.type as DocumentType,
-    companyId: source.companyId,
     clientId: source.clientId,
     locationId: source.locationId,
     paymentMethodId: source.paymentMethodId,

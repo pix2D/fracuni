@@ -12,7 +12,7 @@ import type { Selectable } from "kysely";
 import { getDb } from "@/lib/db";
 import type { EmailLogs } from "@/lib/db.generated";
 import { getInvoice, type Invoice } from "@/lib/invoices";
-import { getCompany, type CompanyWithRelations } from "@/lib/companies";
+import { getCompanyProfile, type CompanyWithRelations } from "@/lib/companies";
 import { getClient, type Client } from "@/lib/clients";
 import { getSettings } from "@/lib/settings";
 import { markInvoiceSent } from "@/lib/document-engine";
@@ -101,8 +101,8 @@ interface DocumentContext {
 async function loadContext(invoiceId: number): Promise<DocumentContext> {
   const invoice = await getInvoice(invoiceId);
   if (!invoice) throw notFound("Invoice not found");
-  const company = await getCompany(invoice.companyId);
-  if (!company) throw notFound("Company not found");
+  const company = await getCompanyProfile();
+  if (!company) throw notFound("Company profile not found");
   if (invoice.clientId == null) throw invalidOperation("Document has no client");
   const client = await getClient(invoice.clientId);
   if (!client) throw notFound("Client not found");

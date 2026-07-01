@@ -32,8 +32,8 @@ export async function createOffer(input: OfferInput): Promise<Offer> {
   return requireOffer(await createInvoice({ ...input, type: DOCUMENT_TYPE.OFFER }));
 }
 
-export async function listOffers(companyId?: number): Promise<Offer[]> {
-  return (await listInvoices({ companyId, type: DOCUMENT_TYPE.OFFER })).filter(isOffer);
+export async function listOffers(): Promise<Offer[]> {
+  return (await listInvoices({ type: DOCUMENT_TYPE.OFFER })).filter(isOffer);
 }
 
 export async function getOffer(id: number): Promise<Offer | null> {

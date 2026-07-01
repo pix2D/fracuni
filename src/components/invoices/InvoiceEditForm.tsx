@@ -89,7 +89,7 @@ export function InvoiceEditForm({
         const saveResponse = await fetch(`/api/invoices/${invoice.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(invoicePayloadFromValues(value, company.id, documentType, domestic)),
+          body: JSON.stringify(invoicePayloadFromValues(value, documentType, domestic)),
         });
 
         if (!saveResponse.ok) {

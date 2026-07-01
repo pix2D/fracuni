@@ -6,7 +6,7 @@ import path from "node:path";
 import { generateInvoicePdfs, type HtmlRenderer } from "@/lib/pdf-generator";
 import { finalizeInvoice } from "@/lib/document-engine";
 import { createInvoice, getInvoice, type Invoice } from "@/lib/invoices";
-import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { upsertCompanyProfile, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { useMigratedDb } from "@/test/db";
 
@@ -27,14 +27,14 @@ afterEach(async () => {
 const fakeRenderer: HtmlRenderer = async (html) => Buffer.from(`PDF::${html.length}::${html.slice(0, 40)}`);
 
 const COMPANY_INPUT = {
-  name: "Firefly One d.o.o.",
+  name: "Orion Test Works d.o.o.",
   address: "Ulica 1, Zagreb",
   phone: "+385 1 234 5678",
   oib: "12345678901",
   iban: "HR1234567890",
   swift: "ZABAHR2X",
-  emailFromAddress: "info@firefly.hr",
-  emailFromName: "Firefly One",
+  emailFromAddress: "info@orion-test-works.test",
+  emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
   legalTextServiceDomesticHr: "Domaći tekst.",
   legalTextServiceEuB2cHr: "EU B2C tekst.",
@@ -50,14 +50,14 @@ const COMPANY_INPUT = {
 };
 
 async function setupCompany() {
-  const company = await createCompany(COMPANY_INPUT);
-  const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
-  const paymentMethod = await createPaymentMethod(company.id, {
+  await upsertCompanyProfile(COMPANY_INPUT);
+  const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
+  const paymentMethod = await createPaymentMethod({
     number: 1,
     nameHr: "Transakcijski",
     isDefault: true,
   });
-  return { company, location, paymentMethod };
+  return { location, paymentMethod };
 }
 
 function mockJson(body: unknown): typeof fetch {
@@ -74,10 +74,9 @@ const VIES_VALID = mockJson({
 });
 
 async function finalizedDomestic(): Promise<Invoice> {
-  const { company, location, paymentMethod } = await setupCompany();
+  const { location, paymentMethod } = await setupCompany();
   const client = await createClient({ name: "Domaći d.o.o.", clientType: "business", country: "HR", oib: "98765432109" });
   const draft = await createInvoice({
-    companyId: company.id,
     clientId: client.id,
     locationId: location.id,
     paymentMethodId: paymentMethod.id,
@@ -89,11 +88,10 @@ async function finalizedDomestic(): Promise<Invoice> {
 }
 
 async function finalizedForeign(type: "invoice" | "credit_note" = "invoice"): Promise<Invoice> {
-  const { company, location, paymentMethod } = await setupCompany();
+  const { location, paymentMethod } = await setupCompany();
   const client = await createClient({ name: "Acme GmbH", clientType: "business", country: "DE", vatNumber: "DE123456789" });
   const draft = await createInvoice({
     type,
-    companyId: company.id,
     clientId: client.id,
     locationId: location.id,
     paymentMethodId: paymentMethod.id,
@@ -110,7 +108,7 @@ describe("generateInvoicePdfs — domestic", () => {
 
     const result = await generateInvoicePdfs(finalized.id, { renderer: fakeRenderer, dataDir });
 
-    expect(result.pdfPathHr).toBe("pdfs/firefly-one-d-o-o/2026/06/1-1-1-domaci-d-o-o.pdf");
+    expect(result.pdfPathHr).toBe("pdfs/2026/06/1-1-1-domaci-d-o-o.pdf");
     expect(result.pdfPathEn).toBeNull();
     expect(result.pdfHashEn).toBeNull();
     expect(result.pdfHashHr).toMatch(/^[0-9a-f]{64}$/);
@@ -131,8 +129,8 @@ describe("generateInvoicePdfs — foreign", () => {
 
     const result = await generateInvoicePdfs(finalized.id, { renderer: fakeRenderer, dataDir });
 
-    expect(result.pdfPathHr).toBe("pdfs/firefly-one-d-o-o/2026/06/1-1-1-acme-gmbh.pdf");
-    expect(result.pdfPathEn).toBe("pdfs/firefly-one-d-o-o/2026/06/1-1-1-acme-gmbh-en.pdf");
+    expect(result.pdfPathHr).toBe("pdfs/2026/06/1-1-1-acme-gmbh.pdf");
+    expect(result.pdfPathEn).toBe("pdfs/2026/06/1-1-1-acme-gmbh-en.pdf");
     expect(result.pdfHashHr).toMatch(/^[0-9a-f]{64}$/);
     expect(result.pdfHashEn).toMatch(/^[0-9a-f]{64}$/);
     // Distinct languages render distinct bytes.
@@ -147,8 +145,8 @@ describe("generateInvoicePdfs — foreign", () => {
 
     const result = await generateInvoicePdfs(finalized.id, { renderer: fakeRenderer, dataDir });
 
-    expect(result.pdfPathHr).toBe("pdfs/firefly-one-d-o-o/2026/06/1-1-1-odobrenje-acme-gmbh.pdf");
-    expect(result.pdfPathEn).toBe("pdfs/firefly-one-d-o-o/2026/06/1-1-1-credit-note-acme-gmbh-en.pdf");
+    expect(result.pdfPathHr).toBe("pdfs/2026/06/1-1-1-odobrenje-acme-gmbh.pdf");
+    expect(result.pdfPathEn).toBe("pdfs/2026/06/1-1-1-credit-note-acme-gmbh-en.pdf");
   });
 });
 
@@ -172,10 +170,9 @@ describe("generateInvoicePdfs — regeneration", () => {
 
 describe("generateInvoicePdfs — guards", () => {
   it("refuses to generate for a draft (no document number)", async () => {
-    const { company, location, paymentMethod } = await setupCompany();
+    const { location, paymentMethod } = await setupCompany();
     const client = await createClient({ name: "Domaći", clientType: "business", country: "HR", oib: "98765432109" });
     const draft = await createInvoice({
-      companyId: company.id,
       clientId: client.id,
       locationId: location.id,
       paymentMethodId: paymentMethod.id,

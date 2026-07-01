@@ -8,9 +8,6 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // Frozen literals; runtime SSOT is DOCUMENT_TYPE / INVOICE_STATUS in @/lib/documents.
     .addColumn("type", "text", (col) => col.notNull().defaultTo("invoice"))
     .addColumn("status", "text", (col) => col.notNull().defaultTo("draft"))
-    .addColumn("company_id", "integer", (col) =>
-      col.notNull().references("companies.id").onDelete("restrict"),
-    )
     // Nullable for draft permissiveness — a Draft may be saved with missing fields.
     .addColumn("client_id", "integer", (col) => col.references("clients.id").onDelete("restrict"))
     .addColumn("location_id", "integer", (col) => col.references("locations.id").onDelete("restrict"))

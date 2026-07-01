@@ -11,14 +11,14 @@ import type { Client } from "@/lib/clients";
 
 const company: Company = {
   id: 1,
-  name: "Firefly One d.o.o.",
+  name: "Orion Test Works d.o.o.",
   address: "Ulica 1\n10000 Zagreb",
   phone: "+385 1 234 5678",
   oib: "12345678901",
   iban: "HR1234567890",
   swift: "ZABAHR2X",
-  emailFromAddress: "info@firefly.hr",
-  emailFromName: "Firefly One",
+  emailFromAddress: "info@orion-test-works.test",
+  emailFromName: "Orion Test Works",
   emailSubjectTemplate: null,
   emailBodyTemplate: null,
   defaultPaymentTermsDays: 15,
@@ -43,7 +43,6 @@ const company: Company = {
 
 const location: Location = {
   id: 1,
-  companyId: 1,
   number: 1,
   nameHr: "Zagreb",
   nameEn: "Zagreb (EN)",
@@ -54,7 +53,6 @@ const location: Location = {
 
 const paymentMethod: PaymentMethod = {
   id: 1,
-  companyId: 1,
   number: 1,
   nameHr: "Transakcijski račun",
   nameEn: "Bank transfer",
@@ -70,7 +68,6 @@ type SharedDocumentFields = Omit<InvoiceDocument, "type" | "status">;
 function sharedDocumentFields(): SharedDocumentFields {
   return {
     id: 10,
-    companyId: 1,
     clientId: 100,
     locationId: 1,
     paymentMethodId: 1,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GET, PUT, DELETE } from "@/pages/api/invoices/[id]";
 import { createInvoice, getInvoice } from "@/lib/invoices";
 import { finalizeInvoice } from "@/lib/document-engine";
-import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { upsertCompanyProfile, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { getDb } from "@/lib/db";
 import { apiContext } from "@/test/api";
@@ -11,28 +11,27 @@ import { useMigratedDb } from "@/test/db";
 useMigratedDb();
 
 const COMPANY_INPUT = {
-  name: "Firefly One d.o.o.",
+  name: "Orion Test Works d.o.o.",
   address: "Ulica 1, Zagreb",
   phone: "+385 1 234 5678",
   oib: "12345678901",
   iban: "HR1234567890",
   swift: "ZABAHR2X",
-  emailFromAddress: "info@firefly.hr",
-  emailFromName: "Firefly One",
+  emailFromAddress: "info@orion-test-works.test",
+  emailFromName: "Orion Test Works",
   issuerName: "Ana Anić",
 };
 
 async function finalizedInvoiceId(): Promise<number> {
-  const company = await createCompany(COMPANY_INPUT);
-  const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
-  const paymentMethod = await createPaymentMethod(company.id, {
+  await upsertCompanyProfile(COMPANY_INPUT);
+  const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
+  const paymentMethod = await createPaymentMethod({
     number: 1,
     nameHr: "Transakcijski",
     isDefault: true,
   });
   const client = await createClient({ name: "Domaći d.o.o.", clientType: "business", country: "HR", oib: "98765432109" });
   const draft = await createInvoice({
-    companyId: company.id,
     clientId: client.id,
     locationId: location.id,
     paymentMethodId: paymentMethod.id,
@@ -55,9 +54,8 @@ function putRequest(id: number, body: unknown): Request {
 
 describe("GET /api/invoices/:id", () => {
   it("returns an invoice with line items", async () => {
-    const company = await createCompany(COMPANY_INPUT);
+    await upsertCompanyProfile(COMPANY_INPUT);
     const invoice = await createInvoice({
-      companyId: company.id,
       lineItems: [{ descriptionHr: "X", quantity: 1, unitPrice: 5 }],
     });
 
@@ -81,9 +79,8 @@ describe("GET /api/invoices/:id", () => {
 
 describe("PUT /api/invoices/:id", () => {
   it("updates fields and replaces line items", async () => {
-    const company = await createCompany(COMPANY_INPUT);
+    await upsertCompanyProfile(COMPANY_INPUT);
     const invoice = await createInvoice({
-      companyId: company.id,
       lineItems: [{ descriptionHr: "Old", quantity: 1, unitPrice: 5 }],
     });
 
@@ -107,9 +104,8 @@ describe("PUT /api/invoices/:id", () => {
   });
 
   it("normalizes draft Credit Note line items on update", async () => {
-    const company = await createCompany(COMPANY_INPUT);
+    await upsertCompanyProfile(COMPANY_INPUT);
     const creditNote = await createInvoice({
-      companyId: company.id,
       type: "credit_note",
       lineItems: [{ descriptionHr: "Old", quantity: 1, unitPrice: 5 }],
     });
@@ -183,8 +179,8 @@ describe("PUT /api/invoices/:id", () => {
 
 describe("DELETE /api/invoices/:id", () => {
   it("deletes a draft invoice", async () => {
-    const company = await createCompany(COMPANY_INPUT);
-    const invoice = await createInvoice({ companyId: company.id });
+    await upsertCompanyProfile(COMPANY_INPUT);
+    const invoice = await createInvoice({});
 
     const response = await DELETE(apiContext({ params: { id: String(invoice.id) } }));
     expect(response.status).toBe(204);
@@ -192,8 +188,8 @@ describe("DELETE /api/invoices/:id", () => {
   });
 
   it("returns 409 when deleting a non-draft invoice", async () => {
-    const company = await createCompany(COMPANY_INPUT);
-    const invoice = await createInvoice({ companyId: company.id });
+    await upsertCompanyProfile(COMPANY_INPUT);
+    const invoice = await createInvoice({});
     await getDb().updateTable("invoices").set({ status: "finalized" }).where("id", "=", invoice.id).execute();
 
     const response = await DELETE(apiContext({ params: { id: String(invoice.id) } }));

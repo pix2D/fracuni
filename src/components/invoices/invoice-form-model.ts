@@ -257,7 +257,6 @@ export function invoiceDefaults({
 
 export function invoicePayloadFromValues(
   values: InvoiceFormValues,
-  companyId: number,
   documentType: InvoiceDocumentType,
   domestic: boolean,
 ): InvoiceInput {
@@ -270,7 +269,6 @@ export function invoicePayloadFromValues(
 
   return {
     type: documentType,
-    companyId,
     clientId: parseId(values.clientId),
     locationId: parseId(values.locationId),
     paymentMethodId: parseId(values.paymentMethodId),

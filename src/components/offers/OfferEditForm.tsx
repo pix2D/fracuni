@@ -66,7 +66,7 @@ export function OfferEditForm({ company, clients, catalog, settings, offer }: Pr
         const saveResponse = await fetch(`/api/offers/${offer.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(offerPayloadFromValues(value, company.id, domestic)),
+          body: JSON.stringify(offerPayloadFromValues(value, domestic)),
         });
 
         if (!saveResponse.ok) {

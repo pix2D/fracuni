@@ -13,12 +13,11 @@ import type { PaymentMethod } from "@/lib/companies";
 import { PencilSimpleIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 
 interface Props {
-  companyId: number;
   paymentMethods: PaymentMethod[];
   onUpdated: () => void;
 }
 
-export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: Props) {
+export function PaymentMethodsSection({ paymentMethods, onUpdated }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethod | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +38,7 @@ export function PaymentMethodsSection({ companyId, paymentMethods, onUpdated }: 
   }
 
   async function handleAdd(data: CompanyNumberedSettingInput) {
-    const res = await fetch(`/api/companies/${companyId}/payment-methods`, {
+    const res = await fetch("/api/company/payment-methods", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),

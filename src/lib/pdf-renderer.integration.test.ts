@@ -11,7 +11,7 @@ import { renderHtmlToPdf } from "@/lib/pdf-renderer";
 import { generateInvoicePdfs } from "@/lib/pdf-generator";
 import { finalizeInvoice } from "@/lib/document-engine";
 import { createInvoice } from "@/lib/invoices";
-import { createCompany, createLocation, createPaymentMethod } from "@/lib/companies";
+import { upsertCompanyProfile, createLocation, createPaymentMethod } from "@/lib/companies";
 import { createClient } from "@/lib/clients";
 import { useMigratedDb } from "@/test/db";
 
@@ -52,15 +52,15 @@ describe("generateInvoicePdfs (real Chromium, full pipeline)", () => {
   it(
     "writes real Croatian + English PDFs for a foreign client and records matching hashes",
     async () => {
-      const company = await createCompany({
-        name: "Firefly One d.o.o.",
+      await upsertCompanyProfile({
+        name: "Orion Test Works d.o.o.",
         address: "Ulica 1, Zagreb",
         phone: "+385 1 234 5678",
         oib: "12345678901",
         iban: "HR1234567890",
         swift: "ZABAHR2X",
-        emailFromAddress: "info@firefly.hr",
-        emailFromName: "Firefly One",
+        emailFromAddress: "info@orion-test-works.test",
+        emailFromName: "Orion Test Works",
         issuerName: "Ana Anić",
         legalTextServiceDomesticHr: "Domaći tekst.",
         legalTextServiceEuB2cHr: "EU B2C tekst.",
@@ -74,15 +74,14 @@ describe("generateInvoicePdfs (real Chromium, full pipeline)", () => {
         legalTextServiceNonEuB2bHr: "Non-EU B2B tekst.",
         legalTextServiceNonEuB2bEn: "Non-EU B2B text.",
       });
-      const location = await createLocation(company.id, { number: 1, nameHr: "Zagreb", isDefault: true });
-      const paymentMethod = await createPaymentMethod(company.id, {
+      const location = await createLocation({ number: 1, nameHr: "Zagreb", isDefault: true });
+      const paymentMethod = await createPaymentMethod({
         number: 1,
         nameHr: "Transakcijski",
         isDefault: true,
       });
       const client = await createClient({ name: "Acme GmbH", clientType: "business", country: "DE", vatNumber: "DE123456789" });
       const draft = await createInvoice({
-        companyId: company.id,
         clientId: client.id,
         locationId: location.id,
         paymentMethodId: paymentMethod.id,

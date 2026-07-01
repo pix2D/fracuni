@@ -18,7 +18,7 @@ function formatDateButton(date: Date): string {
 
 export const happyPath = {
   company: {
-    name: "Pixelduo E2E d.o.o.",
+    name: "Nova Test Labs d.o.o.",
     oib: "12345678903",
     address: "Ilica 1\n10000 Zagreb\nCroatia",
     phone: "+385 1 555 0100",
@@ -39,8 +39,8 @@ export const happyPath = {
     legalTextServiceNonEuB2cEn: "Supply outside the scope of VAT.",
     legalTextServiceNonEuB2bHr: "Usluga poslovnom kupcu izvan EU nije predmet PDV-a.",
     legalTextServiceNonEuB2bEn: "Service to a non-EU B2B client is outside the scope of VAT.",
-    emailFromAddress: "invoices@pixelduo.test",
-    emailFromName: "Pixelduo Finance",
+    emailFromAddress: "invoices@nova-test-labs.test",
+    emailFromName: "Nova Test Finance",
     emailSubjectTemplate: "Racun {broj} - {kupac}",
     emailBodyTemplate: "Postovani,\n\nu privitku saljemo racun {broj}.",
     location: {

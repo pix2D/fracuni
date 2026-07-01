@@ -1,19 +1,14 @@
 ---
 import "@/styles/global.css";
-import { CompanySelector } from "@/components/CompanySelector";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
 import { buttonVariants } from "@/components/ui/button";
-import { listCompanies } from "@/lib/companies";
-
-const companies = await listCompanies();
-const companyId = Astro.cookies.get("companyId")?.value;
 
 const navLinks = [
   { href: "/invoices", label: "Invoices" },
   { href: "/credit-notes", label: "Credit Notes" },
   { href: "/offers", label: "Offers" },
   { href: "/clients", label: "Clients" },
-  { href: "/companies", label: "Companies" },
+  { href: "/company", label: "Company" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -57,7 +52,6 @@ const currentPath = Astro.url.pathname;
           </nav>
         </div>
         <div class="flex items-center gap-3">
-          <CompanySelector client:load companies={companies} selectedId={companyId} />
           <DarkModeToggle client:load />
         </div>
       </div>

@@ -27,7 +27,6 @@ import type { DocumentNumberSequenceState } from "@/lib/document-number-sequence
 import { PencilSimpleIcon } from "@phosphor-icons/react";
 
 interface Props {
-  companyId: number;
   locations: Location[];
   paymentMethods: PaymentMethod[];
 }
@@ -49,7 +48,7 @@ function sequencePreview(sequence: DocumentNumberSequenceState, location?: Locat
   return `${sequence.nextSequence}/${locationNumber}/${sequence.paymentMethodNumber}`;
 }
 
-export function DocumentNumberingSection({ companyId, locations, paymentMethods }: Props) {
+export function DocumentNumberingSection({ locations, paymentMethods }: Props) {
   const [year, setYear] = useState(currentYear());
   const [selectedLocationId, setSelectedLocationId] = useState(defaultLocationId(locations));
   const [sequences, setSequences] = useState<DocumentNumberSequenceState[]>([]);
@@ -65,7 +64,7 @@ export function DocumentNumberingSection({ companyId, locations, paymentMethods 
   const fetchSequences = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/companies/${companyId}/document-number-sequences?year=${year}`);
+      const response = await fetch(`/api/company/document-number-sequences?year=${year}`);
       if (!response.ok) {
         setError(await responseError(response, "Failed to load document numbering"));
         setSequences([]);
@@ -76,7 +75,7 @@ export function DocumentNumberingSection({ companyId, locations, paymentMethods 
     } finally {
       setLoading(false);
     }
-  }, [companyId, year]);
+  }, [year]);
 
   useEffect(() => {
     if (!locations.some((location) => String(location.id) === selectedLocationId)) {
@@ -195,7 +194,6 @@ export function DocumentNumberingSection({ companyId, locations, paymentMethods 
       )}
 
       <SequenceDialog
-        companyId={companyId}
         year={year}
         sequence={editingSequence}
         onClose={() => setEditingSequence(null)}
@@ -206,13 +204,11 @@ export function DocumentNumberingSection({ companyId, locations, paymentMethods 
 }
 
 function SequenceDialog({
-  companyId,
   year,
   sequence,
   onClose,
   onSaved,
 }: {
-  companyId: number;
   year: number;
   sequence: DocumentNumberSequenceState | null;
   onClose: () => void;
@@ -239,7 +235,7 @@ function SequenceDialog({
 
     setSaving(true);
     try {
-      const response = await fetch(`/api/companies/${companyId}/document-number-sequences`, {
+      const response = await fetch("/api/company/document-number-sequences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
