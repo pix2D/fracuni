@@ -6,6 +6,7 @@
 # `playwright install chromium` postinstall is a no-op during the build.
 FROM mcr.microsoft.com/playwright:v1.61.0-noble
 
+# Build dependencies and artifacts as root, then drop privileges for runtime.
 USER root
 
 WORKDIR /app
@@ -16,9 +17,13 @@ RUN corepack enable && corepack prepare pnpm@11.5.1 --activate && pnpm install -
 COPY . .
 RUN pnpm build
 
+RUN mkdir -p /data && chown -R pwuser:pwuser /app /data
+
 ENV HOST=0.0.0.0
 ENV PORT=4321
 
 EXPOSE 4321
+
+USER pwuser
 
 CMD ["pnpm", "run", "start"]

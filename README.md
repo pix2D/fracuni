@@ -43,6 +43,17 @@ Docker Compose mounts production data outside the repo:
 FIRERACUNI_DATA_DIR=/data
 ```
 
+The container runs as a non-root UID/GID, defaulting to `1000:1000`. Make the
+host data directory writable by that identity before starting:
+
+```sh
+mkdir -p ../fracuni-data-production
+sudo chown -R 1000:1000 ../fracuni-data-production
+```
+
+If production uses a different service account, set `FIRERACUNI_UID` and
+`FIRERACUNI_GID` for Docker Compose and chown the data directory to the same IDs.
+
 Start:
 
 ```sh
