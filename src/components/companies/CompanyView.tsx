@@ -94,7 +94,7 @@ export function CompanyView({ company }: { company: CompanyWithRelations }) {
         </dl>
       </FormSection>
 
-      <FormSection title="Logo" description="Shown in the document header. PNG, JPG, or SVG. Saved immediately on upload.">
+      <FormSection title="Logo" description="Shown in the document header. PNG, JPG, or WebP. Saved immediately on upload.">
         <LogoUpload companyId={currentCompany.id} currentPath={currentCompany.logoPath} onUploaded={refreshCompany} />
       </FormSection>
 

@@ -7,7 +7,7 @@ import {
 } from "./assertions/invoices";
 import { expectedInvoiceDates, happyPath } from "./fixtures/data";
 import { createClientViaUi } from "./flows/clients";
-import { createCompanyViaUi } from "./flows/companies";
+import { createCompanyViaUi, uploadCompanyLogoViaUi } from "./flows/companies";
 import { createInvoiceViaUi } from "./flows/invoices";
 
 test("creates a company, client, and invoice with correct totals", async ({ page }) => {
@@ -15,6 +15,10 @@ test("creates a company, client, and invoice with correct totals", async ({ page
 
   await test.step("create company through the UI", async () => {
     await createCompanyViaUi(page, happyPath.company);
+  });
+
+  await test.step("upload company logo through the UI", async () => {
+    await uploadCompanyLogoViaUi(page);
   });
 
   await test.step("create client through the UI", async () => {

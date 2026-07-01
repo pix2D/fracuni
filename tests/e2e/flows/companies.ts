@@ -4,8 +4,19 @@ import { waitForAstroHydration } from "./controls";
 
 type CompanyFixture = typeof happyPath.company;
 
+const testLogoPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+  "base64",
+);
+
 function section(page: Page, heading: string) {
   return page.locator("section").filter({ has: page.getByRole("heading", { name: heading }) });
+}
+
+function companyIdFromUrl(page: Page): string {
+  const match = page.url().match(/\/companies\/(\d+)$/);
+  if (!match) throw new Error(`Expected company detail URL, got ${page.url()}`);
+  return match[1];
 }
 
 export async function createCompanyViaUi(page: Page, company: CompanyFixture): Promise<void> {
@@ -64,4 +75,31 @@ export async function createCompanyViaUi(page: Page, company: CompanyFixture): P
       name: new RegExp(`${company.paymentMethod.number}.*${company.paymentMethod.nameHr}`),
     }),
   ).toBeVisible();
+}
+
+export async function uploadCompanyLogoViaUi(page: Page): Promise<void> {
+  const companyId = companyIdFromUrl(page);
+  const logo = section(page, "Logo");
+
+  await logo.getByLabel("Logo file").setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: testLogoPng,
+  });
+
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().endsWith(`/api/companies/${companyId}/logo`),
+  );
+  await logo.getByRole("button", { name: "Upload" }).click();
+  const response = await responsePromise;
+
+  expect(response.ok()).toBe(true);
+  await expect(logo.getByAltText("Logo")).toBeVisible();
+
+  const logoResponse = await page.request.get(`/api/companies/${companyId}/logo`);
+  expect(logoResponse.status()).toBe(200);
+  expect(logoResponse.headers()["content-type"]).toContain("image/png");
+  expect(await logoResponse.body()).toEqual(testLogoPng);
 }
