@@ -120,7 +120,11 @@ function recordingSender(): { sender: EmailSender; sent: OutgoingEmail[] } {
   const sent: OutgoingEmail[] = [];
   const sender: EmailSender = async (email) => {
     sent.push(email);
-    return { ok: true, messageId: "pm-123" };
+    return {
+      ok: true,
+      messageId: "pm-123",
+      postmarkResponse: { MessageID: "pm-123", SubmittedAt: "2026-06-15T10:00:00Z" },
+    };
   };
   return { sender, sent };
 }
@@ -191,8 +195,14 @@ describe("sendInvoiceEmail", () => {
     expect(logs).toHaveLength(1);
     expect(logs[0]!.status).toBe("sent");
     expect(logs[0]!.postmarkMessageId).toBe("pm-123");
+    expect(logs[0]!.postmarkResponse).toBe(
+      JSON.stringify({ MessageID: "pm-123", SubmittedAt: "2026-06-15T10:00:00Z" }),
+    );
+    expect(logs[0]!.senderName).toBe("Orion Test Works");
+    expect(logs[0]!.senderEmail).toBe("info@orion-test-works.test");
     expect(logs[0]!.recipient).toBe("client@example.com");
     expect(logs[0]!.subject).toBe("Hi");
+    expect(logs[0]!.body).toBe("Body");
     expect(logs[0]!.errorMessage).toBeNull();
   });
 
@@ -218,6 +228,7 @@ describe("sendInvoiceEmail", () => {
       ok: false,
       messageId: null,
       error: "Inactive recipient",
+      postmarkResponse: { ErrorCode: 406, Message: "Inactive recipient" },
     });
 
     await expect(
@@ -234,6 +245,10 @@ describe("sendInvoiceEmail", () => {
     expect(logs[0]!.status).toBe("error");
     expect(logs[0]!.errorMessage).toBe("Inactive recipient");
     expect(logs[0]!.postmarkMessageId).toBeNull();
+    expect(logs[0]!.postmarkResponse).toBe(
+      JSON.stringify({ ErrorCode: 406, Message: "Inactive recipient" }),
+    );
+    expect(logs[0]!.body).toBe("Body");
   });
 
   it("refuses to send a draft", async () => {

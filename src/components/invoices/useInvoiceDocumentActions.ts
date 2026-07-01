@@ -125,6 +125,7 @@ export function useInvoiceDocumentActions({
     closeSend: () => setSending(null),
     closePay: () => setPaying(null),
     handleSent: handleDialogAction,
+    handleEmailFailedAttempt: handleDialogAction,
     handlePaid: handleDialogAction,
     handleDuplicate,
     handleDelete,

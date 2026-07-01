@@ -29,8 +29,8 @@ export function conflict(message: string): AppError {
   return new AppError("conflict", message, 409);
 }
 
-export function invalidOperation(message: string): AppError {
-  return new AppError("invalid_operation", message, 409);
+export function invalidOperation(message: string, details?: Record<string, unknown>): AppError {
+  return new AppError("invalid_operation", message, 409, details);
 }
 
 export function unsupportedOperation(message: string): AppError {

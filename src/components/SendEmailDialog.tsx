@@ -17,9 +17,10 @@ interface Props {
   invoice: Invoice | null;
   onClose: () => void;
   onSent: () => void;
+  onFailedAttempt: () => void;
 }
 
-export function SendEmailDialog({ invoice, onClose, onSent }: Props) {
+export function SendEmailDialog({ invoice, onClose, onSent, onFailedAttempt }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [defaults, setDefaults] = useState<EmailDefaults | null>(null);
@@ -79,6 +80,7 @@ export function SendEmailDialog({ invoice, onClose, onSent }: Props) {
               defaults={defaults}
               onCancel={onClose}
               onSent={onSent}
+              onFailedAttempt={onFailedAttempt}
             />
           </>
         ) : (

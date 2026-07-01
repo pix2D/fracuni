@@ -77,12 +77,16 @@ export interface DocumentNumberSequences {
 }
 
 export interface EmailLogs {
+  body: string;
   createdAt: Generated<string>;
   errorMessage: string | null;
   id: Generated<number | null>;
   invoiceId: number;
   postmarkMessageId: string | null;
+  postmarkResponse: string | null;
   recipient: string;
+  senderEmail: string;
+  senderName: string;
   status: string;
   subject: string;
 }

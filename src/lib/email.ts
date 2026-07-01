@@ -51,6 +51,7 @@ export interface SendResult {
   ok: boolean;
   messageId: string | null;
   error?: string;
+  postmarkResponse?: unknown;
 }
 
 export type EmailSender = (email: OutgoingEmail, apiKey: string) => Promise<SendResult>;
@@ -74,11 +75,16 @@ const postmarkSender: EmailSender = async (email, apiKey) => {
       })),
     });
     if (res.ErrorCode !== 0) {
-      return { ok: false, messageId: null, error: res.Message };
+      return { ok: false, messageId: null, error: res.Message, postmarkResponse: res };
     }
-    return { ok: true, messageId: res.MessageID };
+    return { ok: true, messageId: res.MessageID, postmarkResponse: res };
   } catch (err: unknown) {
-    return { ok: false, messageId: null, error: err instanceof Error ? err.message : String(err) };
+    return {
+      ok: false,
+      messageId: null,
+      error: err instanceof Error ? err.message : String(err),
+      postmarkResponse: serializeError(err),
+    };
   }
 };
 
@@ -113,10 +119,16 @@ async function loadContext(invoiceId: number): Promise<DocumentContext> {
   return { invoice, company, client };
 }
 
-function fromAddress(company: CompanyWithRelations, client: Client): string {
+interface SenderIdentity {
+  name: string;
+  email: string;
+  formatted: string;
+}
+
+function senderIdentity(company: CompanyWithRelations, client: Client): SenderIdentity {
   const name = client.emailFromName ?? company.emailFromName;
-  const address = client.emailFromAddress ?? company.emailFromAddress;
-  return `${name} <${address}>`;
+  const email = client.emailFromAddress ?? company.emailFromAddress;
+  return { name, email, formatted: `${name} <${email}>` };
 }
 
 function subjectTemplate(company: CompanyWithRelations, client: Client): string {
@@ -125,6 +137,22 @@ function subjectTemplate(company: CompanyWithRelations, client: Client): string 
 
 function bodyTemplate(company: CompanyWithRelations, client: Client): string {
   return client.emailBodyTemplate ?? company.emailBodyTemplate ?? "";
+}
+
+function serializeError(error: unknown): unknown {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message };
+  }
+  return error;
+}
+
+function serializePostmarkResponse(response: unknown): string | null {
+  if (response == null) return null;
+  try {
+    return JSON.stringify(response);
+  } catch {
+    return JSON.stringify({ error: "Unable to serialize Postmark response" });
+  }
 }
 
 // Foreign clients receive the English PDF only; domestic clients the Croatian PDF.
@@ -165,12 +193,13 @@ export async function buildEmailDefaults(invoiceId: number): Promise<EmailDefaul
     date: dateFromIsoDate(invoice.issueDate),
     locale: placeholderLocaleForCountry(client.country),
   };
+  const sender = senderIdentity(company, client);
 
   return {
     to: invoice.email ?? client.email ?? "",
     subject: expandEmailTemplate(subjectTemplate(company, client), vars),
     body: expandEmailTemplate(bodyTemplate(company, client), vars),
-    from: fromAddress(company, client),
+    from: sender.formatted,
     attachmentFilename: path.basename(attachmentRelPath(invoice, client)),
   };
 }
@@ -234,9 +263,10 @@ export async function sendInvoiceEmail(
 
   const relPath = attachmentRelPath(invoice, client);
   const bytes = await fs.readFile(path.join(dataDir, relPath));
+  const senderIdentityValue = senderIdentity(company, client);
 
   const email: OutgoingEmail = {
-    from: fromAddress(company, client),
+    from: senderIdentityValue.formatted,
     to: recipient,
     subject: input.subject,
     body: input.body,
@@ -250,14 +280,19 @@ export async function sendInvoiceEmail(
   };
 
   const result = await sender(email, settings.postmarkApiKey);
+  const postmarkResponse = serializePostmarkResponse(result.postmarkResponse);
 
   const logRow = await getDb()
     .insertInto("emailLogs")
     .values({
       invoiceId,
+      senderName: senderIdentityValue.name,
+      senderEmail: senderIdentityValue.email,
       recipient,
       subject: input.subject,
+      body: input.body,
       postmarkMessageId: result.messageId,
+      postmarkResponse,
       status: result.ok ? "sent" : "error",
       errorMessage: result.ok ? null : (result.error ?? "Unknown error"),
     })
@@ -266,7 +301,9 @@ export async function sendInvoiceEmail(
   const log: EmailLog = { ...logRow, id: logRow.id! };
 
   if (!result.ok) {
-    throw invalidOperation(`Email delivery failed: ${result.error ?? "Unknown error"}`);
+    throw invalidOperation(`Email delivery failed: ${result.error ?? "Unknown error"}`, {
+      emailLogId: log.id,
+    });
   }
 
   const sent = await markInvoiceSent(invoiceId);

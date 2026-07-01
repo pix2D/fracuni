@@ -5,7 +5,12 @@ import type { InvoiceDocumentActions } from "@/components/invoices/useInvoiceDoc
 export function InvoiceDocumentActionDialogs({ actions }: { actions: InvoiceDocumentActions }) {
   return (
     <>
-      <SendEmailDialog invoice={actions.sending} onClose={actions.closeSend} onSent={actions.handleSent} />
+      <SendEmailDialog
+        invoice={actions.sending}
+        onClose={actions.closeSend}
+        onSent={actions.handleSent}
+        onFailedAttempt={actions.handleEmailFailedAttempt}
+      />
       <MarkPaidDialog invoice={actions.paying} onClose={actions.closePay} onPaid={actions.handlePaid} />
     </>
   );

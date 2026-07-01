@@ -25,7 +25,11 @@ beforeEach(async () => {
   sentEmails = [];
   const sender: EmailSender = async (email) => {
     sentEmails.push(email);
-    return { ok: true, messageId: "pm-route-1" };
+    return {
+      ok: true,
+      messageId: "pm-route-1",
+      postmarkResponse: { MessageID: "pm-route-1", SubmittedAt: "2026-06-15T10:00:00Z" },
+    };
   };
   configureEmailSending({ sender, dataDir });
 });
@@ -107,6 +111,12 @@ describe("POST /api/invoices/:id/email", () => {
     const body = await response.json();
     expect(body.invoice.status).toBe("sent");
     expect(body.log.postmarkMessageId).toBe("pm-route-1");
+    expect(body.log.senderName).toBe("Orion Test Works");
+    expect(body.log.senderEmail).toBe("info@orion-test-works.test");
+    expect(body.log.body).toBe("Body");
+    expect(body.log.postmarkResponse).toBe(
+      JSON.stringify({ MessageID: "pm-route-1", SubmittedAt: "2026-06-15T10:00:00Z" }),
+    );
     expect(sentEmails).toHaveLength(1);
 
     // The send is now visible in the log history.
@@ -114,6 +124,8 @@ describe("POST /api/invoices/:id/email", () => {
     const getBody = await getResponse.json();
     expect(getBody.logs).toHaveLength(1);
     expect(getBody.logs[0]!.status).toBe("sent");
+    expect(getBody.logs[0]!.body).toBe("Body");
+    expect(getBody.logs[0]!.senderEmail).toBe("info@orion-test-works.test");
   });
 
   it("returns 400 when the recipient is empty", async () => {
@@ -138,6 +150,43 @@ describe("POST /api/invoices/:id/email", () => {
     });
     const response = await POST(apiContext({ params: { id: String(invoice.id) }, request }));
     expect(response.status).toBe(400);
+  });
+
+  it("returns the failed email log id and exposes the failed attempt", async () => {
+    const invoice = await readyInvoice();
+    await updateSettings({ postmarkApiKey: "test-key" });
+    configureEmailSending({
+      dataDir,
+      sender: async () => ({
+        ok: false,
+        messageId: null,
+        error: "Inactive recipient",
+        postmarkResponse: { ErrorCode: 406, Message: "Inactive recipient" },
+      }),
+    });
+
+    const request = new Request("http://test.local", {
+      method: "POST",
+      body: JSON.stringify({ to: "client@example.com", subject: "Hi", body: "Body" }),
+    });
+    const response = await POST(apiContext({ params: { id: String(invoice.id) }, request }));
+
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.emailLogId).toBeTypeOf("number");
+    expect((await getInvoice(invoice.id))!.status).toBe("finalized");
+
+    const getResponse = await GET(apiContext({ params: { id: String(invoice.id) } }));
+    const getBody = await getResponse.json();
+    expect(getBody.logs).toHaveLength(1);
+    expect(getBody.logs[0]).toMatchObject({
+      id: body.emailLogId,
+      status: "error",
+      errorMessage: "Inactive recipient",
+      senderEmail: "info@orion-test-works.test",
+      body: "Body",
+      postmarkResponse: JSON.stringify({ ErrorCode: 406, Message: "Inactive recipient" }),
+    });
   });
 
   it("returns 409 and keeps the invoice Finalized when Postmark is not configured", async () => {

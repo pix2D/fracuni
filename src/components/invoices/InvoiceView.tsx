@@ -52,6 +52,15 @@ function FieldRow({
   );
 }
 
+function formatJsonText(value: string | null | undefined): string {
+  if (!value) return "-";
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    return value;
+  }
+}
+
 function PdfStatus({ invoice }: { invoice: Invoice }) {
   return (
     <Card size="sm">
@@ -170,19 +179,35 @@ function ViesStatus({
   );
 }
 
-function EmailStatus({ invoice, logs }: { invoice: Invoice; logs: EmailLog[] }) {
+function EmailStatus({
+  invoice,
+  logs,
+  onRetry,
+}: {
+  invoice: Invoice;
+  logs: EmailLog[];
+  onRetry: () => void;
+}) {
   const successful = logs.find((log) => log.status === "sent");
-  const failed = logs.find((log) => log.status === "error");
+  const latestFailed = logs[0]?.status === "error" ? logs[0] : null;
   const manuallySent =
     !successful && (invoice.status === INVOICE_STATUS.SENT || invoice.status === INVOICE_STATUS.PAID);
+  const canRetry = invoice.status === INVOICE_STATUS.FINALIZED && !!latestFailed;
 
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>Email</CardTitle>
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle>Email</CardTitle>
+          {canRetry ? (
+            <Button type="button" size="sm" variant="secondary" onClick={onRetry}>
+              Try Again
+            </Button>
+          ) : null}
+        </div>
         <CardDescription>Postmark delivery state and recent delivery attempts.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <dl className="space-y-2">
           {successful ? (
             <>
@@ -198,13 +223,53 @@ function EmailStatus({ invoice, logs }: { invoice: Invoice; logs: EmailLog[] }) 
           ) : (
             <FieldRow label="Status" value="Not sent yet" />
           )}
-          {failed && (
+          {latestFailed && (
             <>
-              <FieldRow label="Last error" value={failed.errorMessage} />
-              <FieldRow label="Error at" value={failed.createdAt} />
+              <FieldRow label="Last error" value={latestFailed.errorMessage} />
+              <FieldRow label="Error at" value={latestFailed.createdAt} />
             </>
           )}
         </dl>
+        {logs.length > 0 ? (
+          <div className="space-y-2 border-t border-border pt-3">
+            <h3 className="text-xs font-semibold">Attempts</h3>
+            <div className="space-y-2">
+              {logs.map((log) => (
+                <details key={log.id} className="border border-border p-2">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate font-medium">{log.createdAt}</span>
+                      <Badge variant={log.status === "sent" ? "secondary" : "destructive"}>
+                        {log.status === "sent" ? "sent" : "error"}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 truncate text-muted-foreground">{log.recipient}</div>
+                  </summary>
+                  <dl className="mt-3 space-y-2 border-t border-border pt-3">
+                    <FieldRow label="From name" value={log.senderName} />
+                    <FieldRow label="From email" value={log.senderEmail} mono />
+                    <FieldRow label="Recipient" value={log.recipient} mono />
+                    <FieldRow label="Subject" value={log.subject} />
+                    <FieldRow label="Message ID" value={log.postmarkMessageId} mono />
+                    <FieldRow label="Error" value={log.errorMessage} />
+                    <div className="space-y-1">
+                      <dt className="text-muted-foreground">Body</dt>
+                      <dd className="max-h-40 overflow-auto whitespace-pre-wrap border border-border bg-muted/30 p-2 font-mono text-[11px]">
+                        {log.body || "-"}
+                      </dd>
+                    </div>
+                    <div className="space-y-1">
+                      <dt className="text-muted-foreground">Postmark response</dt>
+                      <dd className="max-h-40 overflow-auto whitespace-pre-wrap break-all border border-border bg-muted/30 p-2 font-mono text-[11px]">
+                        {formatJsonText(log.postmarkResponse)}
+                      </dd>
+                    </div>
+                  </dl>
+                </details>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -320,7 +385,11 @@ export function InvoiceView({
         <aside className="space-y-4">
           <ExchangeStatus invoice={currentInvoice} previewExchangeRate={previewExchangeRate} />
           <ViesStatus required={viesRequired} verification={viesVerification} invoice={currentInvoice} />
-          <EmailStatus invoice={currentInvoice} logs={emailLogs} />
+          <EmailStatus
+            invoice={currentInvoice}
+            logs={emailLogs}
+            onRetry={() => actions.openSend(currentInvoice)}
+          />
           <PdfStatus invoice={currentInvoice} />
         </aside>
       </div>

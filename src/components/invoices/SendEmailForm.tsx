@@ -5,15 +5,18 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useAppForm } from "@/components/forms/app-form";
-import { responseError } from "@/lib/api-response";
 import { SendEmailSchema, type SendEmailInput } from "@/lib/email.schema";
 
 export interface EmailLog {
   id: number;
+  senderName: string;
+  senderEmail: string;
   recipient: string;
   subject: string;
+  body: string;
   status: string;
   postmarkMessageId: string | null;
+  postmarkResponse: string | null;
   errorMessage: string | null;
   createdAt: string;
 }
@@ -32,6 +35,21 @@ interface SendEmailFormProps {
   defaults: EmailDefaults;
   onCancel: () => void;
   onSent: () => Promise<void> | void;
+  onFailedAttempt: () => Promise<void> | void;
+}
+
+async function readSendError(response: Response): Promise<{ message: string; emailLogId: number | null }> {
+  const body: unknown = await response.json().catch(() => null);
+  const message =
+    body && typeof body === "object" && "error" in body && typeof body.error === "string"
+      ? body.error
+      : "Failed to send email";
+  const emailLogId =
+    body && typeof body === "object" && "emailLogId" in body && typeof body.emailLogId === "number"
+      ? body.emailLogId
+      : null;
+
+  return { message, emailLogId };
 }
 
 const sendEmailFieldValidators = {
@@ -40,7 +58,13 @@ const sendEmailFieldValidators = {
   body: { onSubmit: SendEmailSchema.shape.body },
 };
 
-export function SendEmailForm({ invoiceId, defaults, onCancel, onSent }: SendEmailFormProps) {
+export function SendEmailForm({
+  invoiceId,
+  defaults,
+  onCancel,
+  onSent,
+  onFailedAttempt,
+}: SendEmailFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -69,7 +93,11 @@ export function SendEmailForm({ invoiceId, defaults, onCancel, onSent }: SendEma
         });
 
         if (!response.ok) {
-          setError(await responseError(response, "Failed to send email"));
+          const { message, emailLogId } = await readSendError(response);
+          setError(message);
+          if (emailLogId != null) {
+            await onFailedAttempt();
+          }
           return;
         }
 
