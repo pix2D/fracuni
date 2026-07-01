@@ -1,10 +1,13 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { format } from "date-fns";
+import { WarningCircleIcon } from "@phosphor-icons/react";
 import { InvoiceDatesSection } from "@/components/invoices/InvoiceDatesSection";
 import { InvoiceFormActions, InvoiceFormShell, invoiceNoun, invoiceRouteBase } from "@/components/invoices/InvoiceFormLayout";
 import { InvoiceHealthStatus } from "@/components/invoices/InvoiceHealthStatus";
 import { InvoicePartySection } from "@/components/invoices/InvoicePartySection";
 import { DocumentLineItemsSection } from "@/components/documents/DocumentLineItemsSection";
 import { DocumentNotesTotalsSection } from "@/components/documents/DocumentNotesTotalsSection";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   invoiceCurrencyCode,
   invoiceDateFields,
@@ -37,6 +40,62 @@ interface Props {
 }
 
 const DEFAULT_SUBMIT_INTENT: InvoiceSubmitIntent = "save";
+
+function IssueDateHolidayWarning({ issueDate }: { issueDate: Date | undefined }) {
+  const [holidaysByYear, setHolidaysByYear] = useState<Record<number, string[]>>({});
+  const year = issueDate?.getFullYear();
+  const dateKey = issueDate ? format(issueDate, "yyyy-MM-dd") : null;
+  const holidays = year ? holidaysByYear[year] : undefined;
+  const isHoliday = !!dateKey && !!holidays?.includes(dateKey);
+
+  useEffect(() => {
+    if (!year || holidays) return;
+    const holidayYear = year;
+
+    let cancelled = false;
+
+    async function fetchHolidays() {
+      try {
+        const response = await fetch(`/api/holidays?year=${holidayYear}`);
+        if (!response.ok) return;
+
+        const data: unknown = await response.json();
+        if (
+          !data ||
+          typeof data !== "object" ||
+          !Array.isArray((data as { holidays?: unknown }).holidays)
+        ) {
+          return;
+        }
+
+        const holidayDates = (data as { holidays: unknown[] }).holidays.filter(
+          (holiday): holiday is string => typeof holiday === "string",
+        );
+
+        if (!cancelled) {
+          setHolidaysByYear((current) => ({ ...current, [holidayYear]: holidayDates }));
+        }
+      } catch {
+        // Holidays are advisory only; submission behavior must not depend on this.
+      }
+    }
+
+    void fetchHolidays();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [year, holidays]);
+
+  if (!isHoliday) return null;
+
+  return (
+    <Alert className="border-amber-600/30 bg-amber-500/10 text-amber-800 *:data-[slot=alert-description]:text-amber-800/90 dark:border-amber-500/30 dark:text-amber-300 dark:*:data-[slot=alert-description]:text-amber-300/90">
+      <WarningCircleIcon className="size-4" />
+      <AlertDescription>The selected issue date is a Croatian public holiday.</AlertDescription>
+    </Alert>
+  );
+}
 
 export function InvoiceCreateForm({
   company,
@@ -142,6 +201,9 @@ export function InvoiceCreateForm({
           readOnly={false}
         />
         <InvoiceDatesSection form={form} fields={invoiceDateFields} readOnly={false} />
+        <form.Subscribe selector={(state) => state.values.issueDate}>
+          {(issueDate) => <IssueDateHolidayWarning issueDate={issueDate} />}
+        </form.Subscribe>
 
         <form.Subscribe selector={(state) => state.values}>
           {(values = invoiceFormDefaults) => {
