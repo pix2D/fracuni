@@ -11,6 +11,16 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   output: 'server',
   integrations: [react()],
+  security: {
+    // src/middleware.ts enforces host/origin checks across all API content types.
+    checkOrigin: false,
+    allowedDomains: [
+      {
+        hostname: '**.pony-puffin.ts.net',
+        protocol: 'https'
+      }
+    ]
+  },
 
   adapter: node({
     mode: 'standalone'
